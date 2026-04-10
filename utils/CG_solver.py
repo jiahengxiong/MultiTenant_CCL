@@ -4,6 +4,9 @@ import itertools
 import random
 import time
 import math
+import numpy as np
+from scipy.optimize import linear_sum_assignment
+from scipy.sparse import csr_matrix
 
 class ColumnGenerationSolver:
     def __init__(self, datacenter, tenant_mapping, tenant_flows, verbose=False):
@@ -12,344 +15,468 @@ class ColumnGenerationSolver:
         self.tenant_flows = tenant_flows
         self.verbose = verbose
         
-        # Scaling factor to avoid numerical issues (e.g., 1e9 for Gbits)
+        # 1. Fix: Increase BigM
+        self.BigM = 1e9 
         self.scale = 1e9
         
-        # Extract basic data
+        # Basic Data
         self.M = sorted(tenant_mapping.keys())
         self.L = list(datacenter.topology.edges())
-        # Scale capacity: e.g., 25,000,000,000 -> 25.0
-        self.cap = {(u,v): datacenter.topology[u][v]['capacity'] / self.scale for (u,v) in self.L}
+        self.link_to_idx = {ell: i for i, ell in enumerate(self.L)}
+        self.num_links = len(self.L)
         
-        # Logical flows per tenant: list of (u, v, V)
-        # Input tenant_flows are already scaled by 1e9 in main.py?
-        # Let's check magnitude. If V < 1, assume scaled.
-        # But to be safe and consistent with main.py which divides by 1e9:
-        # We assume tenant_flows V is in Gbits (if main.py did V/1e9).
-        # We assume topology capacity is in bits/sec (raw).
+        self.cap = {ell: datacenter.topology[u][v]['capacity'] / self.scale for (u,v), ell in zip(self.L, self.L)}
         
-        # If we want consistent units (Gbits), we scale capacity by 1e9, 
-        # and keep flows as is (if they are already Gbits).
+        # Server Indexing
+        self.all_servers = self.datacenter.get_all_servers()
+        self.server_to_idx = {s: i for i, s in enumerate(self.all_servers)}
+        self.num_servers = len(self.all_servers)
         
+        # Flows & Precomputed Flow Matrices
         self.flows = {}
+        self.flow_matrices = {} # m -> (k, k) array
+        self.flow_outgoing = {} # m -> list of (u, v, vol)
+        
         for m, flist in tenant_flows.items():
-            # Check first flow to guess scaling? No, dangerous.
-            # Based on current main.py, flows are scaled.
-            # self.flows[m] = [(u, v, V / self.scale) for (u, v, V) in flist] # REMOVED double scaling
+            # Store scaled flows if needed, but we keep original logic (V/scale was handled in main?)
+            # Assuming input V is consistent with logic.
             self.flows[m] = [(u, v, V) for (u, v, V) in flist]
+            
+            k = len(self.tenant_mapping[m])
+            mat = np.zeros((k, k))
+            # Also need efficient adjacency for pricing?
+            # Matrix is good for vectorization.
+            for (u, v, V) in self.flows[m]:
+                if u < k and v < k:
+                    mat[u, v] += V
+            self.flow_matrices[m] = mat
+
+        # Precompute Path Edge Indices for Vectorized Cost Calculation
+        # path_edges_indices[s_idx][t_idx] = list of edge_indices
+        self.path_edges_indices = [[[] for _ in range(self.num_servers)] for _ in range(self.num_servers)]
         
-        # Patterns: self.patterns[m] = list of patterns
-        # A pattern is a dict: {logical_rank: physical_server}
+        # Also build Sparse Matrix P: (num_servers^2, num_links)
+        # Row i corresponds to path between (i // num_servers) and (i % num_servers)
+        # P[row, edge_idx] = 1 if edge in path
+        rows = []
+        cols = []
+        data = []
+        
+        for s in self.all_servers:
+            s_idx = self.server_to_idx[s]
+            for t in self.all_servers:
+                t_idx = self.server_to_idx[t]
+                if s == t: continue
+                
+                path = self.datacenter.paths.get((s,t))
+                if path:
+                    edges = self.datacenter.path_to_edges(path)
+                    indices = [self.link_to_idx[e] for e in edges if e in self.link_to_idx]
+                    self.path_edges_indices[s_idx][t_idx] = indices
+                    
+                    # Sparse Matrix entries
+                    row_idx = s_idx * self.num_servers + t_idx
+                    for e_idx in indices:
+                        rows.append(row_idx)
+                        cols.append(e_idx)
+                        data.append(1.0)
+                        
+        self.path_matrix = csr_matrix((data, (rows, cols)), shape=(self.num_servers * self.num_servers, self.num_links))
+        
+        # Patterns
         self.patterns = {m: [] for m in self.M}
+        self.added_patterns_hashes = {m: set() for m in self.M}
         
-        # RMP model
+        # RMP
         self.rmp = None
-        self.lambdas = {} # (m, p_idx) -> Var
-        self.T_max = None
-        
-        # Constraints
-        self.constr_convex = {} # m -> Constr
-        self.constr_link = {}   # ell -> Constr
-        self.constr_server = {} # s -> Constr
+        self.lambdas = {} 
+        self.T_m = {}
+        self.constr_convex = {}
+        self.constr_link = {}
+        self.constr_server = {}
 
     def initialize_columns(self):
-        """
-        Generate initial columns (patterns).
-        We use the initial random mapping provided in tenant_mapping as the first column.
-        """
+        """Generate initial columns from input mapping."""
         for m in self.M:
-            initial_pat = self.tenant_mapping[m].copy()
-            self.add_pattern(m, initial_pat)
+            self.add_pattern_to_list(m, self.tenant_mapping[m].copy())
 
-    def add_pattern(self, m, mapping):
-        """
-        Add a new pattern for tenant m.
-        mapping: {rank: server}
-        """
-        # Calculate traffic footprint for this pattern
-        # Traffic_mp[ell] = sum of Volume of flows of tenant m that pass through ell
+    def add_pattern_to_list(self, m, mapping):
+        """Helper to compute pattern data and store it."""
+        # Calculate traffic
+        traffic = {} # Sparse dict: idx -> vol
         
-        traffic = {ell: 0.0 for ell in self.L}
-        
-        # For each flow in tenant m
         for (u, v, V) in self.flows[m]:
-            # logical u -> phys s, logical v -> phys t
-            s = mapping[u]
-            t = mapping[v]
-            if s == t: continue 
+            s, t = mapping[u], mapping[v]
+            if s == t: continue
             
-            # Get path
-            path = self.datacenter.paths.get((s,t))
-            if not path: continue
+            s_idx, t_idx = self.server_to_idx[s], self.server_to_idx[t]
+            edge_indices = self.path_edges_indices[s_idx][t_idx]
             
-            edges = self.datacenter.path_to_edges(path)
-            for ell in edges:
-                if ell in traffic:
-                    traffic[ell] += V
+            for e_idx in edge_indices:
+                traffic[e_idx] = traffic.get(e_idx, 0.0) + V
+                
+        # Convert traffic to ell object keys for compatibility if needed, 
+        # but for internal RMP building we can use indices or map back.
+        # Let's map back to ell objects to match existing constraint dict keys.
+        traffic_obj = {self.L[i]: v for i, v in traffic.items()}
         
-        # Server usage: {server: 1 if used}
-        servers_used = {s: 0 for s in self.datacenter.get_all_servers()}
-        for s in mapping.values():
-            servers_used[s] = 1
+        servers_used = {s: 0 for s in self.all_servers}
+        for s in mapping.values(): servers_used[s] = 1
             
         pat_data = {
             "mapping": mapping,
-            "traffic": traffic,
-            "servers": servers_used
+            "traffic": traffic_obj,
+            "servers": servers_used,
+            "traffic_indices": traffic # Keep indices for fast RMP add
         }
         
+        # Check duplicate?
+        # Hash mapping
+        map_hash = tuple(sorted(mapping.items()))
+        if map_hash in self.added_patterns_hashes[m]:
+            return -1
+            
         self.patterns[m].append(pat_data)
+        self.added_patterns_hashes[m].add(map_hash)
+        return len(self.patterns[m]) - 1
 
-    def build_rmp(self):
-        """
-        Build Restricted Master Problem
-        """
+    def initialize_rmp(self):
+        """Build RMP once."""
         self.rmp = gp.Model("MultiTenantCG")
         self.rmp.Params.OutputFlag = 0
+        # 3. Strategy: Force Dual Simplex for efficient re-optimization
+        self.rmp.Params.Method = 1  # Dual Simplex
+        # self.rmp.Params.HotStart = 1 # Removed invalid param
         
-        # Variable: T_max (minimize)
-        self.T_max = self.rmp.addVar(vtype=GRB.CONTINUOUS, lb=0.0, name="T_max")
+        # Variables
+        self.T_m = {m: self.rmp.addVar(lb=0.0, name=f"T_{m}") for m in self.M}
         
-        # Variables: Lambda_m_p
-        self.lambdas = {}
         for m in self.M:
             for p_idx, pat in enumerate(self.patterns[m]):
-                self.lambdas[(m, p_idx)] = self.rmp.addVar(vtype=GRB.CONTINUOUS, lb=0.0, ub=1.0, name=f"lam_{m}_{p_idx}")
+                self.lambdas[(m, p_idx)] = self.rmp.addVar(lb=0.0, ub=1.0, name=f"lam_{m}_{p_idx}")
         
         self.rmp.update()
+        self.rmp.setObjective(gp.quicksum(self.T_m.values()), GRB.MINIMIZE)
         
-        # Objective: Minimize T_max
-        self.rmp.setObjective(self.T_max, GRB.MINIMIZE)
+        # Constraints
         
-        # Constraint 1: Convexity (Each tenant chooses exactly one pattern)
-        # sum_{p} lambda_{m,p} = 1
+        # 1. Convexity
         for m in self.M:
             expr = gp.quicksum(self.lambdas[(m, p_idx)] for p_idx in range(len(self.patterns[m])))
             self.constr_convex[m] = self.rmp.addConstr(expr == 1.0, name=f"convex_{m}")
             
-        # Constraint 2: Link Capacity (Load <= Cap * T_max)
-        # sum_{m,p} lambda_{m,p} * Traffic_{m,p}^ell - Cap_ell * T_max <= 0
+        # 2. Link Capacity
+        # We need constraints for ALL (m, ell)
         for ell in self.L:
-            expr = gp.quicksum(
-                self.lambdas[(m, p_idx)] * self.patterns[m][p_idx]["traffic"][ell]
-                for m in self.M
-                for p_idx in range(len(self.patterns[m]))
-            )
-            self.constr_link[ell] = self.rmp.addConstr(expr - self.cap[ell] * self.T_max <= 0, name=f"link_{ell}")
+            # Global Load Term
+            # It's expensive to iterate all patterns here, but done only once.
+            total_load_expr = gp.LinExpr()
+            for k in self.M:
+                for p_idx, pat in enumerate(self.patterns[k]):
+                    vol = pat["traffic"].get(ell, 0.0)
+                    if vol > 1e-9:
+                        total_load_expr.addTerms(vol, self.lambdas[(k, p_idx)])
             
-        # Constraint 3: Server Exclusivity (Each server used at most once)
-        # sum_{m,p} lambda_{m,p} * IsUsed_{m,p}^s <= 1
-        all_servers = self.datacenter.get_all_servers()
-        for s in all_servers:
-            expr = gp.quicksum(
-                self.lambdas[(m, p_idx)] * self.patterns[m][p_idx]["servers"].get(s, 0)
-                for m in self.M
-                for p_idx in range(len(self.patterns[m]))
-            )
+            for m in self.M:
+                # IsUsed Term
+                is_used_expr = gp.LinExpr()
+                for p_idx, pat in enumerate(self.patterns[m]):
+                    if pat["traffic"].get(ell, 0.0) > 1e-9:
+                        is_used_expr.addTerms(1.0, self.lambdas[(m, p_idx)])
+                
+                self.constr_link[(m, ell)] = self.rmp.addConstr(
+                    total_load_expr + self.BigM * is_used_expr - self.cap[ell] * self.T_m[m] <= self.BigM,
+                    name=f"link_{ell}_{m}"
+                )
+                
+        # 3. Server Exclusivity
+        for s in self.all_servers:
+            expr = gp.LinExpr()
+            for m in self.M:
+                for p_idx, pat in enumerate(self.patterns[m]):
+                    if pat["servers"].get(s, 0) > 0.5:
+                        expr.addTerms(1.0, self.lambdas[(m, p_idx)])
             self.constr_server[s] = self.rmp.addConstr(expr <= 1.0, name=f"server_{s}")
 
+    def add_column_to_rmp(self, m, pat_idx):
+        """Add a new column dynamically."""
+        pat = self.patterns[m][pat_idx]
+        col = gp.Column()
+        
+        # 1. Convexity
+        col.addTerms(1.0, self.constr_convex[m])
+        
+        # 2. Link Constraints
+        # Used links
+        used_link_indices = pat["traffic_indices"] # dict idx->vol
+        
+        for l_idx, vol in used_link_indices.items():
+            if vol <= 1e-9: continue
+            ell = self.L[l_idx]
+            
+            # For (m, ell): coeff = vol + BigM
+            if (m, ell) in self.constr_link:
+                col.addTerms(vol + self.BigM, self.constr_link[(m, ell)])
+            
+            # For (k, ell) where k != m: coeff = vol
+            for k in self.M:
+                if k == m: continue
+                if (k, ell) in self.constr_link:
+                    col.addTerms(vol, self.constr_link[(k, ell)])
+                    
+        # 3. Server Constraints
+        for s, used in pat["servers"].items():
+            if used > 0.5:
+                if s in self.constr_server:
+                    col.addTerms(1.0, self.constr_server[s])
+                    
+        # Add variable
+        self.lambdas[(m, pat_idx)] = self.rmp.addVar(obj=0.0, column=col, lb=0.0, ub=1.0, name=f"lam_{m}_{pat_idx}")
+
     def solve_pricing(self, duals_convex, duals_link, duals_server):
-        """
-        Solve Pricing Problem for each tenant.
-        Find a pattern p for tenant m that has negative Reduced Cost.
-        
-        RC = 0 - [ pi_m * 1 + sum(mu_ell * Traffic_ell) + sum(sigma_s * IsUsed_s) ]
-        RC = -pi_m + sum(-mu_ell * Traffic_ell) + sum(-sigma_s * IsUsed_s)
-        
-        Let w_ell = -mu_ell >= 0 (since mu_ell <= 0)
-        Let v_s = -sigma_s >= 0 (since sigma_s <= 0)
-        
-        We want to Minimize: Cost(p) = sum(w_ell * Traffic_ell) + sum(v_s * IsUsed_s)
-        If MinCost < pi_m, then RC < 0.
-        """
-        
         new_columns_count = 0
         
-        # Pre-calculate weights (positive costs)
-        # Note: Duals for <= constraints are non-positive in Gurobi (usually).
-        # But wait, Gurobi's dual sign depends on optimization direction (Min) and constraint type.
-        # Min c'x, s.t. Ax >= b -> Dual >= 0
-        # Min c'x, s.t. Ax <= b -> Dual <= 0
-        # Here we have <= 0 constraints, so duals should be <= 0.
-        # So -duals should be >= 0.
+        # 1. Vectorized Precomputation
         
-        w_link = {ell: -duals_link[ell] for ell in self.L}
-        v_server = {s: -duals_server.get(s, 0.0) for s in self.datacenter.get_all_servers()}
+        # W_traf vector (size |L|)
+        sum_mu = np.zeros(self.num_links)
+        for (k, ell), val in duals_link.items():
+            l_idx = self.link_to_idx[ell]
+            sum_mu[l_idx] += val
+            
+        w_traf = -sum_mu # Array of size |L|
         
-        # Optimization: Filter out zero weights to speed up calculation? 
-        # No, iterating all links is slow.
-        # Traffic is sum of V * edges_in_path.
-        # Cost = sum(V * sum(w_ell for ell in path)) + sum(v_s)
-        # Let PathCost(s,t) = sum(w_ell for ell in path_s_t)
-        # This can be pre-calculated for all s,t pairs!
+        # V_server vector (size |S|)
+        v_server = np.array([ -duals_server.get(s, 0.0) for s in self.all_servers ])
         
-        # Pre-calculate Path Costs
-        path_costs = {} # (s,t) -> cost
-        all_servers = self.datacenter.get_all_servers()
-        # We only need pairs that might communicate. 
-        # But calculating all pairs is O(N^2 * PathLen), feasible for N=100.
+        # Path Cost Matrix ( |S| x |S| ) - TRAFFIC ONLY
+        # Using Sparse Matrix P: P @ w_traf -> (num_servers * num_servers, )
+        path_traf_cost_flat = self.path_matrix.dot(w_traf)
+        path_traf_cost = path_traf_cost_flat.reshape((self.num_servers, self.num_servers))
         
-        for s in all_servers:
-            for t in all_servers:
-                if s == t:
-                    path_costs[(s,t)] = 0.0
-                    continue
-                path = self.datacenter.paths.get((s,t))
-                if path:
-                    edges = self.datacenter.path_to_edges(path)
-                    cost = sum(w_link.get(e, 0.0) for e in edges)
-                    path_costs[(s,t)] = cost
-                else:
-                    path_costs[(s,t)] = float('inf')
-
-        for m in self.M:
+        # 2. Solve for each tenant (Partial Pricing with Shuffle)
+        tenant_order = list(self.M)
+        random.shuffle(tenant_order)
+        
+        improvements_found = 0
+        max_improvements_per_iter = max(5, len(self.M) // 2) # Slightly relaxed limit
+        
+        for m in tenant_order:
+            if improvements_found >= max_improvements_per_iter:
+                break
+                
             k = len(self.tenant_mapping[m])
-            ranks = list(range(k))
+            fixed_servers_obj = list(self.tenant_mapping[m].values())
+            fixed_servers_indices = [self.server_to_idx[s] for s in fixed_servers_obj]
             
-            # Pricing Problem: Assign k ranks to k distinct servers to minimize total cost
-            # Total Cost = Sum_{flows} (V * PathCost(map(u), map(v))) + Sum_{servers} v_server(s)
+            # W_fixed for this tenant
+            w_fixed = np.zeros(self.num_links)
+            for ell in self.L:
+                l_idx = self.link_to_idx[ell]
+                w_fixed[l_idx] = -self.BigM * duals_link.get((m, ell), 0.0)
             
-            best_val = float('inf')
-            best_mapping = None
+            # Compute Path Fixed Costs using Matrix
+            # P @ w_fixed
+            path_fixed_cost_flat = self.path_matrix.dot(w_fixed)
+            path_fixed_cost = path_fixed_cost_flat.reshape((self.num_servers, self.num_servers))
             
-            # Simple heuristic / brute force depending on size
-            # For small N (e.g. 12) and small k (e.g. 4), permutations is fine.
-            # itertools.permutations(all_servers, k)
+            # Total Path Cost for LAP (Traffic + Fixed)
+            # This is the CRITICAL FIX: LAP now sees the fixed costs!
+            total_path_cost = path_traf_cost + path_fixed_cost
             
-            # Heuristic pruning:
-            # Sort servers by v_server cost? 
-            # But link costs dominate usually.
+            # Flow Matrix
+            F = self.flow_matrices[m] # (k, k)
             
-            # Let's try full permutation for now. 
-            # If N > 20, we might need to sample or use a better heuristic.
+            # Multi-Start
+            num_starts = 10 # Increase exploration
+            start_mappings_indices = []
             
-            # Optimization: If N is large, random sampling might be needed for "Simulated Annealing" or similar
-            # But for the given problem size (Leaf=3, PerLeaf=4 => 12 servers), it's small.
+            # 1. Current best (initial)
+            start_mappings_indices.append(np.array(fixed_servers_indices))
             
-            # To avoid exploring 12*11*10*9 ~ 11k iterations per tenant per CG iter (which is fast actually),
-            # we just do it.
-            
-            # If N is large (e.g. 100), 100*99*98*97 ~ 100M, too slow.
-            # Assuming small scale for now based on main.py config.
-            
-            # Constraint: we must pick distinct servers.
-            # RESTRICTION: The set of servers is FIXED to the initial assignment (per user request).
-            # We only optimize the permutation (mapping of ranks to these specific servers).
-            
-            # Retrieve the fixed servers for this tenant
-            fixed_servers = list(self.tenant_mapping[m].values())
-            
-            # For permutation, k must equal len(fixed_servers). 
-            # If for some reason they differ (e.g. overprovisioning?), we might need combinations.
-            # But based on main.py, k = len(assigned_servers).
-            
-            # Exact search over permutations of the FIXED set of servers
-            # Store all valid patterns with negative Reduced Cost
-            candidates = []
-            
-            for server_perm in itertools.permutations(fixed_servers, k):
-                current_mapping = {ranks[i]: server_perm[i] for i in range(k)}
-                current_cost = 0.0
-                for s in server_perm:
-                    current_cost += v_server.get(s, 0.0)
+            # 2. Random perms
+            for _ in range(num_starts - 1):
+                shuffled = fixed_servers_indices.copy()
+                random.shuffle(shuffled)
+                start_mappings_indices.append(np.array(shuffled))
                 
-                for (u, v, V) in self.flows[m]:
-                    s_node = current_mapping[u]
-                    t_node = current_mapping[v]
-                    current_cost += V * path_costs.get((s_node, t_node), float('inf'))
-                
-                candidates.append((current_cost, current_mapping))
+            candidates = [] # List of (rc, mapping_dict)
             
-            # Sort by cost (lowest first)
+            for current_locs in start_mappings_indices: # current_locs is array of server indices for ranks 0..k-1
+                
+                # Iterative LAP
+                for _ in range(10): # Max 10 iters
+                    
+                    # Build Cost Matrix (k x k)
+                    # Cost[u, i] = v_server[s_i] + sum_v F[u, v] * total_path_cost[s_i, loc(v)]
+                    
+                    # 1. Server Dual Cost (Broadcast)
+                    server_costs = v_server[fixed_servers_indices] # shape (k,)
+                    
+                    # 2. Path Cost (Traffic + Fixed)
+                    D_subset = total_path_cost[fixed_servers_indices, :][:, current_locs] # Shape (k, k)
+                    
+                    # Result = F @ D_subset.T
+                    traf_costs = F @ D_subset.T # Shape (k, k). Row u, Col i.
+                    
+                    cost_matrix = traf_costs + server_costs # Broadcast add to each row
+                    
+                    # Solve LAP
+                    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+                    
+                    # New locations
+                    new_locs = np.array([fixed_servers_indices[c] for c in col_ind])
+                    
+                    if np.array_equal(new_locs, current_locs):
+                        break
+                    current_locs = new_locs
+                    
+                # Exact Evaluation & Local Search
+                
+                # Function to calc exact RC (uses original logic to be safe, but total_path_cost is good proxy)
+                def calc_rc(locs):
+                    # locs: array of server indices
+                    rc = 0.0
+                    rc += v_server[locs].sum()
+                    
+                    used_edges = set()
+                    possible = True
+                    # Vectorized flow cost calculation? No, simple loop is fine for RC check
+                    for (u, v, V) in self.flows[m]:
+                        s_idx, t_idx = locs[u], locs[v]
+                        if s_idx == t_idx: continue
+                        
+                        cost = path_traf_cost[s_idx, t_idx] # Only traffic part
+                        if cost >= 1e17: 
+                            possible = False; break
+                        rc += V * cost
+                        
+                        for e_idx in self.path_edges_indices[s_idx][t_idx]:
+                            used_edges.add(e_idx)
+                            
+                    if not possible: return float('inf')
+                    
+                    for e_idx in used_edges:
+                        rc += w_fixed[e_idx]
+                        
+                    rc -= duals_convex[m]
+                    return rc
+
+                current_rc = calc_rc(current_locs)
+                
+                # Random Swap Local Search
+                improved = True
+                while improved:
+                    improved = False
+                    n_swaps = max(50, k * 2)
+                    for _ in range(n_swaps):
+                        idx1, idx2 = random.sample(range(k), 2)
+                        test_locs = current_locs.copy()
+                        test_locs[idx1], test_locs[idx2] = test_locs[idx2], test_locs[idx1]
+                        
+                        test_rc = calc_rc(test_locs)
+                        if test_rc < current_rc - 1e-9:
+                            current_rc = test_rc
+                            current_locs = test_locs
+                            improved = True
+                            break
+                            
+                if current_rc < -1e-9:
+                    mapping_dict = tuple((r, self.all_servers[idx]) for r, idx in enumerate(current_locs))
+                    candidates.append((current_rc, mapping_dict))
+            
+            # Sort candidates by RC and add Top-K unique
             candidates.sort(key=lambda x: x[0])
             
-            # Check Reduced Cost
-            # RC = -pi_m + best_val
-            pi_m = duals_convex[m]
-            
-            # Add up to Top-K patterns with negative RC
-            # Increase K to ensure we have a rich pool for the integer phase
-            top_k = 50
             added_count = 0
+            seen_mappings = set()
             
-            for cost, mapping in candidates:
-                # Tighten tolerance to 1e-9 to capture subtle improvements
-                if cost < pi_m - 1e-9:
-                    self.add_pattern(m, mapping)
-                    new_columns_count += 1
-                    added_count += 1
-                    if added_count >= top_k:
-                        break
-            
-        return new_columns_count
+            # Add up to 3 best unique columns
+            for rc, map_tuple in candidates:
+                if added_count >= 3: break
                 
+                if map_tuple not in seen_mappings:
+                    mapping = dict(map_tuple)
+                    idx = self.add_pattern_to_list(m, mapping)
+                    if idx != -1:
+                        self.add_column_to_rmp(m, idx)
+                        new_columns_count += 1
+                        added_count += 1
+                        seen_mappings.add(map_tuple)
+            
+            if added_count > 0:
+                improvements_found += 1
+                    
         return new_columns_count
 
     def solve(self, max_iter=100):
         self.initialize_columns()
-        self.build_rmp()
+        self.initialize_rmp()
         
         iter_count = 0
         start_time = time.time()
+        obj_history = []
         
         while iter_count < max_iter:
             iter_count += 1
             self.rmp.optimize()
-            
             if self.rmp.Status != GRB.OPTIMAL:
-                if self.verbose: print(f"RMP Status {self.rmp.Status} in iter {iter_count}")
+                if self.verbose: print(f"Status {self.rmp.Status}")
                 break
                 
             obj_val = self.rmp.ObjVal
-            if self.verbose: print(f"CG Iter {iter_count}: LP Obj = {obj_val:.6f}")
+            if self.verbose: print(f"Iter {iter_count}: {obj_val:.6f}")
+            
+            # Strategy 2: Early Termination (Stagnation detection)
+            # DELAYED CHECK: Don't check until iter 20
+            obj_history.append(obj_val)
+            if iter_count > 20 and len(obj_history) >= 8:
+                improvement = (obj_history[-8] - obj_history[-1]) / abs(obj_history[-8])
+                if improvement < 0.0005:
+                    if self.verbose: print("Converged (Stagnation)")
+                    print(f"  > CG Stagnation detected at iter {iter_count}, stopping early.")
+                    break
             
             # Get Duals
             duals_convex = {m: self.constr_convex[m].Pi for m in self.M}
-            duals_link = {ell: self.constr_link[ell].Pi for ell in self.L}
-            duals_server = {s: self.constr_server[s].Pi for s in self.datacenter.get_all_servers()}
+            duals_link = {}
+            for (m, ell), constr in self.constr_link.items():
+                duals_link[(m, ell)] = constr.Pi
+            duals_server = {s: self.constr_server[s].Pi for s in self.all_servers}
             
-            # Solve Pricing
+            # Pricing
             new_cols = self.solve_pricing(duals_convex, duals_link, duals_server)
             
             if new_cols == 0:
-                if self.verbose: print("No new columns found. LP Optimal reached.")
                 break
-            
-            # Rebuild RMP (simplest way to add columns for this prototype)
-            # For efficiency, we should use Column object, but rebuilding is safer for correctness now.
-            self.build_rmp()
-            
+                
         print(f"CG Loop finished in {time.time() - start_time:.2f}s, {iter_count} iters.")
-            
-        # Final Solve (Integer)
-        # Convert all lambda variables to Binary
-        # We need to rebuild or modify the existing model
         
-        # To avoid "modification" issues, let's just set vtype
+        # Integer Solve
         for v in self.rmp.getVars():
             if v.VarName.startswith("lam_"):
                 v.VType = GRB.BINARY
-        
         self.rmp.update()
+        # Optimize MIP settings for speed
+        self.rmp.Params.MIPGap = 0.05 
+        self.rmp.Params.MIPFocus = 1 # Focus on finding feasible solutions quickly
+        self.rmp.Params.TimeLimit = 3.0 # Set a strict time limit for the integer solve
         self.rmp.optimize()
         
-        if self.rmp.Status == GRB.OPTIMAL:
+        if self.rmp.SolCount > 0:
             self.final_obj = self.rmp.ObjVal
-            print(f"CG Final Integer Obj: {self.rmp.ObjVal:.6f}")
+            print(f"CG Final Integer Obj: {self.final_obj:.6f} (Status: {self.rmp.Status})")
             return self.extract_solution()
         else:
+            print(f"CG Integer Solve Failed (Status: {self.rmp.Status})")
             self.final_obj = None
-            print("CG Integer solution not found")
             return None
 
     def extract_solution(self):
-        # Return mapping {m: {rank: server}}
         solution = {}
         for m in self.M:
             for p_idx, pat in enumerate(self.patterns[m]):
                 var = self.rmp.getVarByName(f"lam_{m}_{p_idx}")
-                # Use a small epsilon for float comparison if continuous, 
-                # but we solved as binary, so > 0.5 is safe.
                 if var and var.X > 0.5:
                     solution[m] = pat["mapping"]
                     break

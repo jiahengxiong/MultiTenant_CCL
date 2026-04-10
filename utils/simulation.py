@@ -21,9 +21,11 @@ def build_topology(G):
     return topo
 
 
-def allgather_policy(tenant_servers, path_table, single_flow_size, tenant_start_times=None):
+def allgather_policy(tenant_servers, path_table, single_flow_size, tenant_start_times=None, tenant_rates=None):
     if tenant_start_times is None:
         tenant_start_times = {}
+    if tenant_rates is None:
+        tenant_rates = {}
     flow_list = []
     policy = []
     for tenant in tenant_servers:
@@ -39,18 +41,26 @@ def allgather_policy(tenant_servers, path_table, single_flow_size, tenant_start_
                 physical_dst = tenant_servers[tenant][dst]
                 flow_list.append([f"{tenant}-{rank}", physical_src, physical_dst, path_table[(physical_src, physical_dst)], start_time])
     for flow_id, src, dst, path, start_time in flow_list:
-        policy.append(PolicyEntry(flow_id, src, dst, 0,'Max', single_flow_size, path, time=start_time))
+        tenant = flow_id.split('-')[0]
+        # Use tenant-specific rate if available (must be in bps), otherwise 'Max'
+        # The simulator expects 'Max' or a number (bps).
+        rate = tenant_rates.get(int(tenant), 'Max')
+        policy.append(PolicyEntry(flow_id, src, dst, 0, rate, single_flow_size, path, time=start_time))
 
     # print("Flow list:", flow_list)
 
     return policy
 
-def allreduce_policy(tenant_servers, path_table, chunk_size, tenant_start_times=None):
+def allreduce_policy(tenant_servers, path_table, chunk_size, tenant_start_times=None, tenant_rates=None):
     if tenant_start_times is None:
         tenant_start_times = {}
+    if tenant_rates is None:
+        tenant_rates = {}
     policy = []
     for tenant, mapping in tenant_servers.items():
         start_time = tenant_start_times.get(tenant, 0.0)
+        rate = tenant_rates.get(tenant, 'Max')
+        
         # Get logical ranks sorted
         ranks = sorted(mapping.keys())
         P = len(ranks)
@@ -102,7 +112,7 @@ def allreduce_policy(tenant_servers, path_table, chunk_size, tenant_start_times=
                     src=src_phys,
                     dst=dst_phys,
                     qpid=0,
-                    rate='Max',
+                    rate=rate,
                     chunk_size_bytes=chunk_size,
                     path=path,
                     time=start_time,
@@ -150,7 +160,7 @@ def allreduce_policy(tenant_servers, path_table, chunk_size, tenant_start_times=
                     src=src_phys,
                     dst=dst_phys,
                     qpid=0,
-                    rate='Max',
+                    rate=rate,
                     chunk_size_bytes=chunk_size,
                     path=path,
                     time=start_time,
@@ -160,55 +170,72 @@ def allreduce_policy(tenant_servers, path_table, chunk_size, tenant_start_times=
                 
     return policy
 
-def simulate(topology, tenant_servers, path_table, single_flow_size, collective, tenant_start_times=None):
-    env = simpy.Environment()
-    topo = build_topology(topology)
+import pickle
+import subprocess
+import sys
+import os
+
+def simulate(topology, tenant_servers, path_table, single_flow_size, collective, tenant_start_times=None, tenant_rates=None):
+    # Prepare policy (this runs in CPython)
+    # Note: build_topology logic is now just for creating the graph object to pass
+    # We construct a NetworkX graph that carries all necessary attributes
+    
+    # Reconstruct graph with attributes expected by simcore
+    # The original 'topology' is a networkx graph from tools.py (Datacenter)
+    # But simcore expects specific node/edge attributes.
+    
+    # We reuse build_topology logic but return the graph object
+    sim_topo = build_topology(topology)
     
     policy = []
     if collective == 'allgather':
-        policy = allgather_policy(tenant_servers, path_table, int(single_flow_size/8.0), tenant_start_times)
+        policy = allgather_policy(tenant_servers, path_table, int(single_flow_size/8.0), tenant_start_times, tenant_rates)
     elif collective == 'allreduce':
-        # Use the same chunk size convention?
-        # Assuming single_flow_size is the per-rank data size (S/P).
-        policy = allreduce_policy(tenant_servers, path_table, int(single_flow_size/8.0), tenant_start_times)
+        policy = allreduce_policy(tenant_servers, path_table, int(single_flow_size/8.0), tenant_start_times, tenant_rates)
 
-    sim = Sim(env, topo)
-    sim.load_policy(policy)
-
-    sim.start()
-    sim.run()
-    # print("=== TX completion times ===")
-    # for tx_id, t in sorted(sim.tx_complete_time.items(), key=lambda x: x[1]):
-    #     print(f"tx={tx_id} complete: {t:.6f} s")
-
-    # Calculate per-tenant makespan
-    tenant_makespans = {}
-    # print("DEBUG: keys in sim.tx_complete_time:", list(sim.tx_complete_time.keys())[:5])
-    for tx_id, t in sim.tx_complete_time.items():
-        # Handle case where tx_id might be a tuple or string
-        # print(f"DEBUG: tx_id={tx_id} type={type(tx_id)}")
-        
-        flow_id = tx_id
-        if isinstance(tx_id, tuple):
-             # Maybe (flow_id, ...)
-             flow_id = tx_id[0]
-        
-        if isinstance(flow_id, str):
-            tenant = flow_id.split('-')[0]
-            if tenant not in tenant_makespans:
-                tenant_makespans[tenant] = 0.0
-            if t > tenant_makespans[tenant]:
-                tenant_makespans[tenant] = t
-        else:
-            # Fallback or error
-            pass
+    # Package data
+    data = {
+        'topology': sim_topo,
+        'policy': policy
+    }
     
-    avg_tenant_makespan = 0.0
-    if tenant_makespans:
-        avg_tenant_makespan = sum(tenant_makespans.values()) / len(tenant_makespans)
-        
-    global_makespan = max(sim.tx_complete_time.values()) if sim.tx_complete_time else 0.0
+    # Serialize
+    input_bytes = pickle.dumps(data)
     
-    return global_makespan, avg_tenant_makespan
-    # print(f"\nMakespan = {makespan:.6f} s")
+    # Determine python executable (prefer pypy3 if available, else python3)
+    # You can hardcode this if needed
+    pypy_exec = "pypy3"
+    
+    # Fallback to sys.executable if pypy3 not found (for safety during dev)
+    # Check if pypy3 exists
+    from shutil import which
+    if which("pypy3") is None:
+        print("[Warning] pypy3 not found, falling back to current python (slow).")
+        pypy_exec = sys.executable
+
+    # Run subprocess
+    # We run 'run_simulation.py' which must be in the same root or accessible path
+    # Assuming run_simulation.py is in the project root
+    script_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), 'run_simulation.py')
+    
+    process = subprocess.Popen(
+        [pypy_exec, script_path],
+        stdin=subprocess.PIPE,
+        stdout=subprocess.PIPE,
+        stderr=sys.stderr  # Pass stderr through for debugging
+    )
+    
+    try:
+        stdout_data, _ = process.communicate(input=input_bytes)
+        if process.returncode != 0:
+            raise RuntimeError(f"Simulation subprocess failed with code {process.returncode}")
+            
+        result = pickle.loads(stdout_data)
+        return result['global_makespan'], result['avg_tenant_makespan']
+        
+    except Exception as e:
+        print(f"Simulation failed: {e}")
+        # Fallback to local execution if IPC fails? 
+        # Or just re-raise
+        raise e
 

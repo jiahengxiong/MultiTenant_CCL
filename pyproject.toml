@@ -1,0 +1,20 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "multitenant-ccl"
+version = "0.1.0"
+description = "Research framework for multi-tenant collective communication mapping and simulation."
+requires-python = ">=3.11"
+dependencies = [
+  "gurobipy",
+  "matplotlib",
+  "networkx",
+  "numpy",
+  "scipy",
+  "simpy",
+]
+
+[tool.setuptools.packages.find]
+include = ["multitenant*"]

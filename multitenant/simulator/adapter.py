@@ -52,26 +52,38 @@ def allgather_policy(
 
     for tenant, mapping in tenant_servers.items():
         start_time = tenant_start_times.get(tenant, 0.0)
-        rank_list = list(mapping.keys())
-        num_flows = len(rank_list) - 1
-        for rank in rank_list:
-            start_index = rank_list.index(rank)
-            for hop in range(num_flows):
-                src = rank_list[(start_index + hop) % len(rank_list)]
-                dst = rank_list[(start_index + hop + 1) % len(rank_list)]
-                physical_src = mapping[src]
-                physical_dst = mapping[dst]
-                rate = tenant_rates.get(tenant, "Max")
+        rate = tenant_rates.get(tenant, "Max")
+        ranks = sorted(mapping.keys())
+        participant_count = len(ranks)
+        if participant_count < 2:
+            continue
+
+        physical_ranks = [mapping[rank] for rank in ranks]
+        for chunk_idx in range(participant_count):
+            for step in range(participant_count - 1):
+                src_idx = (chunk_idx + step) % participant_count
+                dst_idx = (chunk_idx + step + 1) % participant_count
+                src_phys = physical_ranks[src_idx]
+                dst_phys = physical_ranks[dst_idx]
+                path = path_table.get((src_phys, dst_phys))
+                if not path:
+                    continue
+
+                deps = []
+                if step > 0:
+                    deps.append(f"{tenant}-AG-C{chunk_idx}-S{step - 1}")
+
                 policy.append(
                     PolicyEntry(
-                        f"{tenant}-{rank}",
-                        physical_src,
-                        physical_dst,
-                        0,
-                        rate,
-                        single_flow_size_bytes,
-                        path_table[(physical_src, physical_dst)],
+                        chunk_id=f"{tenant}-AG-C{chunk_idx}-S{step}",
+                        src=src_phys,
+                        dst=dst_phys,
+                        qpid=0,
+                        rate=rate,
+                        chunk_size_bytes=single_flow_size_bytes,
+                        path=path,
                         time=start_time,
+                        dependency=deps,
                     )
                 )
     return policy
@@ -193,7 +205,9 @@ def simulate_collective(
         raise ValueError(f"Unsupported collective: {collective}")
 
     payload = pickle.dumps({"topology": sim_topology, "policy": policy})
-    python_exec = "pypy3" if which("pypy3") else sys.executable
+    
+    # Force use of python3 instead of pypy3, as pypy3 is taking too long/hanging
+    python_exec = sys.executable
 
     process = subprocess.Popen(
         [python_exec, _simulation_worker_path()],

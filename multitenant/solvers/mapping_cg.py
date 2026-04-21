@@ -391,6 +391,7 @@ class MappingCGSolver:
         self.rmp.Params.MIPGap = 0.05
         self.rmp.Params.MIPFocus = 1
         self.rmp.Params.TimeLimit = 3.0
+        self.rmp.Params.OutputFlag = 0  # Disable Gurobi output here as well
         self.rmp.optimize()
 
         if self.rmp.SolCount > 0:

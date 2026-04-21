@@ -13,7 +13,8 @@ def main():
     output_dir.mkdir(parents=True, exist_ok=True)
     output_path = output_dir / "baseline_vs_proposed_mapping.json"
 
-    tenant_counts = [2, 3, 4]
+    tenant_counts = [2, 4, 8, 16]
+    num_exp = 5 # Reduced from 20 to 5 for speed
     payload = {
         "metadata": {
             "comparison": "baseline_vs_proposed_mapping",
@@ -25,7 +26,7 @@ def main():
     print("=== Baseline vs Proposed Mapping ===")
     for tenant_count in tenant_counts:
         print(f"Running comparison for {tenant_count} tenants...")
-        config = ExperimentConfig(num_tenants=tenant_count, num_experiments=20)
+        config = ExperimentConfig(num_tenants=tenant_count, num_experiments=num_exp)
         comparison = evaluate_baseline_vs_proposed_mapping(config)
         payload["results_by_tenant_count"][str(tenant_count)] = comparison["results"]
 

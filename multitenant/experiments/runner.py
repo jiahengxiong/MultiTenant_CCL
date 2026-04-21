@@ -36,116 +36,139 @@ def _metadata_from_config(config: ExperimentConfig) -> dict[str, object]:
     }
 
 
-def evaluate_baseline_vs_proposed_mapping(
+def _run_single_experiment(
     config: ExperimentConfig,
-    *,
-    seed: int | None = None,
+    seed: int,
+    exp_idx: int,
 ) -> dict[str, object]:
-    """Compare baseline methods against the proposed mapping CG method."""
-
     rng = random.Random(seed)
     datacenter = LeafSpineDatacenter(
         config.topology.num_leaf,
         config.topology.num_spine,
         config.topology.servers_per_leaf,
     )
+    
+    print(f"  - Running experiment {exp_idx + 1}/{config.num_experiments}...", flush=True)
+    t_start = time.time()
+    
+    tenant_mapping = build_random_tenant_mapping(
+        datacenter.get_all_servers(),
+        config.num_tenants,
+        rng=rng,
+    )
+    tenant_flows = build_ring_flows(
+        tenant_mapping,
+        config.single_flow_size_bits,
+        config.collective,
+    )
 
-    baseline_random_makespan = []
-    harmonics_baseline_makespan = []
-    proposed_mapping_cg_makespan = []
-    proposed_mapping_cg_plus_harmonics_makespan = []
+    random_makespan, random_avg_jct = simulate_collective(
+        datacenter.topology,
+        tenant_mapping,
+        datacenter.paths,
+        config.single_flow_size_bits,
+        config.collective,
+    )
 
-    baseline_random_avg_jct = []
-    harmonics_baseline_avg_jct = []
-    proposed_mapping_cg_avg_jct = []
-    proposed_mapping_cg_plus_harmonics_avg_jct = []
+    harmonics_baseline = HarmonicsBaselineILP(
+        datacenter,
+        tenant_mapping,
+        tenant_flows,
+        datacenter.paths,
+        config.single_flow_size_bits,
+        config.collective,
+        estimation=random_makespan,
+        verbose=False,
+    )
+    baseline_schedule = harmonics_baseline.solve()
+    baseline_start_times = _extract_start_times(baseline_schedule)
+    
+    baseline_makespan, baseline_avg_jct = simulate_collective(
+        datacenter.topology,
+        tenant_mapping,
+        datacenter.paths,
+        config.single_flow_size_bits,
+        config.collective,
+        tenant_start_times=baseline_start_times,
+    )
 
-    for _ in range(config.num_experiments):
-        tenant_mapping = build_random_tenant_mapping(
-            datacenter.get_all_servers(),
-            config.num_tenants,
-            rng=rng,
-        )
-        tenant_flows = build_ring_flows(
-            tenant_mapping,
-            config.single_flow_size_bits,
-            config.collective,
-        )
+    proposed_mapping_cg = MappingCGSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
+    cg_mapping = proposed_mapping_cg.solve()
 
-        random_makespan, random_avg_jct = simulate_collective(
+    if cg_mapping:
+        cg_makespan, cg_avg_jct = simulate_collective(
             datacenter.topology,
-            tenant_mapping,
+            cg_mapping,
             datacenter.paths,
             config.single_flow_size_bits,
             config.collective,
         )
-        baseline_random_makespan.append(random_makespan)
-        baseline_random_avg_jct.append(random_avg_jct)
 
-        harmonics_baseline = HarmonicsBaselineILP(
+        harmonics_on_cg = HarmonicsBaselineILP(
             datacenter,
-            tenant_mapping,
+            cg_mapping,
             tenant_flows,
             datacenter.paths,
             config.single_flow_size_bits,
             config.collective,
-            estimation=random_makespan,
+            estimation=cg_makespan,
             verbose=False,
         )
-        baseline_schedule = harmonics_baseline.solve()
-        baseline_start_times = _extract_start_times(baseline_schedule)
-        baseline_makespan, baseline_avg_jct = simulate_collective(
+        cg_schedule = harmonics_on_cg.solve()
+        cg_start_times = _extract_start_times(cg_schedule)
+        
+        cg_harmonics_makespan, cg_harmonics_avg_jct = simulate_collective(
             datacenter.topology,
-            tenant_mapping,
+            cg_mapping,
             datacenter.paths,
             config.single_flow_size_bits,
             config.collective,
-            tenant_start_times=baseline_start_times,
+            tenant_start_times=cg_start_times,
         )
-        harmonics_baseline_makespan.append(baseline_makespan)
-        harmonics_baseline_avg_jct.append(baseline_avg_jct)
+    else:
+        cg_makespan = random_makespan
+        cg_avg_jct = random_avg_jct
+        cg_harmonics_makespan = baseline_makespan
+        cg_harmonics_avg_jct = baseline_avg_jct
+        
+    t_end = time.time()
+    print(f"    -> Finished experiment {exp_idx + 1} in {t_end - t_start:.2f}s", flush=True)
+    
+    return {
+        "baseline_random": (random_makespan, random_avg_jct),
+        "harmonics_baseline": (baseline_makespan, baseline_avg_jct),
+        "proposed_mapping_cg": (cg_makespan, cg_avg_jct),
+        "proposed_mapping_cg_plus_harmonics": (cg_harmonics_makespan, cg_harmonics_avg_jct),
+    }
 
-        proposed_mapping_cg = MappingCGSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
-        cg_mapping = proposed_mapping_cg.solve()
 
-        if cg_mapping:
-            cg_makespan, cg_avg_jct = simulate_collective(
-                datacenter.topology,
-                cg_mapping,
-                datacenter.paths,
-                config.single_flow_size_bits,
-                config.collective,
-            )
-            proposed_mapping_cg_makespan.append(cg_makespan)
-            proposed_mapping_cg_avg_jct.append(cg_avg_jct)
+def evaluate_baseline_vs_proposed_mapping(
+    config: ExperimentConfig,
+    *,
+    seed: int | None = None,
+) -> dict[str, object]:
+    """Compare baseline methods against the proposed mapping CG method."""
+    import multiprocessing
 
-            harmonics_on_cg = HarmonicsBaselineILP(
-                datacenter,
-                cg_mapping,
-                tenant_flows,
-                datacenter.paths,
-                config.single_flow_size_bits,
-                config.collective,
-                estimation=cg_makespan,
-                verbose=False,
-            )
-            cg_schedule = harmonics_on_cg.solve()
-            cg_start_times = _extract_start_times(cg_schedule)
-            cg_harmonics_makespan, cg_harmonics_avg_jct = simulate_collective(
-                datacenter.topology,
-                cg_mapping,
-                datacenter.paths,
-                config.single_flow_size_bits,
-                config.collective,
-                tenant_start_times=cg_start_times,
-            )
-            proposed_mapping_cg_plus_harmonics_makespan.append(cg_harmonics_makespan)
-            proposed_mapping_cg_plus_harmonics_avg_jct.append(cg_harmonics_avg_jct)
-        else:
-            proposed_mapping_cg_makespan.append(random_makespan)
-            proposed_mapping_cg_avg_jct.append(random_avg_jct)
-            proposed_mapping_cg_plus_harmonics_makespan.append(baseline_makespan)
-            proposed_mapping_cg_plus_harmonics_avg_jct.append(baseline_avg_jct)
+    base_seed = seed if seed is not None else random.randint(0, 1000000)
+    args_list = [(config, base_seed + i, i) for i in range(config.num_experiments)]
+    
+    # Use max 8 workers to not overload
+    num_workers = min(multiprocessing.cpu_count(), 8)
+    with multiprocessing.Pool(processes=num_workers) as pool:
+        results = pool.starmap(_run_single_experiment, args_list)
+
+    baseline_random_makespan = [r["baseline_random"][0] for r in results]
+    baseline_random_avg_jct = [r["baseline_random"][1] for r in results]
+    
+    harmonics_baseline_makespan = [r["harmonics_baseline"][0] for r in results]
+    harmonics_baseline_avg_jct = [r["harmonics_baseline"][1] for r in results]
+    
+    proposed_mapping_cg_makespan = [r["proposed_mapping_cg"][0] for r in results]
+    proposed_mapping_cg_avg_jct = [r["proposed_mapping_cg"][1] for r in results]
+    
+    proposed_mapping_cg_plus_harmonics_makespan = [r["proposed_mapping_cg_plus_harmonics"][0] for r in results]
+    proposed_mapping_cg_plus_harmonics_avg_jct = [r["proposed_mapping_cg_plus_harmonics"][1] for r in results]
 
     return {
         "metadata": _metadata_from_config(config),

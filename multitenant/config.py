@@ -10,9 +10,9 @@ BITS_PER_MB = 1024 * 1024 * 8
 
 @dataclass(frozen=True)
 class TopologyConfig:
-    num_leaf: int = 3
+    num_leaf: int = 4
     num_spine: int = 2
-    servers_per_leaf: int = 4
+    servers_per_leaf: int = 8
 
 
 @dataclass(frozen=True)

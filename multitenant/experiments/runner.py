@@ -4,12 +4,12 @@ import math
 import random
 import time
 
-from multitenant.baselines import HarmonicsBaselineILP
+from multitenant.baselines import HarmonicsBaselineHeuristic, LeafLocalBaseline
 from multitenant.config import BITS_PER_MB, ExperimentConfig, TopologyConfig
 from multitenant.simulator import simulate_collective
 from multitenant.solvers import MappingCGSolver, MappingILPSolver
 from multitenant.topology import LeafSpineDatacenter
-from multitenant.workloads import build_random_tenant_mapping, build_ring_flows
+from multitenant.workloads import build_random_tenant_mapping
 
 
 def _mean(values):
@@ -23,7 +23,7 @@ def _extract_start_times(schedule):
 
 
 def _metadata_from_config(config: ExperimentConfig) -> dict[str, object]:
-    return {
+    metadata = {
         "collective": config.collective,
         "num_experiments": config.num_experiments,
         "num_tenants": config.num_tenants,
@@ -34,6 +34,9 @@ def _metadata_from_config(config: ExperimentConfig) -> dict[str, object]:
             "servers_per_leaf": config.topology.servers_per_leaf,
         },
     }
+    if config.tenant_collective_specs is not None:
+        metadata["tenant_collective_specs"] = config.tenant_collective_specs
+    return metadata
 
 
 def _run_single_experiment(
@@ -56,29 +59,34 @@ def _run_single_experiment(
         config.num_tenants,
         rng=rng,
     )
-    tenant_flows = build_ring_flows(
-        tenant_mapping,
-        config.single_flow_size_bits,
-        config.collective,
-    )
-
     random_makespan, random_avg_jct = simulate_collective(
         datacenter.topology,
         tenant_mapping,
         datacenter.paths,
         config.single_flow_size_bits,
         config.collective,
+        tenant_collective_specs=config.tenant_collective_specs,
     )
 
-    harmonics_baseline = HarmonicsBaselineILP(
-        datacenter,
-        tenant_mapping,
-        tenant_flows,
+    leaf_local_mapping = LeafLocalBaseline(tenant_mapping).solve()
+    leaf_local_makespan, leaf_local_avg_jct = simulate_collective(
+        datacenter.topology,
+        leaf_local_mapping,
         datacenter.paths,
         config.single_flow_size_bits,
         config.collective,
-        estimation=random_makespan,
+        tenant_collective_specs=config.tenant_collective_specs,
+    )
+
+    harmonics_baseline = HarmonicsBaselineHeuristic(
+        datacenter,
+        tenant_mapping,
+        None,
+        datacenter.paths,
+        config.single_flow_size_bits,
+        config.collective,
         verbose=False,
+        tenant_collective_specs=config.tenant_collective_specs,
     )
     baseline_schedule = harmonics_baseline.solve()
     baseline_start_times = _extract_start_times(baseline_schedule)
@@ -90,9 +98,18 @@ def _run_single_experiment(
         config.single_flow_size_bits,
         config.collective,
         tenant_start_times=baseline_start_times,
+        tenant_collective_specs=config.tenant_collective_specs,
     )
 
-    proposed_mapping_cg = MappingCGSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
+    proposed_mapping_cg = MappingCGSolver(
+        datacenter,
+        tenant_mapping,
+        None,
+        verbose=False,
+        collective=config.collective,
+        single_flow_size=config.single_flow_size_bits,
+        tenant_collective_specs=config.tenant_collective_specs,
+    )
     cg_mapping = proposed_mapping_cg.solve()
 
     if cg_mapping:
@@ -102,17 +119,18 @@ def _run_single_experiment(
             datacenter.paths,
             config.single_flow_size_bits,
             config.collective,
+            tenant_collective_specs=config.tenant_collective_specs,
         )
 
-        harmonics_on_cg = HarmonicsBaselineILP(
+        harmonics_on_cg = HarmonicsBaselineHeuristic(
             datacenter,
             cg_mapping,
-            tenant_flows,
+            None,
             datacenter.paths,
             config.single_flow_size_bits,
             config.collective,
-            estimation=cg_makespan,
             verbose=False,
+            tenant_collective_specs=config.tenant_collective_specs,
         )
         cg_schedule = harmonics_on_cg.solve()
         cg_start_times = _extract_start_times(cg_schedule)
@@ -124,6 +142,7 @@ def _run_single_experiment(
             config.single_flow_size_bits,
             config.collective,
             tenant_start_times=cg_start_times,
+            tenant_collective_specs=config.tenant_collective_specs,
         )
     else:
         cg_makespan = random_makespan
@@ -136,6 +155,7 @@ def _run_single_experiment(
     
     return {
         "baseline_random": (random_makespan, random_avg_jct),
+        "leaf_local_baseline": (leaf_local_makespan, leaf_local_avg_jct),
         "harmonics_baseline": (baseline_makespan, baseline_avg_jct),
         "proposed_mapping_cg": (cg_makespan, cg_avg_jct),
         "proposed_mapping_cg_plus_harmonics": (cg_harmonics_makespan, cg_harmonics_avg_jct),
@@ -160,6 +180,9 @@ def evaluate_baseline_vs_proposed_mapping(
 
     baseline_random_makespan = [r["baseline_random"][0] for r in results]
     baseline_random_avg_jct = [r["baseline_random"][1] for r in results]
+
+    leaf_local_makespan = [r["leaf_local_baseline"][0] for r in results]
+    leaf_local_avg_jct = [r["leaf_local_baseline"][1] for r in results]
     
     harmonics_baseline_makespan = [r["harmonics_baseline"][0] for r in results]
     harmonics_baseline_avg_jct = [r["harmonics_baseline"][1] for r in results]
@@ -176,6 +199,10 @@ def evaluate_baseline_vs_proposed_mapping(
             "baseline_random_mapping": {
                 "makespan": _mean(baseline_random_makespan),
                 "avg_jct": _mean(baseline_random_avg_jct),
+            },
+            "leaf_local_baseline": {
+                "makespan": _mean(leaf_local_makespan),
+                "avg_jct": _mean(leaf_local_avg_jct),
             },
             "harmonics_baseline": {
                 "makespan": _mean(harmonics_baseline_makespan),
@@ -228,15 +255,20 @@ def run_small_scale_proposed_mapping_validation(
             num_tenants,
             rng=rng,
         )
-        tenant_flows = build_ring_flows(tenant_mapping, single_flow_size_bits, collective)
-
         ilp_start = time.time()
-        proposed_mapping_ilp = MappingILPSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
-        proposed_mapping_ilp.solve()
+        proposed_mapping_ilp = MappingILPSolver(
+            datacenter,
+            tenant_mapping,
+            None,
+            verbose=False,
+            collective=collective,
+            single_flow_size=single_flow_size_bits,
+        )
+        proposed_mapping_ilp.solve(time_limit=60)
         ilp_runtimes.append(time.time() - ilp_start)
 
-        if proposed_mapping_ilp.model.Status == 2:
-            ilp_objective = proposed_mapping_ilp.model.ObjVal
+        if proposed_mapping_ilp.final_obj is not None:
+            ilp_objective = proposed_mapping_ilp.final_obj
             ilp_mapping = proposed_mapping_ilp.get_X_mapping()
             ilp_makespan, ilp_avg_jct = simulate_collective(
                 datacenter.topology,
@@ -251,7 +283,14 @@ def run_small_scale_proposed_mapping_validation(
             ilp_avg_jct = float("inf")
 
         cg_start = time.time()
-        proposed_mapping_cg = MappingCGSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
+        proposed_mapping_cg = MappingCGSolver(
+            datacenter,
+            tenant_mapping,
+            None,
+            verbose=False,
+            collective=collective,
+            single_flow_size=single_flow_size_bits,
+        )
         cg_mapping = proposed_mapping_cg.solve(max_iter=50)
         cg_runtimes.append(time.time() - cg_start)
 
@@ -346,10 +385,15 @@ def run_large_scale_proposed_mapping_cg(
                 tenant_mapping[tenant][rank] = selected_servers[next_server_index]
                 next_server_index += 1
 
-        tenant_flows = build_ring_flows(tenant_mapping, single_flow_size_bits, collective)
-
         start_time = time.time()
-        proposed_mapping_cg = MappingCGSolver(datacenter, tenant_mapping, tenant_flows, verbose=False)
+        proposed_mapping_cg = MappingCGSolver(
+            datacenter,
+            tenant_mapping,
+            None,
+            verbose=False,
+            collective=collective,
+            single_flow_size=single_flow_size_bits,
+        )
         cg_mapping = proposed_mapping_cg.solve(max_iter=50)
         runtime_seconds = time.time() - start_time
 

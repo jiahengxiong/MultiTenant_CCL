@@ -3,7 +3,7 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
-CollectiveType = Literal["allgather", "allreduce"]
+CollectiveType = Literal["allgather", "allreduce", "reducescatter", "alltoall"]
 
 BITS_PER_MB = 1024 * 1024 * 8
 
@@ -22,3 +22,4 @@ class ExperimentConfig:
     topology: TopologyConfig = field(default_factory=TopologyConfig)
     single_flow_size_bits: int = 8 * BITS_PER_MB
     collective: CollectiveType = "allgather"
+    tenant_collective_specs: dict[int, dict[str, object]] | None = None

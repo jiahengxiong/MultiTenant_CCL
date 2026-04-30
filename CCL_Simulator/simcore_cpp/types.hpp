@@ -11,6 +11,7 @@
 #include <cmath>
 #include <algorithm>
 #include <functional>
+#include <cstdint>
 
 namespace simcore {
 
@@ -68,19 +69,22 @@ struct Packet {
 // Event System
 struct Event {
     double time;
+    std::uint64_t sequence;
     std::function<void()> callback;
     bool operator>(const Event& other) const {
-        return time > other.time;
+        if (time != other.time) return time > other.time;
+        return sequence > other.sequence;
     }
 };
 
 class Environment {
 public:
     double now = 0.0;
+    std::uint64_t next_sequence = 0;
     std::priority_queue<Event, std::vector<Event>, std::greater<Event>> events;
 
     void schedule(double delay, std::function<void()> callback) {
-        events.push({now + delay, callback});
+        events.push({now + delay, next_sequence++, callback});
     }
 
     void run(double until = -1.0) {

@@ -6,7 +6,7 @@ import networkx as nx
 
 
 class LeafSpineDatacenter:
-    """Leaf-spine datacenter with a deterministic ECMP-like path table."""
+    """Leaf-spine datacenter with deterministic directional ECMP-like paths."""
 
     def __init__(self, num_leaf: int, num_spine: int, per_leaf_server: int):
         self.topology = nx.DiGraph()
@@ -70,11 +70,26 @@ class LeafSpineDatacenter:
                 return neighbor
         raise ValueError(f"Server {server_id} has no attached leaf")
 
-    def _hash_spine(self, src: int, dst: int) -> int:
-        key = f"{src}->{dst}".encode("utf-8")
+    def _hash_value(self, key: bytes) -> int:
         hashed = hashlib.md5(key).digest()
         value = int.from_bytes(hashed[:-1], "big")
-        return self.spine_index[value % self.num_spine]
+        return value
+
+    def _paired_spines(self, src: int, dst: int) -> tuple[int, int]:
+        if self.num_spine <= 0:
+            raise ValueError("Leaf-spine topology must have at least one spine")
+
+        key = f"{min(src, dst)}<->{max(src, dst)}".encode("utf-8")
+        base_value = self._hash_value(key)
+        forward_spine = self.spine_index[base_value % self.num_spine]
+
+        if self.num_spine < 2:
+            return forward_spine, forward_spine
+
+        offset = 1 + (base_value // self.num_spine) % (self.num_spine - 1)
+        reverse_index = (self.spine_index.index(forward_spine) + offset) % self.num_spine
+        reverse_spine = self.spine_index[reverse_index]
+        return forward_spine, reverse_spine
 
     def get_ecmp_path(self, src: int, dst: int) -> list[int]:
         if src == dst:
@@ -86,7 +101,8 @@ class LeafSpineDatacenter:
         if leaf_src == leaf_dst:
             return [src, leaf_src, dst]
 
-        spine = self._hash_spine(src, dst)
+        forward_spine, reverse_spine = self._paired_spines(src, dst)
+        spine = forward_spine if src < dst else reverse_spine
         return [src, leaf_src, spine, leaf_dst, dst]
 
     def build_ecmp_path_table(self) -> dict[tuple[int, int], list[int]]:

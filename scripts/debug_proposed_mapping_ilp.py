@@ -20,7 +20,14 @@ def main():
     )
 
     print("=== Proposed Mapping ILP Debug ===")
-    solver = MappingILPSolver(datacenter, initial_mapping, tenant_flows, verbose=True)
+    solver = MappingILPSolver(
+        datacenter,
+        initial_mapping,
+        tenant_flows,
+        verbose=True,
+        collective="allgather",
+        single_flow_size=8 * BITS_PER_MB,
+    )
     solver.solve()
     solution = solver.get_X_mapping()
 

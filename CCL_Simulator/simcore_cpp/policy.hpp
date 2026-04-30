@@ -21,6 +21,7 @@ public:
     PolicySpec spec;
 
     std::map<std::pair<ChunkId, std::string>, std::vector<PolicyEntry>> rules;
+    std::vector<std::pair<ChunkId, std::string>> rule_order;
     std::set<std::pair<ChunkId, std::string>> _fired;
     std::set<size_t> _scheduled_entries;
     std::map<std::pair<std::string, ChunkId>, bool> _ready_marked;
@@ -36,7 +37,11 @@ public:
 
     void install(const std::vector<PolicyEntry>& entries) {
         for (const auto& e : entries) {
-            rules[{e.chunk_id, e.src}].push_back(e);
+            auto key = std::make_pair(e.chunk_id, e.src);
+            if (rules.find(key) == rules.end()) {
+                rule_order.push_back(key);
+            }
+            rules[key].push_back(e);
         }
     }
 
@@ -71,12 +76,33 @@ public:
 
     void bootstrap() {
         auto initial = infer_initial_sources();
+        std::set<std::pair<ChunkId, std::string>> bootstrapped;
+
+        for (const auto& key : rule_order) {
+            const auto& chunk_id = key.first;
+            const auto& src = key.second;
+            auto it = initial.find(chunk_id);
+            if (it == initial.end()) continue;
+            if (std::find(it->second.begin(), it->second.end(), src) == it->second.end()) continue;
+            if (bootstrapped.find(key) != bootstrapped.end()) continue;
+
+            auto node = (*nodes_ptr)[src];
+            if (node->cfg.node_type != "gpu") throw std::runtime_error("Initial source must be GPU");
+            std::dynamic_pointer_cast<GPUNode>(node)->mark_initial_chunk(chunk_id);
+            on_chunk_ready(src, chunk_id);
+            bootstrapped.insert(key);
+        }
+
         for (const auto& kv : initial) {
-            for (const auto& s : kv.second) {
-                auto node = (*nodes_ptr)[s];
+            for (const auto& src : kv.second) {
+                auto key = std::make_pair(kv.first, src);
+                if (bootstrapped.find(key) != bootstrapped.end()) continue;
+
+                auto node = (*nodes_ptr)[src];
                 if (node->cfg.node_type != "gpu") throw std::runtime_error("Initial source must be GPU");
                 std::dynamic_pointer_cast<GPUNode>(node)->mark_initial_chunk(kv.first);
-                on_chunk_ready(s, kv.first);
+                on_chunk_ready(src, kv.first);
+                bootstrapped.insert(key);
             }
         }
     }

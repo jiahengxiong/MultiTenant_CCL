@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
+
+# Add the repository root to the python path
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
 
 from multitenant.plotting import save_baseline_vs_proposed_mapping_figures
 

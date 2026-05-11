@@ -38,6 +38,7 @@ class Port:
         next_hop_id: str,
         link: LinkSpec,
         deliver_fn: Callable[[Packet], None],
+        on_service_start: Optional[Callable[[Packet], None]] = None,
         num_qps: int = 1,
         quantum_packets: int = 1,
         tx_proc_delay: float = 0.0,
@@ -48,6 +49,7 @@ class Port:
         self.next_hop_id = next_hop_id
         self.link = link
         self.deliver_fn = deliver_fn
+        self.on_service_start = on_service_start
 
         self.num_qps = max(1, int(num_qps))
         self.quantum_packets = max(1, int(quantum_packets))
@@ -136,6 +138,9 @@ class Port:
 
                 if self.tx_proc_delay > 0:
                     yield self.env.timeout(self.tx_proc_delay)
+
+                if self.on_service_start is not None:
+                    self.on_service_start(pkt)
 
                 st = self._service_time(pkt)
                 if st > 0:

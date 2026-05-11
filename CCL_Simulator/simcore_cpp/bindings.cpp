@@ -20,7 +20,9 @@ PYBIND11_MODULE(simcore_cpp, m) {
         .def_readwrite("chunk_size_bytes", &PolicyEntry::chunk_size_bytes)
         .def_readwrite("path", &PolicyEntry::path)
         .def_readwrite("time", &PolicyEntry::time)
-        .def_readwrite("dependency", &PolicyEntry::dependency);
+        .def_readwrite("dependency", &PolicyEntry::dependency)
+        .def_readwrite("dependency_scope", &PolicyEntry::dependency_scope)
+        .def_readwrite("dependency_delay", &PolicyEntry::dependency_delay);
 
     py::class_<Sim>(m, "Sim")
         .def(py::init<int, int>(), py::arg("packet_size_bytes") = 1500, py::arg("header_size_bytes") = 0)
@@ -34,6 +36,27 @@ PYBIND11_MODULE(simcore_cpp, m) {
             std::map<std::tuple<std::string, std::string, std::string>, double> res;
             for (auto const& [key, val] : sim.tx_complete_time) {
                 res[std::make_tuple(std::get<0>(key), std::get<1>(key), std::get<2>(key))] = val;
+            }
+            return res;
+        })
+        .def_property_readonly("tx_first_send_time", [](Sim& sim) {
+            std::map<std::tuple<std::string, std::string, std::string>, double> res;
+            for (auto const& [key, val] : sim.tx_first_send_time) {
+                res[std::make_tuple(std::get<0>(key), std::get<1>(key), std::get<2>(key))] = val;
+            }
+            return res;
+        })
+        .def_property_readonly("tx_service_start_time", [](Sim& sim) {
+            std::map<std::tuple<std::string, std::string, std::string>, double> res;
+            for (auto const& [key, val] : sim.tx_service_start_time) {
+                res[std::make_tuple(std::get<0>(key), std::get<1>(key), std::get<2>(key))] = val;
+            }
+            return res;
+        })
+        .def_property_readonly("chunk_ready_time", [](Sim& sim) {
+            std::map<std::pair<std::string, std::string>, double> res;
+            for (auto const& [key, val] : sim.chunk_ready_time) {
+                res[std::make_pair(std::get<0>(key), std::get<1>(key))] = val;
             }
             return res;
         });

@@ -9,8 +9,8 @@ import numpy as np
 SCHEME_ORDER = [
     ("baseline_random_mapping", "Baseline Default Mapping", "#6B7280"),
     ("harmonics_baseline", "Harmonics Baseline", "#C0841A"),
-    ("proposed_mapping_cg", "Proposed Mapping (CG)", "#2563EB"),
-    ("proposed_mapping_cg_plus_harmonics", "Proposed Mapping (CG) + Harmonics Baseline", "#059669"),
+    ("proposed_mapping", "Proposed Mapping", "#2563EB"),
+    ("proposed_mapping_plus_harmonics", "Proposed Mapping + Harmonics Baseline", "#059669"),
 ]
 
 

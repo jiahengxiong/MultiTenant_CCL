@@ -30,7 +30,6 @@ def simulation_worker_main():
     topology_graph = data["topology"]
     policy_entries = data["policy"]
 
-    # Limit packets per chunk to 1024, with a minimum packet size of 1500 bytes
     max_chunk_size = max((e.chunk_size_bytes for e in policy_entries), default=0)
     packet_size_bytes = max(1500, (max_chunk_size + 1023) // 1024)
 
@@ -74,6 +73,8 @@ def simulation_worker_main():
             pe.path = [str(x) for x in e.path]
             pe.time = float(e.time)
             pe.dependency = [str(x) for x in e.dependency] if e.dependency else []
+            pe.dependency_scope = str(getattr(e, "dependency_scope", "node"))
+            pe.dependency_delay = float(getattr(e, "dependency_delay", 0.0))
             cpp_policy.append(pe)
             
         sim.load_policy(cpp_policy)
@@ -81,6 +82,9 @@ def simulation_worker_main():
         sim.run()
         
         tx_complete_time = sim.tx_complete_time
+        tx_first_send_time = sim.tx_first_send_time
+        tx_service_start_time = sim.tx_service_start_time
+        chunk_ready_time = sim.chunk_ready_time
     else:
         topology = nx.DiGraph()
         for node, attrs in topology_graph.nodes(data=True):
@@ -94,15 +98,31 @@ def simulation_worker_main():
         sim.start()
         sim.run()
         tx_complete_time = sim.tx_complete_time
+        tx_first_send_time = sim.tx_first_send_time
+        tx_service_start_time = sim.tx_service_start_time
+        chunk_ready_time = sim.chunk_ready_time
 
     tenant_makespans = {}
+    collective_makespans = {}
+    flow_completion_times = {}
     for tx_id, completion_time in tx_complete_time.items():
         flow_id = tx_id[0] if isinstance(tx_id, tuple) else tx_id
         if not isinstance(flow_id, str):
             continue
 
-        tenant = flow_id.split("-")[0]
+        flow_completion_times[flow_id] = max(
+            flow_completion_times.get(flow_id, 0.0),
+            completion_time,
+        )
+        flow_parts = flow_id.split("-")
+        tenant = flow_parts[0]
         tenant_makespans[tenant] = max(tenant_makespans.get(tenant, 0.0), completion_time)
+        if len(flow_parts) >= 2 and flow_parts[1].startswith("OP"):
+            collective_key = f"{tenant}-{flow_parts[1]}"
+            collective_makespans[collective_key] = max(
+                collective_makespans.get(collective_key, 0.0),
+                completion_time,
+            )
 
     result = {
         "global_makespan": max(tx_complete_time.values()) if tx_complete_time else 0.0,
@@ -110,6 +130,20 @@ def simulation_worker_main():
             sum(tenant_makespans.values()) / len(tenant_makespans) if tenant_makespans else 0.0
         ),
         "tenant_makespans": tenant_makespans,
+        "global_collective_makespan": (
+            max(collective_makespans.values()) if collective_makespans else 0.0
+        ),
+        "avg_collective_makespan": (
+            sum(collective_makespans.values()) / len(collective_makespans)
+            if collective_makespans
+            else 0.0
+        ),
+        "collective_makespans": collective_makespans,
+        "flow_completion_times": flow_completion_times,
+        "tx_complete_time": tx_complete_time,
+        "tx_first_send_time": tx_first_send_time,
+        "tx_service_start_time": tx_service_start_time,
+        "chunk_ready_time": chunk_ready_time,
     }
     pickle.dump(result, sys.stdout.buffer)
 

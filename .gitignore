@@ -4,3 +4,5 @@ __pycache__/
 *.py[cod]
 results/
 model.ilp
+build/
+simcore_cpp.cpython-*.so

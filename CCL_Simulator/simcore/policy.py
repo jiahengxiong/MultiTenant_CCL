@@ -36,6 +36,8 @@ class PolicyEngine:
         # NEW: per-(node,chunk) readiness events for dependency gating
         self._ready_events: Dict[Tuple[str, Union[int, str]], simpy.Event] = {}
         self._ready_marked: Set[Tuple[str, Union[int, str]]] = set()
+        self._global_ready_events: Dict[Union[int, str], simpy.Event] = {}
+        self._global_ready_marked: Set[Union[int, str]] = set()
 
     def install(self, entries: Iterable[PolicyEntry]) -> None:
         for e in entries:
@@ -94,6 +96,25 @@ class PolicyEngine:
         if not ev.triggered:
             ev.succeed()
 
+    def _global_ready_event(self, chunk_id: Union[int, str]) -> simpy.Event:
+        ev = self._global_ready_events.get(chunk_id)
+        if ev is None:
+            ev = simpy.Event(self.env)
+            self._global_ready_events[chunk_id] = ev
+        return ev
+
+    def _mark_global_ready(self, chunk_id: Union[int, str]) -> None:
+        if chunk_id in self._global_ready_marked:
+            return
+        self._global_ready_marked.add(chunk_id)
+
+        ev = self._global_ready_events.get(chunk_id)
+        if ev is None:
+            ev = simpy.Event(self.env)
+            self._global_ready_events[chunk_id] = ev
+        if not ev.triggered:
+            ev.succeed()
+
     # ---- Runtime hook from simulator ----
     def on_chunk_ready(self, node_id: str, chunk_id: Union[int, str]) -> None:
         # NEW: mark this (node, chunk) ready for dependency gating
@@ -111,19 +132,30 @@ class PolicyEngine:
             self._scheduled_entries.add(eid)
             self.env.process(self._fire_entry_when_allowed(e))
 
+    def on_tx_complete(self, tx_id: TxId, t: float) -> None:
+        chunk_id, _, _ = tx_id
+        self._mark_global_ready(chunk_id)
+
     def _fire_entry_when_allowed(self, e: PolicyEntry):
-        # 1) wait until earliest time
+        # Wait until all dependencies are satisfied. For program-level releases,
+        # dependency_delay is relative to this moment, not to absolute e.time.
+        deps = e.dependency or []
+        if deps:
+            if e.dependency_scope == "global":
+                evs = [self._global_ready_event(dep_chunk) for dep_chunk in deps]
+            else:
+                evs = [self._ready_event(e.src, dep_chunk) for dep_chunk in deps]
+            yield simpy.events.AllOf(self.env, evs)
+
+        delay = float(e.dependency_delay)
+        if delay > 0.0:
+            yield self.env.timeout(delay)
+
+        # Absolute time remains an earliest release bound.
         wait = max(0.0, float(e.time) - self.env.now)
         if wait > 0:
             yield self.env.timeout(wait)
 
-        # 2) wait until all dependencies are ready at e.src
-        deps = e.dependency or []
-        if deps:
-            evs = [self._ready_event(e.src, dep_chunk) for dep_chunk in deps]
-            yield simpy.events.AllOf(self.env, evs)
-
-        # 3) fire
         self._fire_entry(e)
 
     def _fire_entry(self, e: PolicyEntry) -> None:

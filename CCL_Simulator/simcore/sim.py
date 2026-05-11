@@ -43,6 +43,7 @@ class Sim:
 
         self._build_nodes_and_ports()
         self.tx_first_send_time: Dict[TxId, float] = {}
+        self.tx_service_start_time: Dict[TxId, float] = {}
 
 
     def load_link_rate_schedule(self, schedule: Optional[LinkRateSchedule]) -> None:
@@ -92,6 +93,9 @@ class Sim:
             def deliver_fn(pkt: Packet, dst_id=v):
                 self.nodes[dst_id].receive(pkt)
 
+            def on_service_start(pkt: Packet):
+                self._on_service_start(pkt)
+
             if src.cfg.node_type == "switch":
                 num_qps = 1
                 quantum = 1
@@ -104,6 +108,7 @@ class Sim:
                 link_rate_bps=rate,
                 prop_delay=delay,
                 deliver_fn=deliver_fn,
+                on_service_start=on_service_start,
                 num_qps=num_qps,
                 quantum_packets=quantum,
                 tx_proc_delay=src.cfg.tx_proc_delay,
@@ -163,12 +168,17 @@ class Sim:
             self.tx_first_send_time[pkt.tx_id] = self.env.now
         node._send_to_next(pkt)
 
+    def _on_service_start(self, pkt: Packet) -> None:
+        if pkt.seq == 0 and pkt.tx_id not in self.tx_service_start_time:
+            self.tx_service_start_time[pkt.tx_id] = self.env.now
+
     # ---- Callbacks ----
     def _on_tx_complete(self, tx_id: TxId, t: float) -> None:
         # store once
         old = self.tx_complete_time.get(tx_id, float("nan"))
         if old != old:  # NaN check
             self.tx_complete_time[tx_id] = t
+            self.policy.on_tx_complete(tx_id, t)
 
     def _on_chunk_ready(self, node_id: str, chunk_id: Union[int, str], t: float) -> None:
         key = (chunk_id, node_id)

@@ -19,6 +19,7 @@ public:
     std::string next_hop_id;
     LinkSpec link;
     std::function<void(std::shared_ptr<Packet>)> deliver_fn;
+    std::function<void(std::shared_ptr<Packet>)> on_service_start;
     int num_qps;
     int quantum_packets;
     double tx_proc_delay;
@@ -31,8 +32,10 @@ public:
 
     Port(Environment& env, std::string owner, std::string next_hop, LinkSpec link,
          std::function<void(std::shared_ptr<Packet>)> deliver_fn,
+         std::function<void(std::shared_ptr<Packet>)> on_service_start = nullptr,
          int num_qps = 1, int quantum_packets = 1, double tx_proc_delay = 0.0, int header_size_bytes = 0)
         : env(env), owner_id(owner), next_hop_id(next_hop), link(link), deliver_fn(deliver_fn),
+          on_service_start(on_service_start),
           num_qps(num_qps), quantum_packets(quantum_packets), tx_proc_delay(tx_proc_delay),
           header_size_bytes(header_size_bytes) {}
 
@@ -86,6 +89,7 @@ public:
             _nq--;
 
             if (tx_proc_delay > 0) total_delay += tx_proc_delay;
+            if (on_service_start) on_service_start(pkt);
             double st = _service_time(*pkt);
             if (st > 0) total_delay += st;
 

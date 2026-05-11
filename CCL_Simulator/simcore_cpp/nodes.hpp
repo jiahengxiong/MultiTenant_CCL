@@ -26,10 +26,11 @@ public:
 
     void add_port(std::string next_hop_id, double link_rate_bps, double prop_delay,
                   std::function<void(std::shared_ptr<Packet>)> deliver_fn,
+                  std::function<void(std::shared_ptr<Packet>)> on_service_start,
                   int num_qps, int quantum_packets, double tx_proc_delay, int header_size_bytes) {
         ports[next_hop_id] = std::make_shared<Port>(
             env, node_id, next_hop_id, LinkSpec{link_rate_bps, prop_delay},
-            deliver_fn, num_qps, quantum_packets, tx_proc_delay, header_size_bytes
+            deliver_fn, on_service_start, num_qps, quantum_packets, tx_proc_delay, header_size_bytes
         );
     }
 

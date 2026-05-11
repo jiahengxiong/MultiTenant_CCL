@@ -23,3 +23,4 @@ class ExperimentConfig:
     single_flow_size_bits: int = 8 * BITS_PER_MB
     collective: CollectiveType = "allgather"
     tenant_collective_specs: dict[int, dict[str, object]] | None = None
+    tenant_collective_programs: dict[int, list[dict[str, object]]] | None = None

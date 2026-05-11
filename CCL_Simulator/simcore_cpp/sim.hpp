@@ -15,6 +15,7 @@ public:
     std::map<std::pair<ChunkId, std::string>, double> chunk_ready_time;
     std::unique_ptr<PolicyEngine> policy;
     std::map<TxId, double> tx_first_send_time;
+    std::map<TxId, double> tx_service_start_time;
 
     Sim(int packet_size_bytes = 1500, int header_size_bytes = 0) {
         PolicySpec spec{packet_size_bytes, header_size_bytes};
@@ -44,11 +45,12 @@ public:
     void add_link(std::string u, std::string v, double link_rate_bps, double prop_delay) {
         auto src = nodes[u];
         auto deliver_fn = [this, v](std::shared_ptr<Packet> pkt) { this->nodes[v]->receive(pkt); };
+        auto on_service_start = [this](std::shared_ptr<Packet> pkt) { this->_on_service_start(pkt); };
         
         int num_qps = (src->cfg.node_type == "switch") ? 1 : src->cfg.num_qps;
         int quantum = (src->cfg.node_type == "switch") ? 1 : src->cfg.quantum_packets;
 
-        src->add_port(v, link_rate_bps, prop_delay, deliver_fn, num_qps, quantum, src->cfg.tx_proc_delay, policy->spec.header_size_bytes);
+        src->add_port(v, link_rate_bps, prop_delay, deliver_fn, on_service_start, num_qps, quantum, src->cfg.tx_proc_delay, policy->spec.header_size_bytes);
     }
 
     void load_policy(const std::vector<PolicyEntry>& entries) {
@@ -75,9 +77,16 @@ public:
         node->_send_to_next(pkt);
     }
 
+    void _on_service_start(std::shared_ptr<Packet> pkt) {
+        if (pkt->seq == 0 && tx_service_start_time.find(pkt->tx_id) == tx_service_start_time.end()) {
+            tx_service_start_time[pkt->tx_id] = env.now;
+        }
+    }
+
     void _on_tx_complete(TxId tx_id, double t) {
         if (std::isnan(tx_complete_time[tx_id])) {
             tx_complete_time[tx_id] = t;
+            policy->on_tx_complete(tx_id, t);
         }
     }
 

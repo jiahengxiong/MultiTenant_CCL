@@ -39,6 +39,8 @@ struct PolicyEntry {
     std::vector<std::string> path;
     double time = 0.0;
     std::vector<ChunkId> dependency;
+    std::string dependency_scope = "node";
+    double dependency_delay = 0.0;
 };
 
 struct Packet {

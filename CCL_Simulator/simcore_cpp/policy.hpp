@@ -23,9 +23,10 @@ public:
     std::map<std::pair<ChunkId, std::string>, std::vector<PolicyEntry>> rules;
     std::vector<std::pair<ChunkId, std::string>> rule_order;
     std::set<std::pair<ChunkId, std::string>> _fired;
-    std::set<size_t> _scheduled_entries;
     std::map<std::pair<std::string, ChunkId>, bool> _ready_marked;
     std::map<std::pair<std::string, ChunkId>, std::vector<std::function<void()>>> _ready_events;
+    std::map<ChunkId, bool> _global_ready_marked;
+    std::map<ChunkId, std::vector<std::function<void()>>> _global_ready_events;
 
     PolicyEngine(Environment& env,
                  std::function<void(std::shared_ptr<Packet>)> send_from_src_fn,
@@ -117,6 +118,15 @@ public:
         _ready_events[key].clear();
     }
 
+    void _mark_global_ready(ChunkId chunk_id) {
+        if (_global_ready_marked[chunk_id]) return;
+        _global_ready_marked[chunk_id] = true;
+        for (auto& cb : _global_ready_events[chunk_id]) {
+            cb();
+        }
+        _global_ready_events[chunk_id].clear();
+    }
+
     void on_chunk_ready(std::string node_id, ChunkId chunk_id) {
         _mark_ready(node_id, chunk_id);
         auto key = std::make_pair(chunk_id, node_id);
@@ -124,17 +134,19 @@ public:
         _fired.insert(key);
 
         for (const auto& e : rules[key]) {
-            size_t eid = std::hash<std::string>{}(e.chunk_id + e.src + e.dst + std::to_string(e.qpid) + std::to_string(e.time));
-            if (_scheduled_entries.find(eid) != _scheduled_entries.end()) continue;
-            _scheduled_entries.insert(eid);
             _fire_entry_when_allowed(e);
         }
     }
 
+    void on_tx_complete(TxId tx_id, double t) {
+        (void)t;
+        _mark_global_ready(std::get<0>(tx_id));
+    }
+
     void _fire_entry_when_allowed(PolicyEntry e) {
-        double wait = std::max(0.0, e.time - env.now);
         auto deps = e.dependency;
         if (deps.empty()) {
+            double wait = std::max(0.0, e.time - env.now);
             env.schedule(wait, [this, e]() { this->_fire_entry(e); });
         } else {
             auto deps_ready = std::make_shared<int>(0);
@@ -142,16 +154,26 @@ public:
             auto check_deps = [this, e, deps_ready, total_deps]() {
                 (*deps_ready)++;
                 if (*deps_ready == total_deps) {
-                    double wait = std::max(0.0, e.time - env.now);
+                    double wait = std::max(0.0, e.dependency_delay);
+                    double absolute_wait_after_delay = std::max(0.0, e.time - (env.now + wait));
+                    wait += absolute_wait_after_delay;
                     env.schedule(wait, [this, e]() { this->_fire_entry(e); });
                 }
             };
             for (const auto& dep : deps) {
-                auto key = std::make_pair(e.src, dep);
-                if (_ready_marked[key]) {
-                    check_deps();
+                if (e.dependency_scope == "global") {
+                    if (_global_ready_marked[dep]) {
+                        check_deps();
+                    } else {
+                        _global_ready_events[dep].push_back(check_deps);
+                    }
                 } else {
-                    _ready_events[key].push_back(check_deps);
+                    auto key = std::make_pair(e.src, dep);
+                    if (_ready_marked[key]) {
+                        check_deps();
+                    } else {
+                        _ready_events[key].push_back(check_deps);
+                    }
                 }
             }
         }

@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import random
-import heapq
 from typing import Sequence
 
 
@@ -236,6 +235,43 @@ def build_collective_stage_flows(
                 scale=scale,
             )[tenant]]
 
+    return tenant_stage_flows
+
+
+def build_collective_program_stage_flows(
+    tenant_mapping: dict[int, dict[int, int]],
+    tenant_collective_programs: dict[int, list[dict[str, object]]],
+    *,
+    scale: float = 1e9,
+) -> dict[int, list[list[tuple[int, int, float]]]]:
+    """Build stage flows for a sequence of collectives.
+
+    This keeps the legacy stage-based solvers compatible with the unified
+    program workload representation. Compute gaps are not represented as
+    network stages; task-DAG solvers model them explicitly.
+    """
+
+    programs = _normalize_tenant_collective_programs(
+        tenant_mapping,
+        tenant_collective_programs,
+    )
+    tenant_stage_flows: dict[int, list[list[tuple[int, int, float]]]] = {}
+    for tenant, program in programs.items():
+        tenant_stage_flows[tenant] = []
+        for op_spec in program:
+            op_stage_flows = build_collective_stage_flows(
+                {tenant: tenant_mapping[tenant]},
+                int(op_spec["single_flow_size_bits"]),
+                str(op_spec["collective"]),
+                scale=scale,
+                tenant_collective_specs={
+                    tenant: {
+                        "collective": str(op_spec["collective"]),
+                        "single_flow_size_bits": int(op_spec["single_flow_size_bits"]),
+                    }
+                },
+            )
+            tenant_stage_flows[tenant].extend(op_stage_flows.get(tenant, []))
     return tenant_stage_flows
 
 
@@ -483,44 +519,6 @@ def build_collective_dag(
     return dag
 
 
-def _stable_topological_task_order(
-    tasks: list[dict[str, object]],
-    edges: list[dict[str, object]],
-) -> list[int]:
-    """Return a deterministic topological order over task ids.
-
-    Ties are broken by task id so that sender-local orders derived from this
-    sequence stay stable across runs.
-    """
-
-    task_ids = [int(task["task_id"]) for task in tasks]
-    adjacency: dict[int, list[int]] = {task_id: [] for task_id in task_ids}
-    indegree: dict[int, int] = {task_id: 0 for task_id in task_ids}
-
-    for edge in edges:
-        src_task_id = int(edge["src_task_id"])
-        dst_task_id = int(edge["dst_task_id"])
-        adjacency[src_task_id].append(dst_task_id)
-        indegree[dst_task_id] += 1
-
-    ready_heap = [task_id for task_id in task_ids if indegree[task_id] == 0]
-    heapq.heapify(ready_heap)
-    topo_order: list[int] = []
-
-    while ready_heap:
-        task_id = heapq.heappop(ready_heap)
-        topo_order.append(task_id)
-        for dst_task_id in adjacency[task_id]:
-            indegree[dst_task_id] -= 1
-            if indegree[dst_task_id] == 0:
-                heapq.heappush(ready_heap, dst_task_id)
-
-    if len(topo_order) != len(task_ids):
-        raise ValueError("Collective task graph contains a cycle")
-
-    return topo_order
-
-
 def _task_ready_levels(
     tasks: list[dict[str, object]],
     edges: list[dict[str, object]],
@@ -631,6 +629,182 @@ def build_collective_schedule(
             "sender_order": sender_order,
             "ready_levels": ready_levels,
             "task_order": task_order,
+        }
+
+    return schedule
+
+
+def _normalize_tenant_collective_programs(
+    tenant_mapping: dict[int, dict[int, int]],
+    tenant_collective_programs: dict[int, list[dict[str, object]]],
+) -> dict[int, list[dict[str, object]]]:
+    programs: dict[int, list[dict[str, object]]] = {}
+    for tenant in tenant_mapping:
+        if tenant not in tenant_collective_programs:
+            raise ValueError(f"Missing collective program for tenant {tenant}")
+        tenant_program = []
+        for op_idx, op in enumerate(tenant_collective_programs[tenant]):
+            op_spec = dict(op)
+            if op_spec.get("collective") is None:
+                raise ValueError(f"Missing collective for tenant {tenant} op {op_idx}")
+            if op_spec.get("single_flow_size_bits") is None:
+                raise ValueError(f"Missing single_flow_size_bits for tenant {tenant} op {op_idx}")
+            gap_after = float(op_spec.get("gap_after", 0.0))
+            if gap_after < 0.0:
+                raise ValueError(f"gap_after must be non-negative for tenant {tenant} op {op_idx}")
+            tenant_program.append(
+                {
+                    "collective": str(op_spec["collective"]),
+                    "single_flow_size_bits": int(op_spec["single_flow_size_bits"]),
+                    "gap_after": gap_after,
+                }
+            )
+        if not tenant_program:
+            raise ValueError(f"Collective program for tenant {tenant} cannot be empty")
+        programs[tenant] = tenant_program
+    return programs
+
+
+def build_collective_program_schedule(
+    tenant_mapping: dict[int, dict[int, int]],
+    tenant_collective_programs: dict[int, list[dict[str, object]]],
+    *,
+    scale: float = 1e9,
+) -> dict[int, dict[str, object]]:
+    """Build a tenant-local sequence of collective DAGs with compute gaps.
+
+    Each collective keeps the same task DAG used by ``build_collective_schedule``.
+    The only additional program-level metadata is ``op_idx`` plus the gap after
+    each collective. Solvers should enforce the gap as a release gate, not as a
+    network task.
+    """
+
+    programs = _normalize_tenant_collective_programs(
+        tenant_mapping,
+        tenant_collective_programs,
+    )
+    schedule: dict[int, dict[str, object]] = {}
+
+    for tenant, program in programs.items():
+        tenant_tasks: list[dict[str, object]] = []
+        tenant_collective_edges: list[dict[str, object]] = []
+        tenant_sender_order: dict[int, list[int]] = {
+            int(rank): [] for rank in sorted(tenant_mapping[tenant].keys())
+        }
+        tenant_task_order: list[int] = []
+        op_metadata: list[dict[str, object]] = []
+        next_task_id = 0
+
+        for op_idx, op_spec in enumerate(program):
+            op_schedule = build_collective_schedule(
+                {tenant: tenant_mapping[tenant]},
+                int(op_spec["single_flow_size_bits"]),
+                str(op_spec["collective"]),
+                scale=scale,
+                tenant_collective_specs={
+                    tenant: {
+                        "collective": str(op_spec["collective"]),
+                        "single_flow_size_bits": int(op_spec["single_flow_size_bits"]),
+                    }
+                },
+            )[tenant]
+
+            id_offset = next_task_id
+            local_to_global: dict[int, int] = {}
+            op_task_ids: list[int] = []
+            op_initial_task_ids: list[int] = []
+
+            for task in op_schedule.get("tasks", []):
+                local_task_id = int(task["task_id"])
+                global_task_id = id_offset + local_task_id
+                local_to_global[local_task_id] = global_task_id
+                op_task_ids.append(global_task_id)
+                if not task.get("preds", []):
+                    op_initial_task_ids.append(global_task_id)
+
+            for task in op_schedule.get("tasks", []):
+                local_task_id = int(task["task_id"])
+                global_task_id = local_to_global[local_task_id]
+                copied_task = dict(task)
+                copied_task["task_id"] = global_task_id
+                copied_task["local_task_id"] = local_task_id
+                copied_task["op_idx"] = op_idx
+                copied_task["op_collective"] = str(op_spec["collective"])
+                copied_task["name"] = f"{tenant}-OP{op_idx}-{task['name']}"
+                copied_task["preds"] = [
+                    local_to_global[int(pred_task_id)]
+                    for pred_task_id in task.get("preds", [])
+                ]
+                copied_task["is_op_initial"] = not bool(task.get("preds", []))
+                tenant_tasks.append(copied_task)
+
+            for edge in op_schedule.get("collective_edges", []):
+                src_task_id = local_to_global[int(edge["src_task_id"])]
+                dst_task_id = local_to_global[int(edge["dst_task_id"])]
+                src_task = tenant_tasks[src_task_id]
+                dst_task = tenant_tasks[dst_task_id]
+                tenant_collective_edges.append(
+                    {
+                        "src_task_id": src_task_id,
+                        "dst_task_id": dst_task_id,
+                        "src": str(src_task["name"]),
+                        "dst": str(dst_task["name"]),
+                        "type": "collective",
+                        "op_idx": op_idx,
+                    }
+                )
+
+            for sender_rank, local_task_ids in op_schedule.get("sender_order", {}).items():
+                sender_order = tenant_sender_order.setdefault(int(sender_rank), [])
+                sender_order.extend(local_to_global[int(task_id)] for task_id in local_task_ids)
+
+            tenant_task_order.extend(
+                local_to_global[int(task_id)]
+                for task_id in op_schedule.get("task_order", [])
+            )
+            op_metadata.append(
+                {
+                    "op_idx": op_idx,
+                    "collective": str(op_spec["collective"]),
+                    "single_flow_size_bits": int(op_spec["single_flow_size_bits"]),
+                    "gap_after": float(op_spec.get("gap_after", 0.0)),
+                    "task_ids": op_task_ids,
+                    "initial_task_ids": op_initial_task_ids,
+                }
+            )
+            next_task_id += len(op_schedule.get("tasks", []))
+
+        task_lookup = {int(task["task_id"]): task for task in tenant_tasks}
+        ready_levels = _task_ready_levels(tenant_tasks, tenant_collective_edges)
+        sender_order_edges: list[dict[str, object]] = []
+        for sender_rank, task_ids in tenant_sender_order.items():
+            for earlier_task_id, later_task_id in zip(task_ids, task_ids[1:]):
+                earlier_task = task_lookup[int(earlier_task_id)]
+                later_task = task_lookup[int(later_task_id)]
+                sender_order_edges.append(
+                    {
+                        "src_task_id": int(earlier_task_id),
+                        "dst_task_id": int(later_task_id),
+                        "src": str(earlier_task["name"]),
+                        "dst": str(later_task["name"]),
+                        "type": "sender_order",
+                        "sender": int(sender_rank),
+                    }
+                )
+
+        unified_edges = tenant_collective_edges + sender_order_edges
+        schedule[tenant] = {
+            "tasks": tenant_tasks,
+            "nodes": tenant_tasks,
+            "edges": unified_edges,
+            "collective_edges": tenant_collective_edges,
+            "sender_order_edges": sender_order_edges,
+            "dag_nodes": tenant_tasks,
+            "dag_edges": unified_edges,
+            "sender_order": tenant_sender_order,
+            "ready_levels": ready_levels,
+            "task_order": tenant_task_order,
+            "collective_program": op_metadata,
         }
 
     return schedule

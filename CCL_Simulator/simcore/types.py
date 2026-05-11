@@ -23,6 +23,8 @@ class PolicyEntry:
 
     # NEW: dependency chunks that must be ready at src before this entry can fire
     dependency: List[ChunkId] = field(default_factory=list)
+    dependency_scope: str = "node"  # "node": ready at src; "global": tx completed anywhere
+    dependency_delay: float = 0.0  # relative delay after dependency satisfaction
 
     def normalized_rate(self) -> tuple[float, bool]:
         if isinstance(self.rate, str):
@@ -50,6 +52,10 @@ class PolicyEntry:
         # (optional sanity) avoid self-dependency which can deadlock if used naively
         if self.chunk_id in self.dependency:
             raise ValueError(f"dependency must not contain itself (chunk_id={self.chunk_id})")
+        if self.dependency_scope not in ("node", "global"):
+            raise ValueError("dependency_scope must be either 'node' or 'global'")
+        if self.dependency_delay < 0.0:
+            raise ValueError("dependency_delay must be >= 0")
 
 
 TxId = Tuple[ChunkId, str, str]  # (chunk_id, src, dst)

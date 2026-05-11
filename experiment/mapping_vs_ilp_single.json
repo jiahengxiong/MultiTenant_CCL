@@ -1,0 +1,205 @@
+{
+  "metadata": {
+    "topology": {
+      "num_spine": 2,
+      "num_leaf": 3,
+      "per_leaf_server": 4
+    },
+    "collective": "allgather",
+    "single_flow_size_bits": 67108864,
+    "tenant_counts": [
+      2,
+      3,
+      4
+    ],
+    "seed": 20250511,
+    "heuristic_time_limit": 1.0,
+    "ilp_time_limit": 1.0,
+    "ilp_pure": true
+  },
+  "results": [
+    {
+      "tenant_count": 2,
+      "default_mapping": {
+        "0": {
+          "0": 1,
+          "1": 2,
+          "2": 5,
+          "3": 10,
+          "4": 7,
+          "5": 0
+        },
+        "1": {
+          "0": 6,
+          "1": 3,
+          "2": 11,
+          "3": 9,
+          "4": 8,
+          "5": 4
+        }
+      },
+      "default": {
+        "avg_jct": 0.02684878847999688,
+        "makespan": 0.02684878847999688
+      },
+      "heuristic": {
+        "runtime_seconds": 0.0312650203704834,
+        "mapping": {
+          "0": {
+            "0": 0,
+            "1": 1,
+            "2": 2,
+            "3": 5,
+            "4": 7,
+            "5": 10
+          },
+          "1": {
+            "0": 4,
+            "1": 11,
+            "2": 9,
+            "3": 8,
+            "4": 3,
+            "5": 6
+          }
+        },
+        "avg_jct": 0.013432258559999424,
+        "makespan": 0.013432258559999424,
+        "avg_jct_gain_pct": 49.97070884592486
+      },
+      "ilp": {
+        "runtime_seconds": 1.2321300506591797,
+        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
+        "mapping": null,
+        "avg_jct": null,
+        "makespan": null,
+        "avg_jct_gain_pct": null
+      }
+    },
+    {
+      "tenant_count": 3,
+      "default_mapping": {
+        "0": {
+          "0": 6,
+          "1": 7,
+          "2": 2,
+          "3": 11
+        },
+        "1": {
+          "0": 1,
+          "1": 5,
+          "2": 0,
+          "3": 4
+        },
+        "2": {
+          "0": 10,
+          "1": 8,
+          "2": 3,
+          "3": 9
+        }
+      },
+      "default": {
+        "avg_jct": 0.022365252266664398,
+        "makespan": 0.02416443391999739
+      },
+      "heuristic": {
+        "runtime_seconds": 0.028172969818115234,
+        "mapping": {
+          "0": {
+            "0": 6,
+            "1": 7,
+            "2": 2,
+            "3": 11
+          },
+          "1": {
+            "0": 5,
+            "1": 1,
+            "2": 0,
+            "3": 4
+          },
+          "2": {
+            "0": 8,
+            "1": 10,
+            "2": 3,
+            "3": 9
+          }
+        },
+        "avg_jct": 0.013427889493332757,
+        "makespan": 0.016113991679998916,
+        "avg_jct_gain_pct": 39.96092986911155
+      },
+      "ilp": {
+        "runtime_seconds": 1.0046131610870361,
+        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
+        "mapping": null,
+        "avg_jct": null,
+        "makespan": null,
+        "avg_jct_gain_pct": null
+      }
+    },
+    {
+      "tenant_count": 4,
+      "default_mapping": {
+        "0": {
+          "0": 5,
+          "1": 10,
+          "2": 11
+        },
+        "1": {
+          "0": 4,
+          "1": 6,
+          "2": 7
+        },
+        "2": {
+          "0": 1,
+          "1": 2,
+          "2": 3
+        },
+        "3": {
+          "0": 9,
+          "1": 8,
+          "2": 0
+        }
+      },
+      "default": {
+        "avg_jct": 0.006714163200000002,
+        "makespan": 0.010742661119999932
+      },
+      "heuristic": {
+        "runtime_seconds": 0.005142927169799805,
+        "mapping": {
+          "0": {
+            "0": 5,
+            "1": 10,
+            "2": 11
+          },
+          "1": {
+            "0": 4,
+            "1": 6,
+            "2": 7
+          },
+          "2": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          },
+          "3": {
+            "0": 0,
+            "1": 9,
+            "2": 8
+          }
+        },
+        "avg_jct": 0.006714163200000002,
+        "makespan": 0.010742661119999932,
+        "avg_jct_gain_pct": 0.0
+      },
+      "ilp": {
+        "runtime_seconds": 1.0026259422302246,
+        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
+        "mapping": null,
+        "avg_jct": null,
+        "makespan": null,
+        "avg_jct_gain_pct": null
+      }
+    }
+  ]
+}

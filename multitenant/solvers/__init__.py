@@ -1,4 +1,3 @@
-from .mapping_cg import MappingCGSolver
 from .mapping_ilp import (
     MappingHeuristicSolver,
     MappingILPSolver,
@@ -6,7 +5,6 @@ from .mapping_ilp import (
 )
 
 __all__ = [
-    "MappingCGSolver",
     "MappingHeuristicSolver",
     "MappingILPSolver",
     "MappingMILPSolver",

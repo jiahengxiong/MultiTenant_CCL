@@ -1,0 +1,361 @@
+# Paper Story Notes
+
+This note records how to present the current algorithm in a paper-friendly way.
+The goal is not to mirror every implementation detail literally, but to tell the
+right modeling story while staying faithful to what the code actually does well.
+
+## 1. Core Problem
+
+We study multi-tenant collective communication on a shared leaf-spine datacenter.
+Each tenant is already assigned a fixed server set. We do **not** change placement
+across tenants. Instead, we optimize the **rank-to-server mapping order inside each
+tenant**.
+
+This is important because for collectives, especially ring-like ones, changing the
+rank order changes:
+
+- which physical paths each logical transmission uses,
+- how different tenants overlap on links,
+- how sender/receiver serialization interacts across tenants,
+- and ultimately the average JCT and makespan.
+
+So the problem is not ordinary VM placement. It is a **communication-program-aware
+rank mapping problem**.
+
+## 2. Optimization Structure
+
+The paper should present the work as a two-level contribution:
+
+1. An **exact MILP** for small instances.
+2. A **scalable heuristic solver** for realistic instances.
+
+The heuristic should be positioned as a solver for the same modeled problem, not a
+separate ad hoc engineering patch.
+
+Recommended sentence:
+
+> We formulate multi-tenant collective rank mapping as an optimization problem,
+> derive an exact MILP for small instances, and design a scalable surrogate-guided
+> hybrid search for large-scale settings.
+
+## 3. The Right Surrogate Story
+
+The paper should **not** start from an epoch/stage surrogate. If the paper begins
+with epochs, the reader will immediately infer that the method is tied to a ring
+or a single staged schedule. That undersells the actual abstraction.
+
+Instead, the paper must start from a **general task-level surrogate** and present
+epochs only as a collapsed fast path for specific structured collective families.
+
+### 3.1 Unified Communication Abstraction
+
+Represent each collective communication algorithm as a task DAG:
+
+- each transmission task is a node,
+- collective dependencies form precedence edges,
+- sender serialization adds sender-order edges,
+- receiver serialization can be added when appropriate,
+- the mapping determines the physical sender, receiver, and path of each task.
+
+This gives the right general abstraction:
+
+`communication program + mapping -> resource-coupled task DAG`
+
+This is the key sentence for generality: the abstraction is defined over
+communication tasks and dependencies, not over ring steps or epochs. Therefore,
+it can in principle cover arbitrary CCL algorithms once they are compiled into a
+task graph.
+
+### 3.2 Task-Level Resource-Aware Surrogate
+
+For a transmission task `v`, let:
+
+- `pred(v)` be its predecessor tasks in the communication DAG,
+- `s(v)` be its physical sender server under mapping `x`,
+- `r(v)` be its physical receiver server under mapping `x`,
+- `P_x(v)` be its physical path,
+- `b_v` be the transmission volume.
+
+Define resource loads over the active frontier:
+
+- link load,
+- sender load,
+- receiver load.
+
+Then define a task cost proxy:
+
+```math
+d_v(x) = \max\Big(
+\max_{e \in P_x(v)} L_e(x),
+S_{s(v)}(x),
+R_{r(v)}(x)
+\Big)
+```
+
+and define the task completion surrogate recursively:
+
+```math
+\hat F_v(x) =
+d_v(x) +
+\max\Big(
+\max_{u \in pred(v)} \hat F_u(x),
+\hat F_{\mathrm{prev\_send}(v)}(x),
+\hat F_{\mathrm{prev\_recv}(v)}(x)
+\Big)
+```
+
+where the sender/receiver predecessor terms encode serialization on NIC-like
+resources when modeled.
+
+Tenant completion is then:
+
+```math
+\hat T_i(x) = \max_{v \in \mathcal{V}_i^{tail}} \hat F_v(x)
+```
+
+and the optimization objective is lexicographic:
+
+1. minimize average JCT proxy,
+2. then minimize makespan proxy.
+
+```math
+\hat J(x) = \frac{1}{|T|} \sum_i \hat T_i(x), \qquad
+\hat M(x) = \max_i \hat T_i(x)
+```
+
+This is the correct high-level story. It makes the method look like a
+communication-program-aware optimizer rather than a ring-specific heuristic.
+
+## 4. Why the Current Collapsed Form Is Still Valid
+
+After introducing the task-level surrogate, the paper should immediately explain
+that for structured collectives such as:
+
+- `allgather`,
+- `reducescatter`,
+- `allreduce`,
+
+the communication DAG is highly staged.
+
+In these collectives:
+
+- tasks within the same step have very similar dependency depth,
+- the dominant contention is captured by step/frontier bottlenecks,
+- and the task-level recurrence can be collapsed into a more efficient epoch-level
+  accumulation form.
+
+So the current implementation should be described as:
+
+> We define the surrogate at the task level, and for ring-like staged collectives
+> we evaluate an equivalent collapsed form that aggregates task-level resource
+> contention at the epoch/frontier granularity for efficiency.
+
+This framing is important. It lets us say the current epoch evaluator is not the
+main abstraction; it is an **efficient implementation of the task-level surrogate
+on structured collective families**.
+
+That is the right story.
+
+## 5. The Efficient Collapsed Form
+
+For the structured collective families above, define per-epoch normalized resource
+loads:
+
+```math
+L_e^k(x) = \sum_{v \in A_k : e \in P_x(v)} \frac{b_v}{C_e}
+```
+
+```math
+S_u^k(x) = \sum_{v \in A_k : s(v)=u} \frac{b_v}{C_u^{send}}
+```
+
+```math
+R_u^k(x) = \sum_{v \in A_k : r(v)=u} \frac{b_v}{C_u^{recv}}
+```
+
+and define the epoch cost:
+
+```math
+\Delta_k(x) =
+\max\Big(
+\max_e L_e^k(x),
+\max_u S_u^k(x),
+\max_u R_u^k(x)
+\Big)
+```
+
+Then the surrogate completion of tenant `i` is approximated by:
+
+```math
+\hat T_i(x) \approx \sum_{k \in \mathcal{K}_i} \Delta_{i,k}(x) + g_i
+```
+
+where `g_i` is the inter-collective gap term when multi-collective programs are
+present.
+
+This collapsed form is what the implementation currently evaluates efficiently for
+`allgather`, `reducescatter`, and `allreduce`.
+
+## 6. Heuristic Solver Story
+
+The heuristic should be presented as a **surrogate-guided multi-neighborhood
+search**, not as “a local heuristic plus a BnB patch”.
+
+Recommended naming:
+
+- `Surrogate-Guided Multi-Neighborhood Beam Search`
+- or `Price-Guided Hybrid Neighborhood Search`
+
+### 6.1 Main Insight
+
+Different mapping improvements happen at different scales:
+
+- local swaps smooth nearby hotspots,
+- bounded branch-and-bound can escape coordinated local minima,
+- a small beam avoids short-sighted rejection of multi-step improvements.
+
+So the heuristic is not a portfolio of unrelated tricks. It is a unified search
+algorithm operating under a single surrogate objective with multiple neighborhoods.
+
+### 6.2 Search Components
+
+Each iteration uses:
+
+- a **local neighborhood** for fine-grained mapping edits,
+- a **bounded BnB neighborhood** for stronger tenant-level remapping jumps,
+- a **shared surrogate** for ranking candidates,
+- a small **beam** to preserve a few promising partial trajectories.
+
+### 6.3 Why Beam Matters
+
+This is important for the paper because the experiments already showed that purely
+greedy per-move acceptance can fail badly on some `allreduce` cases such as 6T/7T.
+
+The correct explanation is:
+
+> Some good mappings require coordinated multi-step updates across tenants. A
+> bounded beam retains a small number of promising alternatives and avoids the
+> myopia of strict one-step-improvement acceptance.
+
+This is a real algorithmic point, not just a tuning detail.
+
+## 7. How to Position the MILP
+
+The MILP should be sold as:
+
+- exact for small instances,
+- a quality anchor for the heuristic,
+- not the scalable primary solver.
+
+Important message:
+
+> The MILP and the heuristic solve the same communication-aware mapping problem;
+> the heuristic is a scalable approximation inspired by the same resource-coupled
+> communication structure.
+
+Avoid writing the paper as if the MILP and heuristic were two disconnected systems.
+
+## 8. What to Say About Alltoall
+
+This part must be honest and careful.
+
+### 8.1 What We Can Say
+
+The task-level abstraction is general enough to cover `alltoall` in principle.
+The paper should emphasize that the abstraction is task-centric and therefore not
+restricted to ring algorithms. However, the current **collapsed evaluator** is
+strongest on staged collective families:
+
+- `allgather`,
+- `reducescatter`,
+- `allreduce`.
+
+### 8.2 What We Should Not Claim
+
+Do **not** claim that the current collapsed evaluator is equally accurate for all
+collective types.
+
+That would be fragile because `alltoall` is more asynchronous and is not naturally
+captured by the current stage-oriented compiled representation.
+
+### 8.3 Best Framing
+
+Use this style of statement:
+
+> Our surrogate is derived from a general task-level communication abstraction.
+> In this paper we focus on staged collective families, for which the surrogate
+> admits an efficient collapsed implementation. Extending the same framework to
+> more asynchronous collectives such as all-to-all requires a finer-grained
+> compiler representation and is left as future work.
+
+This is much safer than pretending `alltoall` is already solved.
+
+## 9. Why This Can Still Be INFOCOM-Worthy
+
+The paper can be competitive if it is framed as:
+
+- a new communication-aware rank-mapping problem,
+- an exact formulation for small instances,
+- a scalable hybrid solver for large instances,
+- with strong gains on the collective families that matter most in practice.
+
+The likely strongest selling points are:
+
+- this is not ordinary placement;
+- the mapping affects collective communication semantics directly;
+- the heuristic is structured, not black-box simulation search;
+- the MILP gives an optimality anchor;
+- the gains versus default/locality are large and consistent on the main families.
+
+## 10. Suggested Method Section Structure
+
+Recommended organization:
+
+1. Problem Overview
+2. Communication Program Abstraction
+3. Task-Level Resource-Aware Surrogate
+4. Collapsed Surrogate for Staged Collectives
+5. Exact MILP Formulation
+6. Surrogate-Guided Multi-Neighborhood Beam Search
+7. Discussion of Generality and Collective Families
+
+## 11. One-Sentence Thesis
+
+If the paper needs a single clean takeaway sentence, use something close to:
+
+> We show that multi-tenant collective performance can be substantially improved
+> by optimizing intra-tenant rank mappings using a communication-program-aware
+> resource surrogate, with an exact MILP for small cases and a scalable hybrid
+> search for realistic deployments.
+
+## 12. Implementation Guidance
+
+To keep code and paper aligned, the implementation should use the following
+language:
+
+- `task-level surrogate`: the canonical formulation,
+- `collapsed surrogate` or `collapsed fast path`: the efficient evaluator for
+  structured staged collectives,
+- avoid presenting `epoch` as the primary abstraction,
+- if an `epoch` name remains in code, treat it as an implementation detail or a
+  legacy alias rather than the paper-facing method definition.
+
+This distinction matters. The paper should read as:
+
+`task abstraction first -> collapsed evaluator second`
+
+not:
+
+`epoch heuristic first -> task generalization later`
+
+## 13. Immediate Practical Guidance
+
+For the current codebase and current evidence, the safest paper scope is:
+
+- main claims: `allgather`, `reducescatter`, `allreduce`
+- exact baseline: MILP on small cases
+- scalable method: hybrid heuristic
+- `alltoall`: mention as an extension path, not as a fully solved headline result
+
+That story is honest, technically coherent, and significantly stronger than
+presenting the method as a plain epoch heuristic.

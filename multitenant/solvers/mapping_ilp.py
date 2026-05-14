@@ -12,7 +12,7 @@ from multitenant.collectives import has_collective_workload, normalize_collectiv
 from multitenant.objectives import (
     lexicographic_better,
 )
-from multitenant.schedule_compiler import compile_epoch_schedule
+from multitenant.schedule_compiler import compile_epoch_schedule, task_levels
 from multitenant.simulator import simulate_collective
 from multitenant.workloads import build_collective_program_schedule
 
@@ -1320,7 +1320,6 @@ class MappingILPSolver:
         self._maybe_seed_from_fixed_mapping_subproblem(time_limit)
         self._maybe_seed_from_heuristic(time_limit)
         self._maybe_seed_full_mip_start(time_limit)
-        self.model.Params.FeasibilityTol = 1e-9
         self.model.Params.OptimalityTol = 1e-9
         self.model.Params.MIPGap = 0.0
         self.model.Params.MIPGapAbs = 1e-9
@@ -1393,7 +1392,13 @@ LegacyTimeSlotMappingILPSolver = MappingMILPSolver
 
 
 class MappingHeuristicSolver:
-    """Pure-mapping solver with deterministic collective execution evaluation."""
+    """Pure-mapping solver with task-centric surrogate evaluation.
+
+    The canonical abstraction is task-level: a communication program is compiled
+    into a resource-coupled task DAG. For structured staged collectives, the
+    default evaluator uses a collapsed fast path that aggregates the task-level
+    surrogate at the epoch/frontier granularity for efficiency.
+    """
 
     def __init__(
         self,
@@ -1413,6 +1418,7 @@ class MappingHeuristicSolver:
         slot_duration=None,
         horizon_slots=None,
         validate_with_simulator=None,
+        surrogate_mode="collapsed",
     ):
         self.datacenter = datacenter
         self.tenant_mapping = {
@@ -1440,6 +1446,10 @@ class MappingHeuristicSolver:
         self.slot_duration_override = slot_duration
         self.horizon_slots_override = horizon_slots
         self.validate_with_simulator = bool(validate_with_simulator)
+        normalized_surrogate_mode = str(surrogate_mode).lower()
+        if normalized_surrogate_mode == "epoch":
+            normalized_surrogate_mode = "collapsed"
+        self.surrogate_mode = normalized_surrogate_mode
         self.fairness_lambda = float(fairness_lambda)
         self.fairness_iterations = max(1, int(fairness_iterations))
         self.fairness_grouping = fairness_grouping
@@ -1516,6 +1526,12 @@ class MappingHeuristicSolver:
                 (int(src), int(dst)): float(attrs["capacity"])
                 for src, dst, attrs in self.datacenter.topology.edges(data=True)
             }
+            server_send_capacity = {}
+            server_recv_capacity = {}
+            for server in self.datacenter.get_all_servers():
+                leaf = int(self.datacenter.get_server_leaf(server))
+                server_send_capacity[int(server)] = float(edge_capacity[(int(server), leaf)])
+                server_recv_capacity[int(server)] = float(edge_capacity[(leaf, int(server))])
             path_edges = {}
 
             compiled_schedule = compile_epoch_schedule(
@@ -1524,18 +1540,102 @@ class MappingHeuristicSolver:
                 self.rank_orders,
                 program_mode=self._program_mode(),
             )
+            task_surrogate = {}
+            task_global_max_level = -1
+            for tenant in self.tenants:
+                tenant_schedule = schedule.get(tenant, {})
+                tenant_tasks = list(tenant_schedule.get("tasks", []))
+                unified_edges = list(tenant_schedule.get("edges", []))
+                if not tenant_tasks:
+                    task_surrogate[tenant] = {
+                        "preds": {},
+                        "task_order": [],
+                        "task_levels": {},
+                        "task_info": {},
+                        "level_tasks": {},
+                    }
+                    continue
+
+                base_levels = task_levels(tenant_tasks, unified_edges)
+                topo_order = sorted(
+                    [int(task["task_id"]) for task in tenant_tasks],
+                    key=lambda task_id: (int(base_levels.get(int(task_id), 0)), int(task_id)),
+                )
+                topo_pos = {int(task_id): idx for idx, task_id in enumerate(topo_order)}
+                receiver_order = defaultdict(list)
+                for task in tenant_tasks:
+                    receiver_order[int(task["dst_rank"])].append(int(task["task_id"]))
+                receiver_edges = []
+                for dst_rank, task_ids in receiver_order.items():
+                    task_ids.sort(key=lambda task_id: topo_pos[int(task_id)])
+                    for earlier_task_id, later_task_id in zip(task_ids, task_ids[1:]):
+                        receiver_edges.append(
+                            {
+                                "src_task_id": int(earlier_task_id),
+                                "dst_task_id": int(later_task_id),
+                                "type": "receiver_order",
+                                "receiver": int(dst_rank),
+                            }
+                        )
+
+                augmented_edges = unified_edges + receiver_edges
+                levels = task_levels(tenant_tasks, augmented_edges)
+                preds_by_task = {int(task["task_id"]): [] for task in tenant_tasks}
+                for edge in augmented_edges:
+                    preds_by_task[int(edge["dst_task_id"])].append(int(edge["src_task_id"]))
+                ordered_task_ids = sorted(
+                    preds_by_task.keys(),
+                    key=lambda task_id: (int(levels.get(int(task_id), 0)), int(task_id)),
+                )
+                task_info = {}
+                level_tasks = defaultdict(list)
+                for task in tenant_tasks:
+                    task_id = int(task["task_id"])
+                    task_tuple = (
+                        task_id,
+                        int(task["src_rank"]),
+                        int(task["dst_rank"]),
+                        float(task["V"]),
+                    )
+                    task_info[task_id] = task_tuple
+                    level_tasks[int(levels[task_id])].append(task_tuple)
+
+                task_surrogate[tenant] = {
+                    "preds": {int(task_id): list(preds) for task_id, preds in preds_by_task.items()},
+                    "task_order": [int(task_id) for task_id in ordered_task_ids],
+                    "task_levels": {int(task_id): int(level) for task_id, level in levels.items()},
+                    "task_info": task_info,
+                    "level_tasks": {int(level): list(flows) for level, flows in level_tasks.items()},
+                }
+                task_global_max_level = max(
+                    task_global_max_level,
+                    max((int(level) for level in level_tasks.keys()), default=-1),
+                )
             for tenant in self.tenants:
                 aggregate_pressure = 0.0
                 peak_load = 0.0
                 for epoch_flows in compiled_schedule["per_tenant"][tenant]["epoch_flows"].values():
                     epoch_edge_loads: dict[tuple[int, int], float] = defaultdict(float)
+                    epoch_sender_loads: dict[int, float] = defaultdict(float)
+                    epoch_receiver_loads: dict[int, float] = defaultdict(float)
                     for src_rank, dst_rank, volume in epoch_flows:
                         src_server = int(self.initial_tenant_mapping[tenant][src_rank])
                         dst_server = int(self.initial_tenant_mapping[tenant][dst_rank])
+                        epoch_sender_loads[src_server] += float(volume) / server_send_capacity[src_server]
+                        epoch_receiver_loads[dst_server] += float(volume) / server_recv_capacity[dst_server]
                         for edge in self._path_edges_for_pair(path_edges, src_server, dst_server):
                             epoch_edge_loads[edge] += float(volume) / edge_capacity[edge]
-                    aggregate_pressure += sum(epoch_edge_loads.values())
-                    peak_load = max(peak_load, max(epoch_edge_loads.values(), default=0.0))
+                    aggregate_pressure += (
+                        sum(epoch_edge_loads.values())
+                        + sum(epoch_sender_loads.values())
+                        + sum(epoch_receiver_loads.values())
+                    )
+                    peak_load = max(
+                        peak_load,
+                        max(epoch_edge_loads.values(), default=0.0),
+                        max(epoch_sender_loads.values(), default=0.0),
+                        max(epoch_receiver_loads.values(), default=0.0),
+                    )
                 self.tenant_pressure[tenant] = float(aggregate_pressure)
                 self.tenant_peak_load[tenant] = float(peak_load)
             return {
@@ -1545,7 +1645,11 @@ class MappingHeuristicSolver:
                 "tasks": tasks,
                 "schedule": schedule,
                 "compiled_schedule": compiled_schedule,
+                "task_surrogate": task_surrogate,
+                "task_global_max_level": int(task_global_max_level),
                 "edge_capacity": edge_capacity,
+                "server_send_capacity": server_send_capacity,
+                "server_recv_capacity": server_recv_capacity,
                 "path_edges": path_edges,
             }
 
@@ -1646,47 +1750,77 @@ class MappingHeuristicSolver:
             path_edges[key] = edges
         return edges
 
-    def _compute_epoch_link_load_state(self, mapping):
+    def _compute_epoch_resource_load_state(self, mapping):
         compiled_schedule = self.data["compiled_schedule"]["per_tenant"]
         global_max_epoch = int(self.data["compiled_schedule"]["global_max_epoch"])
         edge_capacity = self.data["edge_capacity"]
+        server_send_capacity = self.data["server_send_capacity"]
+        server_recv_capacity = self.data["server_recv_capacity"]
         path_edges = self.data["path_edges"]
 
         epoch_loads: list[dict[tuple[int, int], float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
+        epoch_sender_loads: list[dict[int, float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
+        epoch_receiver_loads: list[dict[int, float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
         epoch_maxima = [0.0 for _ in range(global_max_epoch + 1)]
 
         for epoch in range(global_max_epoch + 1):
             normalized_link_load = epoch_loads[epoch]
+            normalized_sender_load = epoch_sender_loads[epoch]
+            normalized_receiver_load = epoch_receiver_loads[epoch]
             for tenant in self.tenants:
                 tenant_epochs = compiled_schedule[tenant]["epoch_flows"]
                 for src_rank, dst_rank, volume in tenant_epochs.get(epoch, []):
                     src_server = int(mapping[tenant][src_rank])
                     dst_server = int(mapping[tenant][dst_rank])
+                    normalized_sender_load[src_server] += float(volume) / server_send_capacity[src_server]
+                    normalized_receiver_load[dst_server] += float(volume) / server_recv_capacity[dst_server]
                     for edge in self._path_edges_for_pair(path_edges, src_server, dst_server):
                         normalized_link_load[edge] += float(volume) / edge_capacity[edge]
-            epoch_maxima[epoch] = max(normalized_link_load.values(), default=0.0)
+            epoch_maxima[epoch] = max(
+                max(normalized_link_load.values(), default=0.0),
+                max(normalized_sender_load.values(), default=0.0),
+                max(normalized_receiver_load.values(), default=0.0),
+            )
 
-        return epoch_loads, epoch_maxima
+        return epoch_loads, epoch_sender_loads, epoch_receiver_loads, epoch_maxima
 
-    def _compute_tenant_epoch_link_load_state(self, mapping):
+    def _compute_tenant_epoch_resource_load_state(self, mapping):
         compiled_schedule = self.data["compiled_schedule"]["per_tenant"]
         global_max_epoch = int(self.data["compiled_schedule"]["global_max_epoch"])
         edge_capacity = self.data["edge_capacity"]
+        server_send_capacity = self.data["server_send_capacity"]
+        server_recv_capacity = self.data["server_recv_capacity"]
         path_edges = self.data["path_edges"]
 
         epoch_loads: list[dict[tuple[int, int], float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
+        epoch_sender_loads: list[dict[int, float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
+        epoch_receiver_loads: list[dict[int, float]] = [defaultdict(float) for _ in range(global_max_epoch + 1)]
         tenant_epoch_edges: dict[int, list[set[tuple[int, int]]]] = {
+            tenant: [set() for _ in range(global_max_epoch + 1)]
+            for tenant in self.tenants
+        }
+        tenant_epoch_senders: dict[int, list[set[int]]] = {
+            tenant: [set() for _ in range(global_max_epoch + 1)]
+            for tenant in self.tenants
+        }
+        tenant_epoch_receivers: dict[int, list[set[int]]] = {
             tenant: [set() for _ in range(global_max_epoch + 1)]
             for tenant in self.tenants
         }
 
         for epoch in range(global_max_epoch + 1):
             normalized_link_load = epoch_loads[epoch]
+            normalized_sender_load = epoch_sender_loads[epoch]
+            normalized_receiver_load = epoch_receiver_loads[epoch]
             for tenant in self.tenants:
                 tenant_epochs = compiled_schedule[tenant]["epoch_flows"]
                 for src_rank, dst_rank, volume in tenant_epochs.get(epoch, []):
                     src_server = int(mapping[tenant][src_rank])
                     dst_server = int(mapping[tenant][dst_rank])
+                    normalized_sender_load[src_server] += float(volume) / server_send_capacity[src_server]
+                    normalized_receiver_load[dst_server] += float(volume) / server_recv_capacity[dst_server]
+                    tenant_epoch_senders[tenant][epoch].add(src_server)
+                    tenant_epoch_receivers[tenant][epoch].add(dst_server)
                     for edge in self._path_edges_for_pair(path_edges, src_server, dst_server):
                         normalized_link_load[edge] += float(volume) / edge_capacity[edge]
                         tenant_epoch_edges[tenant][epoch].add(edge)
@@ -1698,25 +1832,75 @@ class MappingHeuristicSolver:
         for tenant in self.tenants:
             for epoch in range(global_max_epoch + 1):
                 tenant_epoch_maxima[tenant][epoch] = max(
-                    (epoch_loads[epoch][edge] for edge in tenant_epoch_edges[tenant][epoch]),
-                    default=0.0,
+                    max((epoch_loads[epoch][edge] for edge in tenant_epoch_edges[tenant][epoch]), default=0.0),
+                    max((epoch_sender_loads[epoch][server] for server in tenant_epoch_senders[tenant][epoch]), default=0.0),
+                    max((epoch_receiver_loads[epoch][server] for server in tenant_epoch_receivers[tenant][epoch]), default=0.0),
                 )
 
+        return epoch_loads, epoch_sender_loads, epoch_receiver_loads, tenant_epoch_maxima
+
+    def _compute_epoch_link_load_state(self, mapping):
+        epoch_loads, _epoch_sender_loads, _epoch_receiver_loads, epoch_maxima = self._compute_epoch_resource_load_state(mapping)
+        return epoch_loads, epoch_maxima
+
+    def _compute_tenant_epoch_link_load_state(self, mapping):
+        epoch_loads, _epoch_sender_loads, _epoch_receiver_loads, tenant_epoch_maxima = self._compute_tenant_epoch_resource_load_state(mapping)
         return epoch_loads, tenant_epoch_maxima
 
-    def _edge_price_value(self, edge, normalized_load):
-        capacity = self.data["edge_capacity"][edge]
+    def _compute_task_level_resource_load_state(self, mapping):
+        global_max_level = int(self.data.get("task_global_max_level", -1))
+        edge_capacity = self.data["edge_capacity"]
+        server_send_capacity = self.data["server_send_capacity"]
+        server_recv_capacity = self.data["server_recv_capacity"]
+        path_edges = self.data["path_edges"]
+        task_surrogate = self.data.get("task_surrogate", {})
+
+        level_edge_loads = [defaultdict(float) for _ in range(global_max_level + 1)]
+        level_sender_loads = [defaultdict(float) for _ in range(global_max_level + 1)]
+        level_receiver_loads = [defaultdict(float) for _ in range(global_max_level + 1)]
+
+        for tenant, tenant_meta in task_surrogate.items():
+            for level, flows in tenant_meta["level_tasks"].items():
+                edge_loads = level_edge_loads[int(level)]
+                sender_loads = level_sender_loads[int(level)]
+                receiver_loads = level_receiver_loads[int(level)]
+                for _task_id, src_rank, dst_rank, volume in flows:
+                    src_server = int(mapping[tenant][src_rank])
+                    dst_server = int(mapping[tenant][dst_rank])
+                    sender_loads[src_server] += float(volume) / server_send_capacity[src_server]
+                    receiver_loads[dst_server] += float(volume) / server_recv_capacity[dst_server]
+                    for edge in self._path_edges_for_pair(path_edges, src_server, dst_server):
+                        edge_loads[edge] += float(volume) / edge_capacity[edge]
+
+        return level_edge_loads, level_sender_loads, level_receiver_loads
+
+    def _resource_price_value(self, capacity, normalized_load):
         base_cost = 1.0 / max(capacity, 1e-12)
         return base_cost * (1.0 + self.link_price_beta * (float(normalized_load) ** self.link_price_gamma))
 
+    def _edge_price_value(self, edge, normalized_load):
+        return self._resource_price_value(self.data["edge_capacity"][edge], normalized_load)
+
     def _compute_epoch_link_prices(self, mapping):
-        epoch_loads, epoch_maxima = self._compute_epoch_link_load_state(mapping)
-        epoch_prices: list[dict[tuple[int, int], float]] = []
-        for epoch_load in epoch_loads:
+        epoch_loads, epoch_sender_loads, epoch_receiver_loads, epoch_maxima = self._compute_epoch_resource_load_state(mapping)
+        epoch_prices: list[dict[str, dict[object, float]]] = []
+        server_send_capacity = self.data["server_send_capacity"]
+        server_recv_capacity = self.data["server_recv_capacity"]
+        for epoch_idx, epoch_load in enumerate(epoch_loads):
             edge_prices = {}
             for edge, normalized_load in epoch_load.items():
                 edge_prices[edge] = self._edge_price_value(edge, normalized_load)
-            epoch_prices.append(edge_prices)
+            sender_prices = {}
+            for server, normalized_load in epoch_sender_loads[epoch_idx].items():
+                sender_prices[server] = self._resource_price_value(server_send_capacity[server], normalized_load)
+            receiver_prices = {}
+            for server, normalized_load in epoch_receiver_loads[epoch_idx].items():
+                receiver_prices[server] = self._resource_price_value(server_recv_capacity[server], normalized_load)
+            epoch_prices.append({
+                "edge": edge_prices,
+                "sender": sender_prices,
+                "receiver": receiver_prices,
+            })
         return epoch_loads, epoch_maxima, epoch_prices
 
     def _pair_epoch_price_lookup(self, candidate_servers, epoch_prices):
@@ -1736,10 +1920,17 @@ class MappingHeuristicSolver:
 
     def _path_epoch_price(self, epoch_prices, epoch, src_server, dst_server):
         path_edges = self.data["path_edges"]
-        edge_prices = epoch_prices[int(epoch)]
+        epoch_price_state = epoch_prices[int(epoch)]
+        edge_prices = epoch_price_state["edge"]
+        sender_prices = epoch_price_state["sender"]
+        receiver_prices = epoch_price_state["receiver"]
+        server_send_capacity = self.data["server_send_capacity"]
+        server_recv_capacity = self.data["server_recv_capacity"]
         path_cost = 0.0
+        path_cost += sender_prices.get(src_server, self._resource_price_value(server_send_capacity[src_server], 0.0))
         for edge in self._path_edges_for_pair(path_edges, src_server, dst_server):
             path_cost += edge_prices.get(edge, self._edge_price_value(edge, 0.0))
+        path_cost += receiver_prices.get(dst_server, self._resource_price_value(server_recv_capacity[dst_server], 0.0))
         return float(path_cost)
 
     def _tenant_price_cost(self, tenant, mapping, pair_epoch_price):
@@ -1805,6 +1996,48 @@ class MappingHeuristicSolver:
             raise ValueError(
                 "Structured pure mapping solver currently requires collective inputs via "
                 "tenant_collective_programs, tenant_collective_specs, or collective/single_flow_size."
+            )
+
+        if self.surrogate_mode == "task":
+            level_edge_loads, level_sender_loads, level_receiver_loads = self._compute_task_level_resource_load_state(mapping)
+            tenant_finish = {}
+            path_edges = self.data["path_edges"]
+            compiled_schedule = self.data["compiled_schedule"]["per_tenant"]
+            task_surrogate = self.data.get("task_surrogate", {})
+            for tenant, tenant_meta in task_surrogate.items():
+                finish_by_task = {}
+                for task_id in tenant_meta["task_order"]:
+                    task_level = int(tenant_meta["task_levels"][int(task_id)])
+                    _task_id, src_rank, dst_rank, _volume = tenant_meta["task_info"][int(task_id)]
+                    src_server = int(mapping[tenant][src_rank])
+                    dst_server = int(mapping[tenant][dst_rank])
+                    path = self._path_edges_for_pair(path_edges, src_server, dst_server)
+                    task_cost = max(
+                        max((level_edge_loads[task_level][edge] for edge in path), default=0.0),
+                        float(level_sender_loads[task_level].get(src_server, 0.0)),
+                        float(level_receiver_loads[task_level].get(dst_server, 0.0)),
+                    )
+                    ready_time = max(
+                        (finish_by_task[int(pred)] for pred in tenant_meta["preds"].get(int(task_id), [])),
+                        default=0.0,
+                    )
+                    finish_by_task[int(task_id)] = ready_time + float(task_cost)
+                tenant_finish[tenant] = (
+                    max(finish_by_task.values(), default=0.0)
+                    + float(compiled_schedule[tenant].get("tenant_gap_time", 0.0))
+                )
+            score = (
+                float(max(tenant_finish.values(), default=0.0)),
+                float(sum(tenant_finish.values()) / max(len(tenant_finish), 1)),
+            )
+            self._surrogate_cache[signature] = score
+            self._register_surrogate_candidate(mapping, score)
+            return score
+
+        if self.surrogate_mode not in {"collapsed", "task"}:
+            raise ValueError(
+                f"Unsupported surrogate_mode={self.surrogate_mode!r}; "
+                "expected 'task' or 'collapsed' (legacy alias: 'epoch')."
             )
 
         _, global_epoch_deltas = self._compute_epoch_link_load_state(mapping)
@@ -1936,8 +2169,7 @@ class MappingHeuristicSolver:
             )
 
         pair_epoch_price = self._pair_epoch_price_lookup(current_servers, epoch_prices)
-        best_mapping = base_mapping
-        best_cost = self._tenant_price_cost(tenant, base_mapping, pair_epoch_price)
+        initial_cost = self._tenant_price_cost(tenant, base_mapping, pair_epoch_price)
 
         compiled_tenant = self.data["compiled_schedule"]["per_tenant"][tenant]
         all_flows = compiled_tenant["all_flows"]
@@ -1947,7 +2179,28 @@ class MappingHeuristicSolver:
         assignment: dict[int, int] = {}
         used_servers: set[int] = set()
         initial_assignment = {int(rank): int(base_mapping[tenant][rank]) for rank in ranks}
-        best_assignment = dict(initial_assignment)
+        max_price_candidates = 32
+        price_candidates: list[tuple[float, dict[int, int]]] = [
+            (float(initial_cost), dict(initial_assignment))
+        ]
+
+        def add_price_candidate(cost, candidate_assignment):
+            normalized = {
+                int(rank): int(server)
+                for rank, server in candidate_assignment.items()
+            }
+            signature = tuple(normalized[rank] for rank in sorted(normalized))
+            for existing_cost, existing_assignment in price_candidates:
+                if signature == tuple(existing_assignment[rank] for rank in sorted(existing_assignment)):
+                    return
+            price_candidates.append((float(cost), normalized))
+            price_candidates.sort(key=lambda item: item[0])
+            del price_candidates[max_price_candidates:]
+
+        def current_prune_cost():
+            if len(price_candidates) < max_price_candidates:
+                return float("inf")
+            return float(price_candidates[-1][0])
 
         def lower_bound(current_partial_cost):
             remaining_servers = [int(server) for server in current_servers if int(server) not in used_servers]
@@ -2031,18 +2284,15 @@ class MappingHeuristicSolver:
             del assignment[int(rank)]
 
         def dfs(depth, current_partial_cost):
-            nonlocal best_cost, best_assignment
             if time.time() >= deadline:
                 return
 
             bound = lower_bound(current_partial_cost)
-            if bound >= best_cost - 1e-12:
+            if bound >= current_prune_cost() - 1e-12:
                 return
 
             if depth >= len(branch_ranks):
-                if current_partial_cost < best_cost - 1e-12:
-                    best_cost = float(current_partial_cost)
-                    best_assignment = {int(rank): int(server) for rank, server in assignment.items()}
+                add_price_candidate(current_partial_cost, assignment)
                 return
 
             rank = branch_ranks[depth]
@@ -2054,16 +2304,30 @@ class MappingHeuristicSolver:
                 rollback_rank(rank, server)
 
         dfs(0, 0.0)
-        if best_assignment != initial_assignment:
-            best_mapping = {
+
+        best_mapping = base_mapping
+        best_score = self._evaluate_surrogate_mapping(base_mapping)
+        best_cost = float(initial_cost)
+
+        for candidate_cost, candidate_assignment in price_candidates:
+            if time.time() >= deadline:
+                break
+            if candidate_assignment == initial_assignment:
+                continue
+            candidate_mapping = {
                 current_tenant: dict(rank_to_server)
                 for current_tenant, rank_to_server in base_mapping.items()
             }
-            best_mapping[tenant] = {
-                rank: int(best_assignment[int(rank)])
+            candidate_mapping[tenant] = {
+                rank: int(candidate_assignment[int(rank)])
                 for rank in ranks
             }
-            best_mapping = self._canonicalize_ring_mapping(best_mapping)
+            candidate_mapping = self._canonicalize_ring_mapping(candidate_mapping)
+            candidate_score = self._evaluate_surrogate_mapping(candidate_mapping)
+            if self._is_better_objective(candidate_score, best_score):
+                best_mapping = candidate_mapping
+                best_score = candidate_score
+                best_cost = float(candidate_cost)
         return best_mapping, float(best_cost)
 
     def _surrogate_pair_swap_polish(self, best_mapping, best_score, deadline):

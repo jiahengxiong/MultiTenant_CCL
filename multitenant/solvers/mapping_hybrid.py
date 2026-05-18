@@ -29,7 +29,7 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
         self.max_bnb_tenants_per_round = int(max_bnb_tenants_per_round)
         self.beam_width = max(1, int(beam_width))
         self.last_move_source = None
-        self.move_source_counts = {"local": 0, "bnb": 0}
+        self.move_source_counts = {"local": 0, "bnb": 0, "joint": 0}
 
     def _build_price_bnb_candidate(self, base_mapping, tenant, epoch_prices, deadline):
         if time.time() >= deadline:
@@ -106,6 +106,75 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
                 best_score = candidate_score
 
         return best_source, best_mapping, best_score
+
+    def _joint_pair_candidate(
+        self,
+        base_mapping,
+        tenant_a,
+        tenant_b,
+        epoch_prices,
+        deadline,
+    ):
+        candidates_a = []
+        candidates_b = []
+
+        local_mapping_a, _ = super()._optimize_tenant_block_with_prices(
+            base_mapping,
+            tenant_a,
+            epoch_prices,
+            deadline,
+        )
+        if self._mapping_signature(local_mapping_a) != self._mapping_signature(base_mapping):
+            candidates_a.append(local_mapping_a)
+
+        local_mapping_b, _ = super()._optimize_tenant_block_with_prices(
+            base_mapping,
+            tenant_b,
+            epoch_prices,
+            deadline,
+        )
+        if self._mapping_signature(local_mapping_b) != self._mapping_signature(base_mapping):
+            candidates_b.append(local_mapping_b)
+
+        if self.max_bnb_tenants_per_round > 0:
+            bnb_mapping_a = self._build_price_bnb_candidate(
+                base_mapping,
+                tenant_a,
+                epoch_prices,
+                deadline,
+            )
+            if self._mapping_signature(bnb_mapping_a) != self._mapping_signature(base_mapping):
+                candidates_a.append(bnb_mapping_a)
+
+            bnb_mapping_b = self._build_price_bnb_candidate(
+                base_mapping,
+                tenant_b,
+                epoch_prices,
+                deadline,
+            )
+            if self._mapping_signature(bnb_mapping_b) != self._mapping_signature(base_mapping):
+                candidates_b.append(bnb_mapping_b)
+
+        if not candidates_a or not candidates_b:
+            return None
+
+        seen = set()
+        joint_candidates = []
+        for candidate_a in candidates_a:
+            for candidate_b in candidates_b:
+                joint_mapping = {
+                    tenant: dict(rank_to_server)
+                    for tenant, rank_to_server in base_mapping.items()
+                }
+                joint_mapping[tenant_a] = dict(candidate_a[tenant_a])
+                joint_mapping[tenant_b] = dict(candidate_b[tenant_b])
+                signature = self._mapping_signature(joint_mapping)
+                if signature in seen:
+                    continue
+                seen.add(signature)
+                joint_candidates.append(joint_mapping)
+
+        return joint_candidates
 
     def _dedupe_ranked_candidates(self, candidates):
         ranked: list[tuple[tuple[float, float], dict[int, dict[int, int]], str | None]] = []
@@ -200,6 +269,31 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
                         if source is None:
                             continue
                         next_candidates.append((candidate_score, candidate_mapping, source))
+
+                if len(self.tenants) == 2 and len(tenant_order) >= 2 and time.time() < deadline:
+                    _, _, epoch_prices = self._compute_epoch_link_prices(beam_mapping)
+                    joint_tenants = tenant_order[: max(2, self.max_bnb_tenants_per_round)]
+                    for idx, tenant_a in enumerate(joint_tenants):
+                        if time.time() >= deadline:
+                            break
+                        for tenant_b in joint_tenants[idx + 1 :]:
+                            if time.time() >= deadline:
+                                break
+                            joint_candidates = self._joint_pair_candidate(
+                                beam_mapping,
+                                tenant_a,
+                                tenant_b,
+                                epoch_prices,
+                                deadline,
+                            )
+                            if not joint_candidates:
+                                continue
+                            for candidate_mapping in joint_candidates:
+                                if time.time() >= deadline:
+                                    break
+                                candidate_score = self._evaluate_surrogate_mapping(candidate_mapping)
+                                if self._is_better_objective(candidate_score, beam_score):
+                                    next_candidates.append((candidate_score, candidate_mapping, "joint"))
 
             ranked_candidates = self._dedupe_ranked_candidates(next_candidates)
             if not ranked_candidates:

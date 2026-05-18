@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import sys
@@ -13,7 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from multitenant.config import BITS_PER_MB
 from multitenant.simulator import simulate_collective_program
-from multitenant.solvers import MappingHeuristicSolver, MappingILPSolver
+from multitenant.solvers import MappingHybridHeuristicSolver, MappingILPSolver
 from multitenant.topology import LeafSpineDatacenter
 
 
@@ -29,6 +30,11 @@ NUM_COLLECTIVES = 3
 GAP_AFTER_SECONDS = 0.1
 
 
+def derive_seed(base_seed: int, *components: object) -> int:
+    payload = "|".join([str(base_seed), *(str(component) for component in components)]).encode("utf-8")
+    return int.from_bytes(hashlib.blake2s(payload, digest_size=4).digest(), "big")
+
+
 def build_random_server_disjoint_mapping(
     datacenter: LeafSpineDatacenter,
     tenant_count: int,
@@ -40,7 +46,7 @@ def build_random_server_disjoint_mapping(
     rem = total_servers % tenant_count
     per_tenant_sizes = [base + (1 if idx < rem else 0) for idx in range(tenant_count)]
 
-    rng = random.Random(seed + tenant_count)
+    rng = random.Random(seed)
     rng.shuffle(all_servers)
 
     mapping: dict[int, dict[int, int]] = {}
@@ -87,16 +93,15 @@ def solve_with_heuristic(
     datacenter: LeafSpineDatacenter,
     tenant_mapping: dict[int, dict[int, int]],
     tenant_collective_programs: dict[int, list[dict[str, object]]],
-    time_limit: float,
 ) -> tuple[dict[int, dict[int, int]], float]:
-    solver = MappingHeuristicSolver(
+    solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_programs=tenant_collective_programs,
         verbose=False,
     )
     start_time = time.time()
-    solver.solve(time_limit=time_limit)
+    solver.solve()
     runtime_seconds = time.time() - start_time
     return solver.get_X_mapping(), float(runtime_seconds)
 
@@ -107,6 +112,7 @@ def solve_with_ilp(
     tenant_collective_programs: dict[int, list[dict[str, object]]],
     time_limit: float | None,
     verbose: bool,
+    warm_start_mode: str,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str]:
     solver = MappingILPSolver(
         datacenter,
@@ -117,6 +123,11 @@ def solve_with_ilp(
         enable_full_mip_start=False,
         enable_fixed_mapping_subproblem_start=False,
     )
+    if warm_start_mode == "mapping":
+        solver._apply_mapping_warm_start(tenant_mapping)
+    elif warm_start_mode == "simulator":
+        solver._apply_mapping_warm_start(tenant_mapping)
+        solver._apply_simulator_schedule_warm_start(tenant_mapping)
     start_time = time.time()
     try:
         solver.solve(time_limit=time_limit)
@@ -139,9 +150,9 @@ def normalize_mapping(mapping: dict[int, dict[int, int]] | None) -> dict[str, di
 def summarize_case(
     tenant_count: int,
     seed: int,
-    heuristic_time_limit: float,
     ilp_time_limit: float | None,
     ilp_verbose: bool,
+    ilp_warm_start_mode: str,
 ) -> dict[str, object]:
     datacenter = LeafSpineDatacenter(
         num_leaf=TOPOLOGY["num_leaf"],
@@ -155,7 +166,6 @@ def summarize_case(
         datacenter,
         default_mapping,
         tenant_collective_programs,
-        time_limit=heuristic_time_limit,
     )
     heuristic_mk, heuristic_avg = evaluate_mapping(datacenter, heuristic_mapping, tenant_collective_programs)
 
@@ -165,6 +175,7 @@ def summarize_case(
         tenant_collective_programs,
         time_limit=ilp_time_limit,
         verbose=ilp_verbose,
+        warm_start_mode=ilp_warm_start_mode,
     )
     if ilp_mapping is not None:
         ilp_mk, ilp_avg = evaluate_mapping(datacenter, ilp_mapping, tenant_collective_programs)
@@ -186,6 +197,7 @@ def summarize_case(
             "runtime_seconds": ilp_runtime,
             "runtime_definition": "solver_only",
             "status": ilp_status,
+            "warm_start_mode": ilp_warm_start_mode,
             "mapping": normalize_mapping(ilp_mapping),
             "avg_jct": ilp_avg,
             "makespan": ilp_mk,
@@ -199,12 +211,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=20250511)
     parser.add_argument(
-        "--heuristic-time-limit",
-        type=float,
-        default=10.0,
-        help="Time limit in seconds for the heuristic solver.",
-    )
-    parser.add_argument(
         "--ilp-time-limit",
         type=float,
         default=None,
@@ -212,8 +218,15 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--ilp-verbose",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Enable Gurobi solver logs for the ILP runs.",
+    )
+    parser.add_argument(
+        "--ilp-warm-start-mode",
+        choices=("none", "mapping", "simulator"),
+        default="mapping",
+        help="ILP warm-start mode: none, mapping-only partial start, or simulator-based full start.",
     )
     parser.add_argument(
         "--output",
@@ -230,10 +243,10 @@ def main() -> None:
         print(f"=== tenant_count={tenant_count} ===")
         case_result = summarize_case(
             tenant_count=tenant_count,
-            seed=args.seed,
-            heuristic_time_limit=args.heuristic_time_limit,
+            seed=derive_seed(args.seed, "mapping_vs_ilp_multi", tenant_count),
             ilp_time_limit=args.ilp_time_limit,
             ilp_verbose=args.ilp_verbose,
+            ilp_warm_start_mode=args.ilp_warm_start_mode,
         )
         results.append(case_result)
 
@@ -256,8 +269,8 @@ def main() -> None:
             "gap_after_seconds": GAP_AFTER_SECONDS,
             "tenant_counts": list(TENANT_COUNTS),
             "seed": args.seed,
-            "heuristic_time_limit": args.heuristic_time_limit,
             "ilp_time_limit": args.ilp_time_limit,
+            "ilp_warm_start_mode": args.ilp_warm_start_mode,
             "ilp_pure": True,
             "runtime_definition": "solver_only",
         },

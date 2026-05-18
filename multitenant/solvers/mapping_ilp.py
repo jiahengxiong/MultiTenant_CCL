@@ -495,6 +495,9 @@ class MappingILPSolver:
                         vtype=GRB.BINARY,
                         name=f"X_{tenant}_{rank}_{server}",
                     )
+                    # Make the solver branch on mapping decisions before the
+                    # much larger family of time-indexed auxiliary binaries.
+                    self.X[(tenant, rank, server)].BranchPriority = 100
 
     def _tenant_has_ring_rotation_symmetry(self, tenant):
         ring_collectives = {"allgather", "reducescatter", "allreduce"}
@@ -521,24 +524,6 @@ class MappingILPSolver:
                     gp.quicksum(self.X[(tenant, rank, server)] for rank in ranks[tenant]) == 1,
                     name=f"srv_one_{tenant}_{server}",
                 )
-
-        # Ring-style collectives are invariant to a cyclic relabeling of logical ranks, and
-        # often also to reversal of the cycle under symmetric equal-size communication. Fixing
-        # one anchor server to rank 0 and ordering the two neighbors removes this purely
-        # combinational symmetry without changing the physical solutions we can represent.
-        for tenant in tenants:
-            tenant_ranks = list(ranks[tenant])
-            tenant_servers = list(servers[tenant])
-            if not self._tenant_has_ring_rotation_symmetry(tenant):
-                continue
-            if not tenant_ranks or not tenant_servers:
-                continue
-            anchor_server = min(tenant_servers)
-            anchor_rank = min(tenant_ranks)
-            self.model.addConstr(
-                self.X[(tenant, anchor_rank, anchor_server)] == 1,
-                name=f"ring_anchor_{tenant}",
-            )
 
     def _add_U_and_endpoint_constraints(self):
         tenants, servers = self.data["M"], self.data["S"]
@@ -985,7 +970,8 @@ class MappingILPSolver:
             for tenant, rank_to_server in mapping.items()
         }
         for (tenant, rank, server), var in self.X.items():
-            var.Start = 1.0 if mapping.get(tenant, {}).get(rank) == server else 0.0
+            var.VarHintVal = 1.0 if mapping.get(tenant, {}).get(rank) == server else 0.0
+            var.VarHintPri = 100
         for key, var in self.U.items():
             tenant, task_id, src_server, dst_server = key
             task = next(
@@ -997,7 +983,8 @@ class MappingILPSolver:
             logical_dst = int(task["dst_rank"])
             expected_src = mapping.get(tenant, {}).get(logical_src)
             expected_dst = mapping.get(tenant, {}).get(logical_dst)
-            var.Start = 1.0 if (expected_src == src_server and expected_dst == dst_server) else 0.0
+            var.VarHintVal = 1.0 if (expected_src == src_server and expected_dst == dst_server) else 0.0
+            var.VarHintPri = 10
         self.model.update()
 
     def _canonicalize_ring_mapping(self, mapping):
@@ -1320,10 +1307,13 @@ class MappingILPSolver:
         self._maybe_seed_from_fixed_mapping_subproblem(time_limit)
         self._maybe_seed_from_heuristic(time_limit)
         self._maybe_seed_full_mip_start(time_limit)
+        self.model.Params.FeasibilityTol = 1e-9
         self.model.Params.OptimalityTol = 1e-9
         self.model.Params.MIPGap = 0.0
         self.model.Params.MIPGapAbs = 1e-9
         self.model.Params.IntegralityFocus = 1
+        self.model.Params.Method = 1
+        self.model.Params.NodeMethod = 1
         self.model.optimize()
 
         status = self.model.Status

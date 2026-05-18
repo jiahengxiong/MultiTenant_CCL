@@ -35,7 +35,7 @@ struct PolicyEntry {
     int qpid;
     double rate; // 0.0 means "Max"
     bool use_max_rate;
-    int chunk_size_bytes;
+    std::int64_t chunk_size_bytes;
     std::vector<std::string> path;
     double time = 0.0;
     std::vector<ChunkId> dependency;
@@ -48,8 +48,8 @@ struct Packet {
     ChunkId chunk_id;
     std::string tx_src;
     std::string tx_dst;
-    int seq;
-    int total_packets;
+    std::int64_t seq;
+    std::int64_t total_packets;
     int size_bytes;
     std::vector<std::string> path;
     int hop_idx;

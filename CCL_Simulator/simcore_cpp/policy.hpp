@@ -181,14 +181,14 @@ public:
 
     void _fire_entry(PolicyEntry e) {
         int ps = spec.packet_size_bytes;
-        int total_packets = (e.chunk_size_bytes + ps - 1) / ps;
-        total_packets = std::max(1, total_packets);
+        std::int64_t total_packets = (e.chunk_size_bytes + ps - 1) / ps;
+        total_packets = std::max<std::int64_t>(1, total_packets);
 
         TxId tx_id = {e.chunk_id, e.src, e.dst};
         register_tx_fn(tx_id);
 
-        for (int i = 0; i < total_packets; ++i) {
-            int remaining = e.chunk_size_bytes - i * ps;
+        for (std::int64_t i = 0; i < total_packets; ++i) {
+            std::int64_t remaining = e.chunk_size_bytes - i * ps;
             int sz = (remaining >= ps) ? ps : remaining;
             if (sz <= 0) sz = ps;
 

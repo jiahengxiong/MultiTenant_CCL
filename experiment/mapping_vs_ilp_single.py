@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import random
 import sys
@@ -13,7 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from multitenant.config import BITS_PER_MB
 from multitenant.simulator import simulate_collective
-from multitenant.solvers import MappingHeuristicSolver, MappingILPSolver
+from multitenant.solvers import MappingHybridHeuristicSolver, MappingILPSolver
 from multitenant.topology import LeafSpineDatacenter
 
 
@@ -27,6 +28,11 @@ COLLECTIVE = "allgather"
 SINGLE_FLOW_SIZE_BITS = 8 * BITS_PER_MB
 
 
+def derive_seed(base_seed: int, *components: object) -> int:
+    payload = "|".join([str(base_seed), *(str(component) for component in components)]).encode("utf-8")
+    return int.from_bytes(hashlib.blake2s(payload, digest_size=4).digest(), "big")
+
+
 def build_random_server_disjoint_mapping(
     datacenter: LeafSpineDatacenter,
     tenant_count: int,
@@ -38,7 +44,7 @@ def build_random_server_disjoint_mapping(
     rem = total_servers % tenant_count
     per_tenant_sizes = [base + (1 if idx < rem else 0) for idx in range(tenant_count)]
 
-    rng = random.Random(seed + tenant_count)
+    rng = random.Random(seed)
     rng.shuffle(all_servers)
 
     mapping: dict[int, dict[int, int]] = {}
@@ -68,9 +74,8 @@ def evaluate_mapping(
 def solve_with_heuristic(
     datacenter: LeafSpineDatacenter,
     tenant_mapping: dict[int, dict[int, int]],
-    time_limit: float,
 ) -> tuple[dict[int, dict[int, int]], float]:
-    solver = MappingHeuristicSolver(
+    solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         collective=COLLECTIVE,
@@ -78,7 +83,7 @@ def solve_with_heuristic(
         verbose=False,
     )
     start_time = time.time()
-    solver.solve(time_limit=time_limit)
+    solver.solve()
     runtime_seconds = time.time() - start_time
     return solver.get_X_mapping(), float(runtime_seconds)
 
@@ -88,6 +93,7 @@ def solve_with_ilp(
     tenant_mapping: dict[int, dict[int, int]],
     time_limit: float | None,
     verbose: bool,
+    warm_start_mode: str,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str]:
     solver = MappingILPSolver(
         datacenter,
@@ -99,6 +105,11 @@ def solve_with_ilp(
         enable_full_mip_start=False,
         enable_fixed_mapping_subproblem_start=False,
     )
+    if warm_start_mode == "mapping":
+        solver._apply_mapping_warm_start(tenant_mapping)
+    elif warm_start_mode == "simulator":
+        solver._apply_mapping_warm_start(tenant_mapping)
+        solver._apply_simulator_schedule_warm_start(tenant_mapping)
     start_time = time.time()
     try:
         solver.solve(time_limit=time_limit)
@@ -118,24 +129,49 @@ def normalize_mapping(mapping: dict[int, dict[int, int]] | None) -> dict[str, di
     }
 
 
+def denormalize_mapping(mapping: dict[str, dict[str, int]] | None) -> dict[int, dict[int, int]] | None:
+    if mapping is None:
+        return None
+    return {
+        int(tenant): {int(rank): int(server) for rank, server in rank_to_server.items()}
+        for tenant, rank_to_server in mapping.items()
+    }
+
+
+def load_replay_initial_mappings(path: Path) -> dict[int, dict[int, dict[int, int]]]:
+    payload = json.loads(path.read_text(encoding="utf-8"))
+    replay_cases: dict[int, dict[int, dict[int, int]]] = {}
+    for case in payload.get("results", []):
+        tenant_count = int(case["tenant_count"])
+        replay_mapping = denormalize_mapping(case.get("initial_mapping"))
+        if replay_mapping is None:
+            continue
+        replay_cases[tenant_count] = replay_mapping
+    return replay_cases
+
+
 def summarize_case(
     tenant_count: int,
     seed: int,
-    heuristic_time_limit: float,
     ilp_time_limit: float | None,
     ilp_verbose: bool,
+    ilp_warm_start_mode: str,
+    initial_mapping_override: dict[int, dict[int, int]] | None = None,
 ) -> dict[str, object]:
     datacenter = LeafSpineDatacenter(
         num_leaf=TOPOLOGY["num_leaf"],
         num_spine=TOPOLOGY["num_spine"],
         per_leaf_server=TOPOLOGY["per_leaf_server"],
     )
-    default_mapping = build_random_server_disjoint_mapping(datacenter, tenant_count, seed)
+    default_mapping = (
+        {tenant: dict(rank_to_server) for tenant, rank_to_server in initial_mapping_override.items()}
+        if initial_mapping_override is not None
+        else build_random_server_disjoint_mapping(datacenter, tenant_count, seed)
+    )
 
     heuristic_mapping, heuristic_runtime = solve_with_heuristic(
         datacenter,
         default_mapping,
-        time_limit=heuristic_time_limit,
     )
     heuristic_mk, heuristic_avg = evaluate_mapping(datacenter, heuristic_mapping)
 
@@ -144,6 +180,7 @@ def summarize_case(
         default_mapping,
         time_limit=ilp_time_limit,
         verbose=ilp_verbose,
+        warm_start_mode=ilp_warm_start_mode,
     )
     if ilp_mapping is not None:
         ilp_mk, ilp_avg = evaluate_mapping(datacenter, ilp_mapping)
@@ -164,6 +201,7 @@ def summarize_case(
             "runtime_seconds": ilp_runtime,
             "runtime_definition": "solver_only",
             "status": ilp_status,
+            "warm_start_mode": ilp_warm_start_mode,
             "mapping": normalize_mapping(ilp_mapping),
             "avg_jct": ilp_avg,
             "makespan": ilp_mk,
@@ -177,12 +215,6 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=20250511)
     parser.add_argument(
-        "--heuristic-time-limit",
-        type=float,
-        default=10.0,
-        help="Time limit in seconds for the heuristic solver.",
-    )
-    parser.add_argument(
         "--ilp-time-limit",
         type=float,
         default=None,
@@ -190,28 +222,43 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--ilp-verbose",
-        action="store_true",
+        action=argparse.BooleanOptionalAction,
+        default=True,
         help="Enable Gurobi solver logs for the ILP runs.",
+    )
+    parser.add_argument(
+        "--ilp-warm-start-mode",
+        choices=("none", "mapping", "simulator"),
+        default="mapping",
+        help="ILP warm-start mode: none, mapping-only partial start, or simulator-based full start.",
     )
     parser.add_argument(
         "--output",
         type=Path,
         default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/mapping_vs_ilp_single.json"),
     )
+    parser.add_argument(
+        "--replay-input",
+        type=Path,
+        default=None,
+        help="Optional JSON results file to replay exact initial_mapping cases from.",
+    )
     return parser.parse_args()
 
 
 def main() -> None:
     args = parse_args()
+    replay_cases = load_replay_initial_mappings(args.replay_input) if args.replay_input is not None else {}
     results = []
     for tenant_count in TENANT_COUNTS:
         print(f"=== tenant_count={tenant_count} ===")
         case_result = summarize_case(
             tenant_count=tenant_count,
-            seed=args.seed,
-            heuristic_time_limit=args.heuristic_time_limit,
+            seed=derive_seed(args.seed, "mapping_vs_ilp_single", tenant_count),
             ilp_time_limit=args.ilp_time_limit,
             ilp_verbose=args.ilp_verbose,
+            ilp_warm_start_mode=args.ilp_warm_start_mode,
+            initial_mapping_override=replay_cases.get(tenant_count),
         )
         results.append(case_result)
 
@@ -232,8 +279,9 @@ def main() -> None:
             "single_flow_size_bits": SINGLE_FLOW_SIZE_BITS,
             "tenant_counts": list(TENANT_COUNTS),
             "seed": args.seed,
-            "heuristic_time_limit": args.heuristic_time_limit,
             "ilp_time_limit": args.ilp_time_limit,
+            "ilp_warm_start_mode": args.ilp_warm_start_mode,
+            "replay_input": str(args.replay_input) if args.replay_input is not None else None,
             "ilp_pure": True,
             "runtime_definition": "solver_only",
         },

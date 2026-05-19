@@ -85,6 +85,7 @@ class MappingILPSolver:
         self.X = {}
         self.U = {}
         self.W = {}
+        self.Y = {}
         self.LinkMinRate = {}
         self.R = {}
         self.Z = {}
@@ -234,6 +235,40 @@ class MappingILPSolver:
             return memo[task_id]
 
         return max((depth(task["task_id"]) for task in tasks), default=0)
+
+    def _tenant_finish_lower_bounds_slots(self):
+        """Safe per-tenant lower bounds for horizon clipping.
+
+        These bounds intentionally ignore contention and sender-port serialization.
+        They only use the task DAG and the fastest possible per-slot task service,
+        so they cannot exclude a feasible integer solution.
+        """
+        if not self.data:
+            return {}
+        lower_bounds = {}
+        task_max_slot_send = self.data.get("task_max_slot_send", {})
+        task_total_volume = self.data.get("task_total_volume", {})
+        for tenant, tasks in self.data["tasks"].items():
+            min_task_slots = {}
+            preds_by_task = {}
+            for task in tasks:
+                task_id = task["task_id"]
+                max_slot_send = max(float(task_max_slot_send.get((tenant, task_id), 1.0)), 1e-12)
+                volume = float(task_total_volume.get((tenant, task_id), task.get("V", 0.0)))
+                min_task_slots[task_id] = max(1, int(math.ceil(volume / max_slot_send - 1e-12)))
+                preds_by_task[task_id] = [int(pred) for pred in task.get("preds", [])]
+
+            memo = {}
+
+            def finish_lb(task_id):
+                if task_id in memo:
+                    return memo[task_id]
+                pred_finish = max((finish_lb(pred) for pred in preds_by_task.get(task_id, [])), default=0)
+                memo[task_id] = pred_finish + min_task_slots.get(task_id, 1)
+                return memo[task_id]
+
+            lower_bounds[tenant] = max((finish_lb(task["task_id"]) for task in tasks), default=1)
+        return lower_bounds
 
     @staticmethod
     def _percentile(values, percentile):
@@ -388,13 +423,13 @@ class MappingILPSolver:
             )
             budget_slot = horizon_time_budget / max(target_slot_budget, 1)
             slot_duration = max(accuracy_slot, budget_slot, 1e-6)
-            # The task-time model assumes an active unfinished task has at least one
-            # bottleneck link saturated in each active slot. If the slot is coarser
-            # than the smallest task's isolated transmission time, a small task could
-            # not possibly saturate any link while active, which makes otherwise legal
-            # heterogeneous-payload instances infeasible. Cap the slot accordingly.
-            smallest_task_time = min_task_volume / max(min_capacity, 1e-12)
-            slot_duration = min(slot_duration, max(smallest_task_time, 1e-6))
+            # The task-time model uses integer active slots: every active slot must
+            # be capable of carrying a full-slot transmission on at least one
+            # feasible path. Cap by the fastest isolated task time, not by the
+            # global minimum link capacity, otherwise a small/fast task would need
+            # a fractional final slot to satisfy exact volume conservation.
+            fastest_task_time = min(isolated_task_times, default=(min_task_volume / max(min_capacity, 1e-12)))
+            slot_duration = min(slot_duration, max(fastest_task_time, 1e-6))
 
         release_gates = {}
         total_gap_slots_by_tenant = {}
@@ -443,6 +478,23 @@ class MappingILPSolver:
             }
             for tenant in tenants
         }
+        task_max_slot_send = {}
+        for tenant in tenants:
+            candidate_servers = servers[tenant]
+            for task in tasks_by_tenant[tenant]:
+                max_rate = 0.0
+                for src_server in candidate_servers:
+                    for dst_server in candidate_servers:
+                        if src_server == dst_server:
+                            continue
+                        edges = self.datacenter.ECMP_edge_set.get((src_server, dst_server))
+                        if not edges:
+                            continue
+                        bottleneck_rate = min((capacities[edge] for edge in edges if edge in capacities), default=0.0)
+                        max_rate = max(max_rate, float(bottleneck_rate))
+                if max_rate <= 0.0:
+                    max_rate = min_capacity
+                task_max_slot_send[(tenant, task["task_id"])] = max_rate * slot_duration
 
         return {
             "M": tenants,
@@ -459,6 +511,7 @@ class MappingILPSolver:
             "max_task_count": max((len(tasks_by_tenant[tenant]) for tenant in tenants), default=0),
             "task_total_volume": task_total_volume,
             "task_volume_representative": task_volume_representative,
+            "task_max_slot_send": task_max_slot_send,
             "min_send_unit": min_send_unit,
             "sender_tasks": sender_task_ids,
             "release_gates": release_gates,
@@ -471,6 +524,7 @@ class MappingILPSolver:
         self.X = {}
         self.U = {}
         self.W = {}
+        self.Y = {}
         self.LinkMinRate = {}
         self.R = {}
         self.Z = {}
@@ -587,6 +641,26 @@ class MappingILPSolver:
                     gp.quicksum(flow_vars) == 1,
                     name=f"U_onepair_{tenant}_{task_id}",
                 )
+                for src_server in candidate_servers:
+                    self.model.addConstr(
+                        gp.quicksum(
+                            self.U[(tenant, task_id, src_server, dst_server)]
+                            for dst_server in candidate_servers
+                            if dst_server != src_server
+                        )
+                        == self.X[(tenant, logical_src, src_server)],
+                        name=f"U_src_marginal_{tenant}_{task_id}_{src_server}",
+                    )
+                for dst_server in candidate_servers:
+                    self.model.addConstr(
+                        gp.quicksum(
+                            self.U[(tenant, task_id, src_server, dst_server)]
+                            for src_server in candidate_servers
+                            if src_server != dst_server
+                        )
+                        == self.X[(tenant, logical_dst, dst_server)],
+                        name=f"U_dst_marginal_{tenant}_{task_id}_{dst_server}",
+                    )
 
     def _add_task_time_model(self):
         tenants = self.data["M"]
@@ -710,15 +784,39 @@ class MappingILPSolver:
                             lb=0.0,
                             name=f"F_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
+                        self.Y[(tenant, task_id, link, t)] = self.model.addVar(
+                            vtype=GRB.BINARY,
+                            name=f"Y_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                        )
                         self.Q_bottleneck[(tenant, task_id, link, t)] = self.model.addVar(
                             vtype=GRB.BINARY,
                             name=f"Q_bn_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
                         self.model.addConstr(
-                            self.Q_bottleneck[(tenant, task_id, link, t)]
+                            self.Y[(tenant, task_id, link, t)]
                             <= self.W[(tenant, task_id, link)],
-                            name=f"Q_le_W_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                            name=f"Y_le_W_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.Y[(tenant, task_id, link, t)]
+                            <= self.S_active[(tenant, task_id, t)],
+                            name=f"Y_le_S_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.Y[(tenant, task_id, link, t)]
+                            >= self.W[(tenant, task_id, link)] + self.S_active[(tenant, task_id, t)] - 1,
+                            name=f"Y_ge_WS_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.Q_bottleneck[(tenant, task_id, link, t)]
+                            <= self.Y[(tenant, task_id, link, t)],
+                            name=f"Q_le_Y_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.Q_bottleneck[(tenant, task_id, link, t)]
+                            <= self.D_full[(tenant, task_id, t)],
+                            name=f"Q_le_D_full_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
                         self.model.addConstr(
@@ -849,15 +947,21 @@ class MappingILPSolver:
                         self.D_full[(tenant, task_id, t)] <= self.S_active[(tenant, task_id, t)],
                         name=f"D_full_le_S_{tenant}_{task_id}_{t}",
                     )
-                    self.model.addConstr(
-                        self.D_full[(tenant, task_id, t)] <= 1 - self.C[(tenant, task_id, t)],
-                        name=f"D_full_le_not_done_{tenant}_{task_id}_{t}",
-                    )
-                    self.model.addConstr(
-                        self.D_full[(tenant, task_id, t)]
-                        >= self.S_active[(tenant, task_id, t)] - self.C[(tenant, task_id, t)],
-                        name=f"D_full_ge_active_not_done_{tenant}_{task_id}_{t}",
-                    )
+                    if t == 0:
+                        self.model.addConstr(
+                            self.D_full[(tenant, task_id, t)] >= self.S_active[(tenant, task_id, t)],
+                            name=f"D_full_ge_active_slot_start_{tenant}_{task_id}_{t}",
+                        )
+                    else:
+                        self.model.addConstr(
+                            self.D_full[(tenant, task_id, t)] <= 1 - self.C[(tenant, task_id, t - 1)],
+                            name=f"D_full_le_not_done_before_{tenant}_{task_id}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.D_full[(tenant, task_id, t)]
+                            >= self.S_active[(tenant, task_id, t)] - self.C[(tenant, task_id, t - 1)],
+                            name=f"D_full_ge_active_not_done_before_{tenant}_{task_id}_{t}",
+                        )
 
                 for t in horizon:
                     self.model.addConstr(
@@ -867,8 +971,44 @@ class MappingILPSolver:
                     )
                     self.model.addConstr(
                         self.R[(tenant, task_id, t)]
+                        <= self.data["task_max_slot_send"][(tenant, task_id)] * self.S_active[(tenant, task_id, t)],
+                        name=f"R_fastest_path_gate_{tenant}_{task_id}_{t}",
+                    )
+                    self.model.addConstr(
+                        self.R[(tenant, task_id, t)]
                         >= min_send_unit * self.S_active[(tenant, task_id, t)],
                         name=f"R_active_lb_{tenant}_{task_id}_{t}",
+                    )
+
+                task_total_volume = self.data["task_total_volume"][(tenant, task_id)]
+                task_max_slot_send = max(self.data["task_max_slot_send"][(tenant, task_id)], 1e-12)
+                min_active_slots = int(math.ceil(task_total_volume / task_max_slot_send - 1e-12))
+                self.model.addConstr(
+                    gp.quicksum(self.S_active[(tenant, task_id, t)] for t in horizon)
+                    >= task_total_volume / task_max_slot_send,
+                    name=f"S_min_active_slots_{tenant}_{task_id}",
+                )
+                for t in horizon:
+                    if t < min_active_slots - 1:
+                        self.model.addConstr(
+                            self.C[(tenant, task_id, t)] == 0,
+                            name=f"C_earliest_finish_{tenant}_{task_id}_{t}",
+                        )
+                self.model.addConstr(
+                    gp.quicksum(self.R[(tenant, task_id, t)] for t in horizon) == task_total_volume,
+                    name=f"R_task_volume_{tenant}_{task_id}",
+                )
+                cumulative_sent = gp.LinExpr()
+                for t in horizon:
+                    cumulative_sent += self.R[(tenant, task_id, t)]
+                    self.model.addConstr(
+                        cumulative_sent >= task_total_volume * self.C[(tenant, task_id, t)],
+                        name=f"R_complete_cut_{tenant}_{task_id}_{t}",
+                    )
+                    self.model.addConstr(
+                        cumulative_sent
+                        <= task_total_volume - min_send_unit * (1 - self.C[(tenant, task_id, t)]),
+                        name=f"R_incomplete_remaining_cut_{tenant}_{task_id}_{t}",
                     )
 
                 self.task_finish[(tenant, task_id)] = 1 + gp.quicksum(
@@ -990,11 +1130,11 @@ class MappingILPSolver:
                         task_id = task["task_id"]
                         w_key = (tenant, task_id, link)
                         if w_key in self.W:
+                            y_key = (tenant, task_id, link, t)
                             self.model.addConstr(
                                 self.R[(tenant, task_id, t)]
                                 >= self.LinkMinRate[(link, t)]
-                                - max_rate_big_m * (1 - self.W[w_key])
-                                - max_rate_big_m * (1 - self.S_active[(tenant, task_id, t)]),
+                                - max_rate_big_m * (1 - self.Y[y_key]),
                                 name=f"bn_minrate_lb_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                             )
 
@@ -1032,10 +1172,17 @@ class MappingILPSolver:
         self.model.setObjectiveN(avg_completion, index=0, priority=2, name="avg_jct")
         self.model.setObjectiveN(self.T_max, index=1, priority=1, name="makespan")
 
+    def _clear_mip_start(self):
+        for var in self.model.getVars():
+            var.Start = GRB.UNDEFINED
+        self.model.update()
+
     def _apply_mapping_warm_start(self, mapping):
         if not mapping:
             return
         mapping = self._canonicalize_ring_mapping(mapping)
+        if not self._mapping_is_valid_permutation(mapping):
+            return
         self.warm_start_mapping = {
             tenant: dict(rank_to_server)
             for tenant, rank_to_server in mapping.items()
@@ -1060,6 +1207,8 @@ class MappingILPSolver:
         if not mapping:
             return
         mapping = self._canonicalize_ring_mapping(mapping)
+        if not self._mapping_is_valid_permutation(mapping):
+            return
         self.warm_start_mapping = {
             tenant: dict(rank_to_server)
             for tenant, rank_to_server in mapping.items()
@@ -1084,16 +1233,54 @@ class MappingILPSolver:
             var.VarHintPri = 10
         self.model.update()
 
+    def _mip_start_has_valid_mapping(self):
+        self.model.update()
+        has_any_x_start = False
+        for tenant in self.data["M"]:
+            for rank in self.data["R"][tenant]:
+                total = 0.0
+                for server in self.data["S"][tenant]:
+                    value = self.X[(tenant, rank, server)].Start
+                    if abs(value) > 1e50:
+                        return False
+                    has_any_x_start = True
+                    total += float(value)
+                if abs(total - 1.0) > 1e-6:
+                    return False
+            for server in self.data["S"][tenant]:
+                total = 0.0
+                for rank in self.data["R"][tenant]:
+                    value = self.X[(tenant, rank, server)].Start
+                    if abs(value) > 1e50:
+                        return False
+                    has_any_x_start = True
+                    total += float(value)
+                if abs(total - 1.0) > 1e-6:
+                    return False
+        return has_any_x_start
+
     def _canonicalize_ring_mapping(self, mapping):
-        canonical = {
-            tenant: dict(rank_to_server)
-            for tenant, rank_to_server in mapping.items()
-        }
+        canonical = {}
+        for tenant in self.data["M"]:
+            raw_rank_to_server = mapping.get(tenant)
+            if raw_rank_to_server is None:
+                raw_rank_to_server = mapping.get(str(tenant), {})
+            normalized_rank_to_server = {}
+            for rank in self.data["R"][tenant]:
+                server = raw_rank_to_server.get(rank)
+                if server is None:
+                    server = raw_rank_to_server.get(str(rank))
+                if server is not None:
+                    normalized_rank_to_server[int(rank)] = int(server)
+            canonical[int(tenant)] = normalized_rank_to_server
+
         for tenant, rank_to_server in canonical.items():
             if not self._tenant_has_ring_rotation_symmetry(tenant):
                 continue
             tenant_ranks = sorted(self.data["R"][tenant])
             if not tenant_ranks:
+                continue
+            if any(rank not in rank_to_server for rank in tenant_ranks):
                 continue
             anchor_rank = tenant_ranks[0]
             candidate_servers = sorted(self.data["S"][tenant])
@@ -1110,6 +1297,18 @@ class MappingILPSolver:
                 for idx, rank in enumerate(tenant_ranks)
             }
         return canonical
+
+    def _mapping_is_valid_permutation(self, mapping):
+        for tenant in self.data["M"]:
+            tenant_mapping = mapping.get(tenant, {})
+            expected_ranks = set(int(rank) for rank in self.data["R"][tenant])
+            expected_servers = sorted(int(server) for server in self.data["S"][tenant])
+            if set(int(rank) for rank in tenant_mapping) != expected_ranks:
+                return False
+            actual_servers = sorted(int(server) for server in tenant_mapping.values())
+            if actual_servers != expected_servers:
+                return False
+        return True
 
     def _apply_serial_schedule_warm_start(self, mapping):
         if not mapping:
@@ -1287,7 +1486,7 @@ class MappingILPSolver:
                         ready = 1.0 if t <= finish_index and released else 0.0
                     else:
                         ready = 1.0 if t <= finish_index else 0.0
-                    unfinished = 1.0 if (start_slot <= t < finish_index) else 0.0
+                    unfinished = 1.0 if (start_slot <= t <= finish_index) else 0.0
                     send_amount = sends[t - start_slot] if 0 <= (t - start_slot) < len(sends) else 0.0
 
                     if (tenant, task_id, t) in self.S_active:
@@ -1536,12 +1735,29 @@ class MappingILPSolver:
         ]
         self.full_warm_start_finish_sum_slots = sum(tenant_finish_slots)
         if tenant_finish_slots:
-            # For the primary objective, any better average-JCT solution must have
-            # total tenant finish slots below this incumbent sum. Keeping this full
-            # sum as the horizon is much safer than clipping to incumbent makespan.
+            incumbent_sum = float(self.full_warm_start_finish_sum_slots)
+            incumbent_makespan = float(max(tenant_finish_slots))
+            tenant_lower_bounds = self._tenant_finish_lower_bounds_slots()
+            if tenant_lower_bounds:
+                tightened_horizon = max(
+                    incumbent_sum
+                    - sum(
+                        float(bound)
+                        for other_tenant, bound in tenant_lower_bounds.items()
+                        if other_tenant != tenant
+                    )
+                    for tenant in self.data["M"]
+                )
+            else:
+                tightened_horizon = incumbent_sum
+            # Avg-JCT is the primary objective. Any solution beating the incumbent
+            # has total finish slots no larger than incumbent_sum, so tenant i
+            # cannot finish after incumbent_sum minus the lower bounds of all
+            # other tenants. Keep the incumbent makespan as a floor so the full
+            # warm start remains feasible after rebuilding with the clipped horizon.
             self.full_warm_start_horizon_slots = max(
                 4,
-                int(math.ceil(self.full_warm_start_finish_sum_slots - 1e-9)),
+                int(math.ceil(max(incumbent_makespan, tightened_horizon) - 1e-9)),
             )
         if other.T_max is not None:
             self.full_warm_start_t_max_slots = float(other.T_max.X)
@@ -1618,6 +1834,8 @@ class MappingILPSolver:
             return False
 
         fixed_mapping = self._canonicalize_ring_mapping(mapping)
+        if not self._mapping_is_valid_permutation(fixed_mapping):
+            return False
         subsolver = MappingMILPSolver(
             self.datacenter,
             self.tenant_mapping,
@@ -1778,6 +1996,12 @@ class MappingILPSolver:
         self.model.Params.IntegralityFocus = 1
         self.model.Params.Threads = 8
         self.model.Params.ConcurrentMIP = 2
+        if not self._mip_start_has_valid_mapping():
+            if self.verbose:
+                print("Discarding invalid MIP start: X does not satisfy permutation constraints.")
+            self._clear_mip_start()
+            if self.warm_start_mapping is not None:
+                self._apply_mapping_hint(self.warm_start_mapping)
         self.model.optimize()
 
         status = self.model.Status

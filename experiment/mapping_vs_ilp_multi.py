@@ -154,11 +154,15 @@ def solve_with_ilp(
                 )
             else:
                 solver = build_solver()
-            solver._apply_mapping_warm_start(seed_mapping)
+            solver._clear_mip_start()
             solver._apply_full_warm_start_values(start_values)
+            # Re-apply X/U last so a full-start vector can never corrupt the
+            # tenant-server permutation constraints.
+            solver._apply_mapping_warm_start(seed_mapping)
         else:
             solver = build_solver()
-            solver._apply_mapping_warm_start(seed_mapping)
+            solver._clear_mip_start()
+            solver._apply_mapping_hint(seed_mapping)
     start_time = time.time()
     try:
         solver.solve(time_limit=time_limit)

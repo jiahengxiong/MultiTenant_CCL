@@ -14,7 +14,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from multitenant.config import BITS_PER_MB
 from multitenant.simulator import simulate_collective_program
-from multitenant.solvers import MappingHybridHeuristicSolver, MappingILPSolver
+from multitenant.solvers import MappingHeuristicSolver, MappingILPSolver
 from multitenant.topology import LeafSpineDatacenter
 
 
@@ -93,15 +93,16 @@ def solve_with_heuristic(
     datacenter: LeafSpineDatacenter,
     tenant_mapping: dict[int, dict[int, int]],
     tenant_collective_programs: dict[int, list[dict[str, object]]],
+    time_limit: float,
 ) -> tuple[dict[int, dict[int, int]], float]:
-    solver = MappingHybridHeuristicSolver(
+    solver = MappingHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_programs=tenant_collective_programs,
         verbose=False,
     )
     start_time = time.time()
-    solver.solve()
+    solver.solve(time_limit=time_limit)
     runtime_seconds = time.time() - start_time
     return solver.get_X_mapping(), float(runtime_seconds)
 
@@ -113,21 +114,51 @@ def solve_with_ilp(
     time_limit: float | None,
     verbose: bool,
     warm_start_mode: str,
+    warm_start_mapping: dict[int, dict[int, int]] | None = None,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str]:
-    solver = MappingILPSolver(
-        datacenter,
-        tenant_mapping=tenant_mapping,
-        verbose=verbose,
-        tenant_collective_programs=tenant_collective_programs,
-        enable_heuristic_warm_start=False,
-        enable_full_mip_start=False,
-        enable_fixed_mapping_subproblem_start=False,
+    def build_solver(slot_duration=None, horizon_slots=None):
+        return MappingILPSolver(
+            datacenter,
+            tenant_mapping=tenant_mapping,
+            verbose=verbose,
+            tenant_collective_programs=tenant_collective_programs,
+            slot_duration=slot_duration,
+            horizon_slots=horizon_slots,
+            enable_heuristic_warm_start=False,
+            enable_full_mip_start=False,
+            enable_fixed_mapping_subproblem_start=False,
     )
-    if warm_start_mode == "mapping":
-        solver._apply_mapping_warm_start(tenant_mapping)
-    elif warm_start_mode == "simulator":
-        solver._apply_mapping_warm_start(tenant_mapping)
-        solver._apply_simulator_schedule_warm_start(tenant_mapping)
+
+    solver = build_solver()
+    if warm_start_mode in {"mapping", "heuristic", "simulator"}:
+        seed_mapping = warm_start_mapping if warm_start_mode == "heuristic" else tenant_mapping
+        if seed_mapping is None:
+            seed_mapping = tenant_mapping
+        if solver._apply_fixed_mapping_full_warm_start(seed_mapping):
+            compact_horizon = solver.full_warm_start_horizon_slots
+            start_values = solver.full_warm_start_values
+            slot_duration = solver.full_warm_start_slot_duration
+            if (
+                compact_horizon is not None
+                and start_values
+                and compact_horizon < int(solver.data["num_slots"])
+            ):
+                if verbose:
+                    print(
+                        "Compacting ILP horizon from full warm start: "
+                        f"{solver.data['num_slots']} -> {compact_horizon} slots"
+                    )
+                solver = build_solver(
+                    slot_duration=slot_duration,
+                    horizon_slots=compact_horizon,
+                )
+            else:
+                solver = build_solver()
+            solver._apply_mapping_warm_start(seed_mapping)
+            solver._apply_full_warm_start_values(start_values)
+        else:
+            solver = build_solver()
+            solver._apply_mapping_warm_start(seed_mapping)
     start_time = time.time()
     try:
         solver.solve(time_limit=time_limit)
@@ -150,6 +181,7 @@ def normalize_mapping(mapping: dict[int, dict[int, int]] | None) -> dict[str, di
 def summarize_case(
     tenant_count: int,
     seed: int,
+    heuristic_time_limit: float,
     ilp_time_limit: float | None,
     ilp_verbose: bool,
     ilp_warm_start_mode: str,
@@ -166,6 +198,7 @@ def summarize_case(
         datacenter,
         default_mapping,
         tenant_collective_programs,
+        time_limit=heuristic_time_limit,
     )
     heuristic_mk, heuristic_avg = evaluate_mapping(datacenter, heuristic_mapping, tenant_collective_programs)
 
@@ -176,6 +209,7 @@ def summarize_case(
         time_limit=ilp_time_limit,
         verbose=ilp_verbose,
         warm_start_mode=ilp_warm_start_mode,
+        warm_start_mapping=heuristic_mapping,
     )
     if ilp_mapping is not None:
         ilp_mk, ilp_avg = evaluate_mapping(datacenter, ilp_mapping, tenant_collective_programs)
@@ -211,10 +245,10 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--seed", type=int, default=20250511)
     parser.add_argument(
-        "--ilp-time-limit",
+        "--heuristic-time-limit",
         type=float,
-        default=None,
-        help="Optional time limit in seconds for the pure MILP solver. Default: no time limit.",
+        default=10.0,
+        help="Time limit in seconds for the heuristic solver.",
     )
     parser.add_argument(
         "--ilp-verbose",
@@ -224,9 +258,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--ilp-warm-start-mode",
-        choices=("none", "mapping", "simulator"),
-        default="mapping",
-        help="ILP warm-start mode: none, mapping-only partial start, or simulator-based full start.",
+        choices=("none", "mapping", "heuristic", "simulator"),
+        default="heuristic",
+        help="ILP warm-start mode: none, default full start, heuristic full start, or simulator-based full start.",
     )
     parser.add_argument(
         "--output",
@@ -244,7 +278,8 @@ def main() -> None:
         case_result = summarize_case(
             tenant_count=tenant_count,
             seed=derive_seed(args.seed, "mapping_vs_ilp_multi", tenant_count),
-            ilp_time_limit=args.ilp_time_limit,
+            heuristic_time_limit=args.heuristic_time_limit,
+            ilp_time_limit=None,
             ilp_verbose=args.ilp_verbose,
             ilp_warm_start_mode=args.ilp_warm_start_mode,
         )
@@ -269,7 +304,8 @@ def main() -> None:
             "gap_after_seconds": GAP_AFTER_SECONDS,
             "tenant_counts": list(TENANT_COUNTS),
             "seed": args.seed,
-            "ilp_time_limit": args.ilp_time_limit,
+            "heuristic_time_limit": args.heuristic_time_limit,
+            "ilp_time_limit": None,
             "ilp_warm_start_mode": args.ilp_warm_start_mode,
             "ilp_pure": True,
             "runtime_definition": "solver_only",

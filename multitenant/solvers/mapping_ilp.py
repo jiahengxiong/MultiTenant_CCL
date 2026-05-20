@@ -85,7 +85,6 @@ class MappingILPSolver:
         self.X = {}
         self.U = {}
         self.W = {}
-        self.Y = {}
         self.LinkMinRate = {}
         self.R = {}
         self.Z = {}
@@ -103,12 +102,8 @@ class MappingILPSolver:
         self.final_avg_jct = None
         self.final_mapping = None
         self.warm_start_mapping = None
+        self.warm_start_schedule_horizon_bound = None
         self.warm_start_runtime = 0.0
-        self.full_warm_start_values = None
-        self.full_warm_start_horizon_slots = None
-        self.full_warm_start_slot_duration = None
-        self.full_warm_start_t_max_slots = None
-        self.full_warm_start_finish_sum_slots = None
         self._build(name=name)
 
     def _derive_tasks(self):
@@ -235,40 +230,6 @@ class MappingILPSolver:
             return memo[task_id]
 
         return max((depth(task["task_id"]) for task in tasks), default=0)
-
-    def _tenant_finish_lower_bounds_slots(self):
-        """Safe per-tenant lower bounds for horizon clipping.
-
-        These bounds intentionally ignore contention and sender-port serialization.
-        They only use the task DAG and the fastest possible per-slot task service,
-        so they cannot exclude a feasible integer solution.
-        """
-        if not self.data:
-            return {}
-        lower_bounds = {}
-        task_max_slot_send = self.data.get("task_max_slot_send", {})
-        task_total_volume = self.data.get("task_total_volume", {})
-        for tenant, tasks in self.data["tasks"].items():
-            min_task_slots = {}
-            preds_by_task = {}
-            for task in tasks:
-                task_id = task["task_id"]
-                max_slot_send = max(float(task_max_slot_send.get((tenant, task_id), 1.0)), 1e-12)
-                volume = float(task_total_volume.get((tenant, task_id), task.get("V", 0.0)))
-                min_task_slots[task_id] = max(1, int(math.ceil(volume / max_slot_send - 1e-12)))
-                preds_by_task[task_id] = [int(pred) for pred in task.get("preds", [])]
-
-            memo = {}
-
-            def finish_lb(task_id):
-                if task_id in memo:
-                    return memo[task_id]
-                pred_finish = max((finish_lb(pred) for pred in preds_by_task.get(task_id, [])), default=0)
-                memo[task_id] = pred_finish + min_task_slots.get(task_id, 1)
-                return memo[task_id]
-
-            lower_bounds[tenant] = max((finish_lb(task["task_id"]) for task in tasks), default=1)
-        return lower_bounds
 
     @staticmethod
     def _percentile(values, percentile):
@@ -423,13 +384,13 @@ class MappingILPSolver:
             )
             budget_slot = horizon_time_budget / max(target_slot_budget, 1)
             slot_duration = max(accuracy_slot, budget_slot, 1e-6)
-            # The task-time model uses integer active slots: every active slot must
-            # be capable of carrying a full-slot transmission on at least one
-            # feasible path. Cap by the fastest isolated task time, not by the
-            # global minimum link capacity, otherwise a small/fast task would need
-            # a fractional final slot to satisfy exact volume conservation.
-            fastest_task_time = min(isolated_task_times, default=(min_task_volume / max(min_capacity, 1e-12)))
-            slot_duration = min(slot_duration, max(fastest_task_time, 1e-6))
+            # The task-time model assumes an active unfinished task has at least one
+            # bottleneck link saturated in each active slot. If the slot is coarser
+            # than the smallest task's isolated transmission time, a small task could
+            # not possibly saturate any link while active, which makes otherwise legal
+            # heterogeneous-payload instances infeasible. Cap the slot accordingly.
+            smallest_task_time = min_task_volume / max(min_capacity, 1e-12)
+            slot_duration = min(slot_duration, max(smallest_task_time, 1e-6))
 
         release_gates = {}
         total_gap_slots_by_tenant = {}
@@ -478,23 +439,6 @@ class MappingILPSolver:
             }
             for tenant in tenants
         }
-        task_max_slot_send = {}
-        for tenant in tenants:
-            candidate_servers = servers[tenant]
-            for task in tasks_by_tenant[tenant]:
-                max_rate = 0.0
-                for src_server in candidate_servers:
-                    for dst_server in candidate_servers:
-                        if src_server == dst_server:
-                            continue
-                        edges = self.datacenter.ECMP_edge_set.get((src_server, dst_server))
-                        if not edges:
-                            continue
-                        bottleneck_rate = min((capacities[edge] for edge in edges if edge in capacities), default=0.0)
-                        max_rate = max(max_rate, float(bottleneck_rate))
-                if max_rate <= 0.0:
-                    max_rate = min_capacity
-                task_max_slot_send[(tenant, task["task_id"])] = max_rate * slot_duration
 
         return {
             "M": tenants,
@@ -505,13 +449,13 @@ class MappingILPSolver:
             "L": links,
             "cap": capacities,
             "path_edges": self.datacenter.ECMP_edge_set,
+            "path_ordered_edges": self.datacenter.ECMP_table,
             "slot_duration": slot_duration,
             "Horizon": list(range(horizon_slots)),
             "num_slots": horizon_slots,
             "max_task_count": max((len(tasks_by_tenant[tenant]) for tenant in tenants), default=0),
             "task_total_volume": task_total_volume,
             "task_volume_representative": task_volume_representative,
-            "task_max_slot_send": task_max_slot_send,
             "min_send_unit": min_send_unit,
             "sender_tasks": sender_task_ids,
             "release_gates": release_gates,
@@ -524,11 +468,11 @@ class MappingILPSolver:
         self.X = {}
         self.U = {}
         self.W = {}
-        self.Y = {}
         self.LinkMinRate = {}
         self.R = {}
         self.Z = {}
         self.S_active = {}
+        self.P_active = {}
         self.D_full = {}
         self.Q_bottleneck = {}
         self.F = {}
@@ -536,6 +480,7 @@ class MappingILPSolver:
         self.task_finish = {}
         self.tenant_finish = {}
         self.T_max = None
+        self.warm_start_schedule_horizon_bound = None
 
         self.data = self._build_data()
 
@@ -585,16 +530,22 @@ class MappingILPSolver:
                     name=f"srv_one_{tenant}_{server}",
                 )
 
+        # Ring-style collectives are invariant to a cyclic relabeling of logical ranks, and
+        # often also to reversal of the cycle under symmetric equal-size communication. Fixing
+        # one anchor server to rank 0 and ordering the two neighbors removes this purely
+        # combinational symmetry without changing the physical solutions we can represent.
         for tenant in tenants:
+            tenant_ranks = list(ranks[tenant])
+            tenant_servers = list(servers[tenant])
             if not self._tenant_has_ring_rotation_symmetry(tenant):
                 continue
-            if not ranks[tenant] or not servers[tenant]:
+            if not tenant_ranks or not tenant_servers:
                 continue
-            anchor_rank = ranks[tenant][0]
-            anchor_server = servers[tenant][0]
+            anchor_server = min(tenant_servers)
+            anchor_rank = min(tenant_ranks)
             self.model.addConstr(
                 self.X[(tenant, anchor_rank, anchor_server)] == 1,
-                name=f"ring_anchor_{tenant}_{anchor_rank}_{anchor_server}",
+                name=f"ring_anchor_{tenant}",
             )
 
     def _add_U_and_endpoint_constraints(self):
@@ -641,26 +592,6 @@ class MappingILPSolver:
                     gp.quicksum(flow_vars) == 1,
                     name=f"U_onepair_{tenant}_{task_id}",
                 )
-                for src_server in candidate_servers:
-                    self.model.addConstr(
-                        gp.quicksum(
-                            self.U[(tenant, task_id, src_server, dst_server)]
-                            for dst_server in candidate_servers
-                            if dst_server != src_server
-                        )
-                        == self.X[(tenant, logical_src, src_server)],
-                        name=f"U_src_marginal_{tenant}_{task_id}_{src_server}",
-                    )
-                for dst_server in candidate_servers:
-                    self.model.addConstr(
-                        gp.quicksum(
-                            self.U[(tenant, task_id, src_server, dst_server)]
-                            for src_server in candidate_servers
-                            if src_server != dst_server
-                        )
-                        == self.X[(tenant, logical_dst, dst_server)],
-                        name=f"U_dst_marginal_{tenant}_{task_id}_{dst_server}",
-                    )
 
     def _add_task_time_model(self):
         tenants = self.data["M"]
@@ -669,6 +600,7 @@ class MappingILPSolver:
         capacities = self.data["cap"]
         tasks_by_tenant = self.data["tasks"]
         path_edges = self.data["path_edges"]
+        path_ordered_edges = self.data["path_ordered_edges"]
         horizon = self.data["Horizon"]
         num_slots = self.data["num_slots"]
         slot_duration = self.data["slot_duration"]
@@ -688,8 +620,11 @@ class MappingILPSolver:
             }
             for tenant in tenants
         }
-        sender_port_usage_terms = {
-            tenant: defaultdict(lambda: defaultdict(list))
+        first_hop_u_vars = {
+            tenant: {
+                task["task_id"]: defaultdict(list)
+                for task in tasks_by_tenant[tenant]
+            }
             for tenant in tenants
         }
 
@@ -709,10 +644,10 @@ class MappingILPSolver:
                         edges = path_edges.get((src_server, dst_server))
                         if edges is None:
                             continue
+                        ordered_edges = path_ordered_edges.get((src_server, dst_server), [])
+                        if ordered_edges:
+                            first_hop_u_vars[tenant][task_id][ordered_edges[0]].append(u_var)
 
-                        first_hops = [tuple(edge) for edge in edges if int(edge[0]) == int(src_server)]
-                        for first_hop in first_hops:
-                            sender_port_usage_terms[tenant][task_id][first_hop].append(u_var)
                         for link in edges:
                             if link not in capacities:
                                 continue
@@ -733,15 +668,9 @@ class MappingILPSolver:
             default=0.0,
         )
         release_time_big_m += max_gap_after_s + float(slot_duration)
+
         for tenant in tenants:
             task_ids = [task["task_id"] for task in tasks_by_tenant[tenant]]
-            sender_port_use = {
-                task_id: {
-                    port: gp.quicksum(terms)
-                    for port, terms in sender_port_usage_terms[tenant][task_id].items()
-                }
-                for task_id in task_ids
-            }
             for task_id in task_ids:
                 task = task_lookup[tenant][task_id]
                 preds = list(task["preds"])
@@ -768,6 +697,31 @@ class MappingILPSolver:
                         name=f"C_{tenant}_{task_id}_{t}",
                     )
 
+                task_first_hop_exprs = {
+                    port: gp.quicksum(u_vars)
+                    for port, u_vars in first_hop_u_vars[tenant][task_id].items()
+                }
+                for port, port_expr in task_first_hop_exprs.items():
+                    for t in horizon:
+                        self.P_active[(tenant, task_id, port, t)] = self.model.addVar(
+                            vtype=GRB.BINARY,
+                            name=f"P_active_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.P_active[(tenant, task_id, port, t)]
+                            <= self.S_active[(tenant, task_id, t)],
+                            name=f"P_le_S_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.P_active[(tenant, task_id, port, t)] <= port_expr,
+                            name=f"P_le_port_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
+                        )
+                        self.model.addConstr(
+                            self.P_active[(tenant, task_id, port, t)]
+                            >= self.S_active[(tenant, task_id, t)] + port_expr - 1,
+                            name=f"P_ge_S_port_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
+                        )
+
                 for link in links:
                     u_vars = usage_u_vars[tenant][task_id][link]
                     if not u_vars:
@@ -784,39 +738,15 @@ class MappingILPSolver:
                             lb=0.0,
                             name=f"F_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
-                        self.Y[(tenant, task_id, link, t)] = self.model.addVar(
-                            vtype=GRB.BINARY,
-                            name=f"Y_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
-                        )
                         self.Q_bottleneck[(tenant, task_id, link, t)] = self.model.addVar(
                             vtype=GRB.BINARY,
                             name=f"Q_bn_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
                         self.model.addConstr(
-                            self.Y[(tenant, task_id, link, t)]
+                            self.Q_bottleneck[(tenant, task_id, link, t)]
                             <= self.W[(tenant, task_id, link)],
-                            name=f"Y_le_W_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
-                        )
-                        self.model.addConstr(
-                            self.Y[(tenant, task_id, link, t)]
-                            <= self.S_active[(tenant, task_id, t)],
-                            name=f"Y_le_S_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
-                        )
-                        self.model.addConstr(
-                            self.Y[(tenant, task_id, link, t)]
-                            >= self.W[(tenant, task_id, link)] + self.S_active[(tenant, task_id, t)] - 1,
-                            name=f"Y_ge_WS_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
-                        )
-                        self.model.addConstr(
-                            self.Q_bottleneck[(tenant, task_id, link, t)]
-                            <= self.Y[(tenant, task_id, link, t)],
-                            name=f"Q_le_Y_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
-                        )
-                        self.model.addConstr(
-                            self.Q_bottleneck[(tenant, task_id, link, t)]
-                            <= self.D_full[(tenant, task_id, t)],
-                            name=f"Q_le_D_full_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
+                            name=f"Q_le_W_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
                         self.model.addConstr(
@@ -947,21 +877,15 @@ class MappingILPSolver:
                         self.D_full[(tenant, task_id, t)] <= self.S_active[(tenant, task_id, t)],
                         name=f"D_full_le_S_{tenant}_{task_id}_{t}",
                     )
-                    if t == 0:
-                        self.model.addConstr(
-                            self.D_full[(tenant, task_id, t)] >= self.S_active[(tenant, task_id, t)],
-                            name=f"D_full_ge_active_slot_start_{tenant}_{task_id}_{t}",
-                        )
-                    else:
-                        self.model.addConstr(
-                            self.D_full[(tenant, task_id, t)] <= 1 - self.C[(tenant, task_id, t - 1)],
-                            name=f"D_full_le_not_done_before_{tenant}_{task_id}_{t}",
-                        )
-                        self.model.addConstr(
-                            self.D_full[(tenant, task_id, t)]
-                            >= self.S_active[(tenant, task_id, t)] - self.C[(tenant, task_id, t - 1)],
-                            name=f"D_full_ge_active_not_done_before_{tenant}_{task_id}_{t}",
-                        )
+                    self.model.addConstr(
+                        self.D_full[(tenant, task_id, t)] <= 1 - self.C[(tenant, task_id, t)],
+                        name=f"D_full_le_not_done_{tenant}_{task_id}_{t}",
+                    )
+                    self.model.addConstr(
+                        self.D_full[(tenant, task_id, t)]
+                        >= self.S_active[(tenant, task_id, t)] - self.C[(tenant, task_id, t)],
+                        name=f"D_full_ge_active_not_done_{tenant}_{task_id}_{t}",
+                    )
 
                 for t in horizon:
                     self.model.addConstr(
@@ -971,44 +895,8 @@ class MappingILPSolver:
                     )
                     self.model.addConstr(
                         self.R[(tenant, task_id, t)]
-                        <= self.data["task_max_slot_send"][(tenant, task_id)] * self.S_active[(tenant, task_id, t)],
-                        name=f"R_fastest_path_gate_{tenant}_{task_id}_{t}",
-                    )
-                    self.model.addConstr(
-                        self.R[(tenant, task_id, t)]
                         >= min_send_unit * self.S_active[(tenant, task_id, t)],
                         name=f"R_active_lb_{tenant}_{task_id}_{t}",
-                    )
-
-                task_total_volume = self.data["task_total_volume"][(tenant, task_id)]
-                task_max_slot_send = max(self.data["task_max_slot_send"][(tenant, task_id)], 1e-12)
-                min_active_slots = int(math.ceil(task_total_volume / task_max_slot_send - 1e-12))
-                self.model.addConstr(
-                    gp.quicksum(self.S_active[(tenant, task_id, t)] for t in horizon)
-                    >= task_total_volume / task_max_slot_send,
-                    name=f"S_min_active_slots_{tenant}_{task_id}",
-                )
-                for t in horizon:
-                    if t < min_active_slots - 1:
-                        self.model.addConstr(
-                            self.C[(tenant, task_id, t)] == 0,
-                            name=f"C_earliest_finish_{tenant}_{task_id}_{t}",
-                        )
-                self.model.addConstr(
-                    gp.quicksum(self.R[(tenant, task_id, t)] for t in horizon) == task_total_volume,
-                    name=f"R_task_volume_{tenant}_{task_id}",
-                )
-                cumulative_sent = gp.LinExpr()
-                for t in horizon:
-                    cumulative_sent += self.R[(tenant, task_id, t)]
-                    self.model.addConstr(
-                        cumulative_sent >= task_total_volume * self.C[(tenant, task_id, t)],
-                        name=f"R_complete_cut_{tenant}_{task_id}_{t}",
-                    )
-                    self.model.addConstr(
-                        cumulative_sent
-                        <= task_total_volume - min_send_unit * (1 - self.C[(tenant, task_id, t)]),
-                        name=f"R_incomplete_remaining_cut_{tenant}_{task_id}_{t}",
                     )
 
                 self.task_finish[(tenant, task_id)] = 1 + gp.quicksum(
@@ -1019,56 +907,37 @@ class MappingILPSolver:
                 if not sender_task_ids:
                     continue
                 sender_task_ids = list(sender_task_ids)
-                sender_ports = sorted({
-                    port
-                    for task_id in sender_task_ids
-                    for port in sender_port_use.get(task_id, {})
-                })
-                if not sender_ports:
-                    continue
+                sender_ports = sorted(
+                    {
+                        port
+                        for task_id in sender_task_ids
+                        for port in first_hop_u_vars[tenant][task_id]
+                    }
+                )
                 for t in horizon:
                     for port in sender_ports:
-                        port_active_sum_terms = []
-                        for task_id in sender_task_ids:
-                            port_use = sender_port_use.get(task_id, {}).get(port)
-                            if port_use is None:
-                                continue
-                            p_key = (tenant, task_id, port, t)
-                            self.P_active[p_key] = self.model.addVar(
-                                vtype=GRB.BINARY,
-                                name=f"P_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
-                            )
-                            self.model.addConstr(
-                                self.P_active[p_key] <= self.S_active[(tenant, task_id, t)],
-                                name=f"P_le_S_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
-                            )
-                            self.model.addConstr(
-                                self.P_active[p_key] <= port_use,
-                                name=f"P_le_Wport_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
-                            )
-                            self.model.addConstr(
-                                self.P_active[p_key]
-                                >= self.S_active[(tenant, task_id, t)] + port_use - 1,
-                                name=f"P_ge_AND_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
-                            )
-                            port_active_sum_terms.append(self.P_active[p_key])
-
-                        if not port_active_sum_terms:
+                        port_active_terms = [
+                            self.P_active[(tenant, task_id, port, t)]
+                            for task_id in sender_task_ids
+                            if (tenant, task_id, port, t) in self.P_active
+                        ]
+                        if not port_active_terms:
                             continue
-
-                        port_active_sum = gp.quicksum(port_active_sum_terms)
-                        for task_id in sender_task_ids:
-                            port_use = sender_port_use.get(task_id, {}).get(port)
-                            if port_use is None:
-                                continue
-                            self.model.addConstr(
-                                port_active_sum >= self.Z[(tenant, task_id, t)] + port_use - 1,
-                                name=f"sender_service_lb_{tenant}_{sender_rank}_{port[0]}_{port[1]}_{task_id}_{t}",
-                            )
+                        port_active_sum = gp.quicksum(port_active_terms)
                         self.model.addConstr(
                             port_active_sum <= 1,
-                            name=f"sender_service_ub_{tenant}_{sender_rank}_{port[0]}_{port[1]}_{t}",
+                            name=f"port_service_ub_{tenant}_{sender_rank}_{port[0]}_{port[1]}_{t}",
                         )
+                        for task_id in sender_task_ids:
+                            if port not in first_hop_u_vars[tenant][task_id]:
+                                continue
+                            port_selected = gp.quicksum(first_hop_u_vars[tenant][task_id][port])
+                            self.model.addConstr(
+                                port_active_sum
+                                >= self.Z[(tenant, task_id, t)] + port_selected - 1,
+                                name=f"port_service_lb_{tenant}_{sender_rank}_{task_id}_{port[0]}_{port[1]}_{t}",
+                            )
+                    for port in sender_ports:
                         for idx, task_id in enumerate(sender_task_ids):
                             if (tenant, task_id, port, t) not in self.P_active:
                                 continue
@@ -1080,13 +949,18 @@ class MappingILPSolver:
                                     - self.P_active[(tenant, task_id, port, t - 1)]
                                 )
                             for earlier_task_id in sender_task_ids[:idx]:
-                                earlier_port_use = sender_port_use.get(earlier_task_id, {}).get(port)
-                                if earlier_port_use is None:
+                                if port not in first_hop_u_vars[tenant][earlier_task_id]:
                                     continue
+                                earlier_port_selected = gp.quicksum(
+                                    first_hop_u_vars[tenant][earlier_task_id][port]
+                                )
                                 self.model.addConstr(
-                                    start_expr <= 1 - self.Z[(tenant, earlier_task_id, t)] + (1 - earlier_port_use),
+                                    start_expr
+                                    <= 2
+                                    - self.Z[(tenant, earlier_task_id, t)]
+                                    - earlier_port_selected,
                                     name=(
-                                        f"sender_fifo_start_{tenant}_{sender_rank}_{port[0]}_{port[1]}_"
+                                        f"port_fifo_start_{tenant}_{sender_rank}_{port[0]}_{port[1]}_"
                                         f"{earlier_task_id}_{task_id}_{t}"
                                     ),
                                 )
@@ -1130,11 +1004,11 @@ class MappingILPSolver:
                         task_id = task["task_id"]
                         w_key = (tenant, task_id, link)
                         if w_key in self.W:
-                            y_key = (tenant, task_id, link, t)
                             self.model.addConstr(
                                 self.R[(tenant, task_id, t)]
                                 >= self.LinkMinRate[(link, t)]
-                                - max_rate_big_m * (1 - self.Y[y_key]),
+                                - max_rate_big_m * (1 - self.W[w_key])
+                                - max_rate_big_m * (1 - self.S_active[(tenant, task_id, t)]),
                                 name=f"bn_minrate_lb_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                             )
 
@@ -1172,17 +1046,10 @@ class MappingILPSolver:
         self.model.setObjectiveN(avg_completion, index=0, priority=2, name="avg_jct")
         self.model.setObjectiveN(self.T_max, index=1, priority=1, name="makespan")
 
-    def _clear_mip_start(self):
-        for var in self.model.getVars():
-            var.Start = GRB.UNDEFINED
-        self.model.update()
-
     def _apply_mapping_warm_start(self, mapping):
         if not mapping:
             return
         mapping = self._canonicalize_ring_mapping(mapping)
-        if not self._mapping_is_valid_permutation(mapping):
-            return
         self.warm_start_mapping = {
             tenant: dict(rank_to_server)
             for tenant, rank_to_server in mapping.items()
@@ -1203,84 +1070,25 @@ class MappingILPSolver:
             var.Start = 1.0 if (expected_src == src_server and expected_dst == dst_server) else 0.0
         self.model.update()
 
-    def _apply_mapping_hint(self, mapping):
+    def _register_mapping_seed(self, mapping):
         if not mapping:
             return
         mapping = self._canonicalize_ring_mapping(mapping)
-        if not self._mapping_is_valid_permutation(mapping):
-            return
         self.warm_start_mapping = {
             tenant: dict(rank_to_server)
             for tenant, rank_to_server in mapping.items()
         }
-        task_lookup = {
-            tenant: {int(task["task_id"]): task for task in tasks}
-            for tenant, tasks in self.data["tasks"].items()
-        }
-        for (tenant, rank, server), var in self.X.items():
-            value = 1.0 if mapping.get(tenant, {}).get(rank) == server else 0.0
-            var.VarHintVal = value
-            var.VarHintPri = 10
-        for key, var in self.U.items():
-            tenant, task_id, src_server, dst_server = key
-            task = task_lookup[tenant][int(task_id)]
-            logical_src = int(task["src_rank"])
-            logical_dst = int(task["dst_rank"])
-            expected_src = mapping.get(tenant, {}).get(logical_src)
-            expected_dst = mapping.get(tenant, {}).get(logical_dst)
-            value = 1.0 if (expected_src == src_server and expected_dst == dst_server) else 0.0
-            var.VarHintVal = value
-            var.VarHintPri = 10
-        self.model.update()
-
-    def _mip_start_has_valid_mapping(self):
-        self.model.update()
-        has_any_x_start = False
-        for tenant in self.data["M"]:
-            for rank in self.data["R"][tenant]:
-                total = 0.0
-                for server in self.data["S"][tenant]:
-                    value = self.X[(tenant, rank, server)].Start
-                    if abs(value) > 1e50:
-                        return False
-                    has_any_x_start = True
-                    total += float(value)
-                if abs(total - 1.0) > 1e-6:
-                    return False
-            for server in self.data["S"][tenant]:
-                total = 0.0
-                for rank in self.data["R"][tenant]:
-                    value = self.X[(tenant, rank, server)].Start
-                    if abs(value) > 1e50:
-                        return False
-                    has_any_x_start = True
-                    total += float(value)
-                if abs(total - 1.0) > 1e-6:
-                    return False
-        return has_any_x_start
 
     def _canonicalize_ring_mapping(self, mapping):
-        canonical = {}
-        for tenant in self.data["M"]:
-            raw_rank_to_server = mapping.get(tenant)
-            if raw_rank_to_server is None:
-                raw_rank_to_server = mapping.get(str(tenant), {})
-            normalized_rank_to_server = {}
-            for rank in self.data["R"][tenant]:
-                server = raw_rank_to_server.get(rank)
-                if server is None:
-                    server = raw_rank_to_server.get(str(rank))
-                if server is not None:
-                    normalized_rank_to_server[int(rank)] = int(server)
-            canonical[int(tenant)] = normalized_rank_to_server
-
+        canonical = {
+            tenant: dict(rank_to_server)
+            for tenant, rank_to_server in mapping.items()
+        }
         for tenant, rank_to_server in canonical.items():
             if not self._tenant_has_ring_rotation_symmetry(tenant):
                 continue
             tenant_ranks = sorted(self.data["R"][tenant])
             if not tenant_ranks:
-                continue
-            if any(rank not in rank_to_server for rank in tenant_ranks):
                 continue
             anchor_rank = tenant_ranks[0]
             candidate_servers = sorted(self.data["S"][tenant])
@@ -1298,24 +1106,11 @@ class MappingILPSolver:
             }
         return canonical
 
-    def _mapping_is_valid_permutation(self, mapping):
-        for tenant in self.data["M"]:
-            tenant_mapping = mapping.get(tenant, {})
-            expected_ranks = set(int(rank) for rank in self.data["R"][tenant])
-            expected_servers = sorted(int(server) for server in self.data["S"][tenant])
-            if set(int(rank) for rank in tenant_mapping) != expected_ranks:
-                return False
-            actual_servers = sorted(int(server) for server in tenant_mapping.values())
-            if actual_servers != expected_servers:
-                return False
-        return True
-
-    def _apply_serial_schedule_warm_start(self, mapping):
+    def _serial_slot_schedule_from_mapping(self, mapping):
         if not mapping:
-            return
+            return None
 
         slot_duration = float(self.data["slot_duration"])
-        num_slots = int(self.data["num_slots"])
         capacities = self.data["cap"]
         path_edges = self.data["path_edges"]
         tasks_by_tenant = self.data["tasks"]
@@ -1338,11 +1133,8 @@ class MappingILPSolver:
 
         ready_finish_slot = {}
         task_start_slot = {}
-        task_complete_index = {}
         task_finish_slot = {}
         task_send_per_slot = {}
-        task_path = {}
-        task_bottleneck_links = {}
 
         cursor = 0
         remaining = {
@@ -1371,8 +1163,6 @@ class MappingILPSolver:
             volume = float(task["V"])
             edges = tuple(path_edges[(src_server, dst_server)])
             bottleneck = min(float(capacities[edge]) for edge in edges)
-            bottleneck_links = tuple(edge for edge in edges if abs(float(capacities[edge]) - bottleneck) <= 1e-12)
-            selected_bottleneck_link = bottleneck_links[0] if bottleneck_links else None
             full_slot_capacity = bottleneck * slot_duration
             active_slots = max(1, int(math.ceil(volume / max(full_slot_capacity, 1e-12))))
             pred_ready = 0
@@ -1389,142 +1179,434 @@ class MappingILPSolver:
             finish_slot = finish_index + 1
 
             task_start_slot[(tenant, task_id)] = start_slot
-            task_complete_index[(tenant, task_id)] = finish_index
             task_finish_slot[(tenant, task_id)] = finish_slot
             task_send_per_slot[(tenant, task_id)] = sends
-            task_path[(tenant, task_id)] = edges
-            task_bottleneck_links[(tenant, task_id)] = bottleneck_links
-            task_bottleneck_links[(tenant, task_id, "selected")] = selected_bottleneck_link
             ready_finish_slot[(tenant, task_id)] = finish_slot
             remaining[tenant].remove(task_id)
             cursor = finish_slot
 
+        task_ready_slot = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_id = int(task["task_id"])
+                ready_slot = 0
+                preds = predecessors[tenant].get(task_id, set())
+                if preds:
+                    ready_slot = max(ready_finish_slot[(tenant, pred)] for pred in preds)
+                elif task_id in release_gates.get(tenant, {}):
+                    gate = release_gates[tenant][task_id]
+                    previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
+                    gap_slots = int(gate.get("gap_slots", 0))
+                    ready_slot = max((ready_finish_slot.get((tenant, prev), 0) for prev in previous_task_ids), default=0) + gap_slots
+                task_ready_slot[(tenant, task_id)] = ready_slot
+
+        return task_ready_slot, task_start_slot, task_finish_slot, task_send_per_slot
+
+    def _apply_serial_schedule_warm_start(self, mapping):
+        schedule = self._serial_slot_schedule_from_mapping(mapping)
+        if schedule is None:
+            return
+        task_ready_slot, task_start_slot, task_finish_slot, task_send_per_slot = schedule
         self._apply_slot_schedule_warm_start(
-            mapping=mapping,
-            tasks_by_tenant=tasks_by_tenant,
+            mapping,
+            task_ready_slot=task_ready_slot,
             task_start_slot=task_start_slot,
-            task_complete_index=task_complete_index,
             task_finish_slot=task_finish_slot,
             task_send_per_slot=task_send_per_slot,
-            task_path=task_path,
-            ready_slot_override=None,
-            predecessor_finish_slot=ready_finish_slot,
-            predecessor_map=predecessors,
-            release_gates=release_gates,
-            selected_bottleneck_link_override={
-                (tenant, task_id): task_bottleneck_links.get((tenant, task_id, "selected"))
-                for tenant in self.data["M"]
-                for task_id in (int(task["task_id"]) for task in tasks_by_tenant[tenant])
-            },
         )
 
-    def _apply_slot_schedule_warm_start(
-        self,
-        *,
-        mapping=None,
-        tasks_by_tenant,
-        task_start_slot,
-        task_complete_index,
-        task_finish_slot,
-        task_send_per_slot,
-        task_path,
-        ready_slot_override=None,
-        predecessor_finish_slot=None,
-        predecessor_map=None,
-        release_gates=None,
-        selected_bottleneck_link_override=None,
-    ):
+    @staticmethod
+    def _simulator_flow_id(tx_id):
+        if isinstance(tx_id, tuple) and tx_id:
+            return str(tx_id[0])
+        return str(tx_id)
+
+    def _simulator_priority_slots_from_mapping(self, mapping, simulator_result=None):
+        if not mapping:
+            return None, simulator_result
+
+        mapping = self._canonicalize_ring_mapping(mapping)
+
+        if simulator_result is None:
+            simulator_result = simulate_collective_details(
+                self.datacenter.topology,
+                mapping,
+                self.datacenter.paths,
+                self.single_flow_size,
+                self.collective,
+                tenant_collective_specs=self.tenant_collective_specs,
+                tenant_collective_programs=self.tenant_collective_programs,
+            )
+
+        slot_duration = float(self.data["slot_duration"])
         num_slots = int(self.data["num_slots"])
-        links = self.data["L"]
+        tasks_by_tenant = self.data["tasks"]
+
+        task_by_name = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_name = task.get("name")
+                if task_name is not None:
+                    task_by_name[str(task_name)] = (tenant, int(task["task_id"]))
+
+        task_ready_time = {}
+        task_start_time = {}
+        task_finish_time = {}
+
+        for tx_id, ready_time in simulator_result.get("chunk_ready_time", {}).items():
+            flow_id = self._simulator_flow_id(tx_id).split("-Q", 1)[0]
+            if flow_id in task_by_name:
+                key = task_by_name[flow_id]
+                task_ready_time[key] = min(task_ready_time.get(key, float("inf")), float(ready_time))
+
+        for tx_id, start_time in simulator_result.get("tx_service_start_time", {}).items():
+            flow_id = self._simulator_flow_id(tx_id).split("-Q", 1)[0]
+            if flow_id in task_by_name:
+                key = task_by_name[flow_id]
+                task_start_time[key] = min(task_start_time.get(key, float("inf")), float(start_time))
+
+        for tx_id, finish_time in simulator_result.get("tx_complete_time", {}).items():
+            flow_id = self._simulator_flow_id(tx_id).split("-Q", 1)[0]
+            if flow_id in task_by_name:
+                key = task_by_name[flow_id]
+                task_finish_time[key] = max(task_finish_time.get(key, 0.0), float(finish_time))
+
+        expected_task_keys = {
+            (tenant, int(task["task_id"]))
+            for tenant in self.data["M"]
+            for task in tasks_by_tenant[tenant]
+        }
+        missing_task_keys = sorted(expected_task_keys - set(task_finish_time))
+        if missing_task_keys:
+            if self.verbose:
+                print(
+                    "[simulator-warm-start] skipped schedule start; "
+                    f"missing simulator timings for {len(missing_task_keys)} tasks"
+                )
+            return None, simulator_result
+
+        def ceil_slot(value):
+            return int(math.ceil(max(float(value), 0.0) / slot_duration - 1e-9))
+
+        task_priority_slot = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_id = int(task["task_id"])
+                key = (tenant, task_id)
+                if key not in task_finish_time:
+                    continue
+
+                ready_time = task_ready_time.get(key, task_start_time.get(key, 0.0))
+                start_time = task_start_time.get(key, ready_time)
+                finish_time = max(task_finish_time[key], start_time)
+                ready_slot = min(max(ceil_slot(ready_time), 0), max(num_slots - 1, 0))
+                start_slot = min(max(ceil_slot(start_time), ready_slot), max(num_slots - 1, 0))
+                finish_slot = min(max(ceil_slot(finish_time), start_slot + 1), num_slots)
+
+                task_priority_slot[key] = start_slot
+        return task_priority_slot, simulator_result
+
+    def _apply_simulator_schedule_warm_start(self, mapping, simulator_result=None):
+        if not mapping:
+            return simulator_result
+
+        mapping = self._canonicalize_ring_mapping(mapping)
+
+        task_priority_slot, simulator_result = self._simulator_priority_slots_from_mapping(
+            mapping,
+            simulator_result=simulator_result,
+        )
+        if task_priority_slot is None:
+            return simulator_result
+
+        shifted_schedule = self._shift_slot_schedule_for_ilp_start(
+            mapping,
+            task_priority_slot,
+        )
+        if shifted_schedule is not None:
+            task_ready_slot, task_start_slot, task_finish_slot, task_send_per_slot = shifted_schedule
+        else:
+            return simulator_result
+
+        self._apply_mapping_warm_start(mapping)
+        self._apply_slot_schedule_warm_start(
+            mapping,
+            task_ready_slot=task_ready_slot,
+            task_start_slot=task_start_slot,
+            task_finish_slot=task_finish_slot,
+            task_send_per_slot=task_send_per_slot,
+        )
+        return simulator_result
+
+    def _shift_slot_schedule_for_ilp_start(self, mapping, task_priority_slot):
+        slot_duration = float(self.data["slot_duration"])
+        num_slots = int(self.data["num_slots"])
+        capacities = self.data["cap"]
+        path_edges = self.data["path_edges"]
+        path_ordered_edges = self.data["path_ordered_edges"]
+        tasks_by_tenant = self.data["tasks"]
+        release_gates = self.data.get("release_gates", {})
+
         task_lookup = {
             tenant: {int(task["task_id"]): task for task in tasks_by_tenant[tenant]}
             for tenant in self.data["M"]
         }
-        ready_slot_override = ready_slot_override or {}
-        predecessor_finish_slot = predecessor_finish_slot or {}
-        predecessor_map = predecessor_map or {}
-        release_gates = release_gates or {}
-        selected_bottleneck_link_override = selected_bottleneck_link_override or {}
-        mapping = mapping or {}
+        scheduling_predecessors = {
+            tenant: {
+                int(task["task_id"]): set(int(pred) for pred in task.get("preds", []))
+                for task in tasks_by_tenant[tenant]
+            }
+            for tenant in self.data["M"]
+        }
+        sender_previous = {tenant: {} for tenant in self.data["M"]}
+        for tenant in self.data["M"]:
+            for sender_rank, sender_task_ids in self.data["sender_tasks"][tenant].items():
+                previous = None
+                for task_id in sender_task_ids:
+                    task_id = int(task_id)
+                    if previous is not None:
+                        scheduling_predecessors[tenant][task_id].add(previous)
+                        sender_previous[tenant][task_id] = previous
+                    previous = task_id
+
+        task_path = {}
+        task_first_hop_port = {}
+        task_bottleneck = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_id = int(task["task_id"])
+                src_server = int(mapping[tenant][int(task["src_rank"])])
+                dst_server = int(mapping[tenant][int(task["dst_rank"])])
+                edges = tuple(path_edges.get((src_server, dst_server), ()))
+                ordered_edges = tuple(path_ordered_edges.get((src_server, dst_server), ()))
+                bottleneck = min((float(capacities[edge]) for edge in edges if edge in capacities), default=0.0)
+                task_path[(tenant, task_id)] = edges
+                task_first_hop_port[(tenant, task_id)] = ordered_edges[0] if ordered_edges else None
+                task_bottleneck[(tenant, task_id)] = bottleneck
+
+        remaining = {
+            (tenant, int(task["task_id"]))
+            for tenant in self.data["M"]
+            for task in tasks_by_tenant[tenant]
+        }
+        task_ready_slot = {}
+        task_start_slot = {}
+        task_finish_slot = {}
+        task_send_per_slot = {}
+        link_load_by_slot = defaultdict(float)
+        sender_busy_slots = defaultdict(set)
+
+        def original_ready_slot(tenant, task_id):
+            task = task_lookup[tenant][task_id]
+            preds = [int(pred) for pred in task.get("preds", [])]
+            if preds:
+                return max(task_finish_slot[(tenant, pred)] for pred in preds)
+            if task_id in release_gates.get(tenant, {}):
+                gate = release_gates[tenant][task_id]
+                previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
+                gap_slots = int(math.ceil(float(gate.get("gap_after_s", 0.0)) / slot_duration))
+                return max((task_finish_slot.get((tenant, prev), 0) for prev in previous_task_ids), default=0) + gap_slots
+            return 0
+
+        def scheduling_ready_slot(tenant, task_id):
+            ready = original_ready_slot(tenant, task_id)
+            for pred in scheduling_predecessors[tenant].get(task_id, set()):
+                ready = max(ready, task_finish_slot[(tenant, pred)])
+            return ready
+
+        def task_sends(tenant, task_id):
+            task = task_lookup[tenant][task_id]
+            bottleneck = max(task_bottleneck[(tenant, task_id)], 1e-12)
+            full_slot_capacity = bottleneck * slot_duration
+            remaining_volume = float(task["V"])
+            sends = []
+            while remaining_volume > 1e-12:
+                send = min(full_slot_capacity, remaining_volume)
+                sends.append(send)
+                remaining_volume -= send
+            return sends or [0.0]
+
+        def can_place(tenant, task_id, start_slot, sends):
+            task = task_lookup[tenant][task_id]
+            sender_rank = int(task["src_rank"])
+            edges = task_path[(tenant, task_id)]
+            first_hop_port = task_first_hop_port[(tenant, task_id)]
+            if start_slot < 0 or start_slot + len(sends) > num_slots:
+                return False
+            for offset, send in enumerate(sends):
+                t = start_slot + offset
+                if t in sender_busy_slots[(tenant, sender_rank, first_hop_port)]:
+                    return False
+                for edge in edges:
+                    capacity_per_slot = float(capacities.get(edge, 0.0)) * slot_duration
+                    if link_load_by_slot[(edge, t)] + send > capacity_per_slot + 1e-9:
+                        return False
+            return True
+
+        while remaining:
+            ready_candidates = []
+            for tenant, task_id in sorted(remaining):
+                if all((tenant, pred) not in remaining for pred in scheduling_predecessors[tenant].get(task_id, set())):
+                    ready_candidates.append((tenant, task_id))
+            if not ready_candidates:
+                if self.verbose:
+                    print("[simulator-warm-start] skipped schedule start; cyclic scheduling dependencies")
+                return None
+
+            tenant, task_id = min(
+                ready_candidates,
+                key=lambda key: (
+                    scheduling_ready_slot(*key),
+                    task_priority_slot.get(key, num_slots + 1),
+                    key[0],
+                    key[1],
+                ),
+            )
+            sends = task_sends(tenant, task_id)
+            start_slot = scheduling_ready_slot(tenant, task_id)
+
+            while not can_place(tenant, task_id, start_slot, sends):
+                start_slot += 1
+                if start_slot + len(sends) > num_slots:
+                    if self.verbose:
+                        print(
+                            "[simulator-warm-start] skipped schedule start; "
+                            f"could not place task {(tenant, task_id)} within horizon"
+                        )
+                    return None
+
+            ready_for_sender = scheduling_ready_slot(tenant, task_id)
+            sender_rank = int(task_lookup[tenant][task_id]["src_rank"])
+            first_hop_port = task_first_hop_port[(tenant, task_id)]
+            if any(
+                t not in sender_busy_slots[(tenant, sender_rank, first_hop_port)]
+                for t in range(ready_for_sender, start_slot)
+            ):
+                if self.verbose:
+                    print(
+                        "[simulator-warm-start] skipped schedule start; "
+                        f"placing task {(tenant, task_id)} would leave sender {sender_rank} "
+                        f"port {first_hop_port} idle after readiness"
+                    )
+                return None
+
+            finish_slot = start_slot + len(sends)
+            task = task_lookup[tenant][task_id]
+            if not task.get("preds", []) and task_id in release_gates.get(tenant, {}):
+                task_ready_slot[(tenant, task_id)] = start_slot
+            else:
+                task_ready_slot[(tenant, task_id)] = original_ready_slot(tenant, task_id)
+            task_start_slot[(tenant, task_id)] = start_slot
+            task_finish_slot[(tenant, task_id)] = finish_slot
+            task_send_per_slot[(tenant, task_id)] = sends
+
+            for offset, send in enumerate(sends):
+                t = start_slot + offset
+                sender_busy_slots[(tenant, sender_rank, first_hop_port)].add(t)
+                for edge in task_path[(tenant, task_id)]:
+                    link_load_by_slot[(edge, t)] += send
+            remaining.remove((tenant, task_id))
+
+        return task_ready_slot, task_start_slot, task_finish_slot, task_send_per_slot
+
+    def _apply_slot_schedule_warm_start(
+        self,
+        mapping,
+        *,
+        task_ready_slot,
+        task_start_slot,
+        task_finish_slot,
+        task_send_per_slot,
+    ):
+        slot_duration = float(self.data["slot_duration"])
+        num_slots = int(self.data["num_slots"])
+        capacities = self.data["cap"]
+        path_edges = self.data["path_edges"]
+        path_ordered_edges = self.data["path_ordered_edges"]
+        tasks_by_tenant = self.data["tasks"]
+
+        task_path = {}
+        task_first_hop_port = {}
+        task_bottleneck_links = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_id = int(task["task_id"])
+                src_rank = int(task["src_rank"])
+                dst_rank = int(task["dst_rank"])
+                src_server = int(mapping[tenant][src_rank])
+                dst_server = int(mapping[tenant][dst_rank])
+                edges = tuple(path_edges.get((src_server, dst_server), ()))
+                ordered_edges = tuple(path_ordered_edges.get((src_server, dst_server), ()))
+                bottleneck = min((float(capacities[edge]) for edge in edges if edge in capacities), default=0.0)
+                bottleneck_links = tuple(edge for edge in edges if abs(float(capacities.get(edge, 0.0)) - bottleneck) <= 1e-12)
+                task_path[(tenant, task_id)] = edges
+                task_first_hop_port[(tenant, task_id)] = ordered_edges[0] if ordered_edges else None
+                task_bottleneck_links[(tenant, task_id)] = bottleneck_links
+                task_bottleneck_links[(tenant, task_id, "selected")] = bottleneck_links[0] if bottleneck_links else None
+
+                if (tenant, task_id) not in task_send_per_slot and (tenant, task_id) in task_start_slot:
+                    start_slot = int(task_start_slot[(tenant, task_id)])
+                    finish_slot = int(task_finish_slot.get((tenant, task_id), start_slot + 1))
+                    active_slots = max(finish_slot - start_slot, 1)
+                    volume = float(task["V"])
+                    full_slot_capacity = max(bottleneck * slot_duration, 1e-12)
+                    sends = []
+                    remaining = volume
+                    for _ in range(active_slots):
+                        send = min(full_slot_capacity, remaining)
+                        sends.append(send)
+                        remaining -= send
+                    task_send_per_slot[(tenant, task_id)] = sends
+
+        tenant_finish_slots = {}
+        p_active_by_task_time = defaultdict(list)
+        for (tenant, task_id, port, t), var in self.P_active.items():
+            p_active_by_task_time[(tenant, task_id, t)].append((port, var))
 
         for tenant in self.data["M"]:
             for task in tasks_by_tenant[tenant]:
                 task_id = int(task["task_id"])
                 start_slot = int(task_start_slot.get((tenant, task_id), num_slots + 1))
-                finish_index = int(task_complete_index.get((tenant, task_id), num_slots))
                 finish_slot = int(task_finish_slot.get((tenant, task_id), num_slots + 1))
+                finish_index = finish_slot - 1
                 sends = list(task_send_per_slot.get((tenant, task_id), []))
                 used_links = set(task_path.get((tenant, task_id), ()))
-                selected_bottleneck_link = selected_bottleneck_link_override.get((tenant, task_id))
+                selected_bottleneck_link = task_bottleneck_links.get((tenant, task_id, "selected"))
+                ready_slot = int(task_ready_slot.get((tenant, task_id), start_slot))
 
-                preds = set(int(pred) for pred in task.get("preds", []))
+                if 0 <= finish_slot <= num_slots:
+                    tenant_finish_slots[tenant] = max(tenant_finish_slots.get(tenant, 0), finish_slot)
 
                 for t in range(num_slots):
                     active = 1.0 if start_slot <= t <= finish_index else 0.0
                     completed = 1.0 if t >= finish_index else 0.0
-                    if t == 0:
-                        ready = 0.0 if preds or task_id in release_gates.get(tenant, {}) else 1.0
-                    elif preds:
-                        all_preds_done = all(
-                            t >= int(predecessor_finish_slot.get((tenant, pred), num_slots + 1))
-                            for pred in preds
-                        )
-                        ready = 1.0 if t <= finish_index and all_preds_done else 0.0
-                    elif task_id in release_gates.get(tenant, {}):
-                        gate = release_gates[tenant][task_id]
-                        previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                        gap_after_s = float(gate.get("gap_after_s", 0.0))
-                        released = all(
-                            (
-                                float(predecessor_finish_slot.get((tenant, prev), num_slots + 1))
-                                * float(self.data["slot_duration"])
-                                + gap_after_s
-                            )
-                            <= float(t) * float(self.data["slot_duration"]) + 1e-9
-                            for prev in previous_task_ids
-                        )
-                        ready = 1.0 if t <= finish_index and released else 0.0
-                    else:
-                        ready = 1.0 if t <= finish_index else 0.0
-                    unfinished = 1.0 if (start_slot <= t <= finish_index) else 0.0
+                    ready = 1.0 if (ready_slot <= t <= finish_index) else 0.0
+                    unfinished = bool(active and t < finish_index)
                     send_amount = sends[t - start_slot] if 0 <= (t - start_slot) < len(sends) else 0.0
 
                     if (tenant, task_id, t) in self.S_active:
                         self.S_active[(tenant, task_id, t)].Start = active
+                    first_hop_port = task_first_hop_port.get((tenant, task_id))
+                    for port, var in p_active_by_task_time.get((tenant, task_id, t), []):
+                        var.Start = active if port == first_hop_port else 0.0
                     if (tenant, task_id, t) in self.C:
                         self.C[(tenant, task_id, t)].Start = completed
                     if (tenant, task_id, t) in self.Z:
                         self.Z[(tenant, task_id, t)].Start = ready
                     if (tenant, task_id, t) in self.D_full:
-                        self.D_full[(tenant, task_id, t)].Start = unfinished
+                        self.D_full[(tenant, task_id, t)].Start = 1.0 if unfinished else 0.0
                     if (tenant, task_id, t) in self.R:
                         self.R[(tenant, task_id, t)].Start = send_amount
 
-                    for link in links:
+                    for link in self.data["L"]:
                         f_key = (tenant, task_id, link, t)
                         q_key = (tenant, task_id, link, t)
                         if f_key in self.F:
                             self.F[f_key].Start = send_amount if link in used_links else 0.0
                         if q_key in self.Q_bottleneck:
                             self.Q_bottleneck[q_key].Start = (
-                                1.0
-                                if unfinished > 0.5 and link == selected_bottleneck_link
-                                else 0.0
+                                1.0 if (unfinished and link == selected_bottleneck_link) else 0.0
                             )
-
-        if mapping:
-            for (tenant, task_id, port, t), var in self.P_active.items():
-                task = task_lookup[tenant][int(task_id)]
-                src_rank = int(task["src_rank"])
-                dst_rank = int(task["dst_rank"])
-                src_server = int(mapping[tenant][src_rank])
-                dst_server = int(mapping[tenant][dst_rank])
-                edges = tuple(self.data["path_edges"].get((src_server, dst_server), ()))
-                selected_ports = {tuple(edge) for edge in edges if int(edge[0]) == int(src_server)}
-                start_slot = int(task_start_slot.get((tenant, task_id), num_slots + 1))
-                finish_index = int(task_complete_index.get((tenant, task_id), num_slots))
-                active = 1.0 if start_slot <= t <= finish_index else 0.0
-                var.Start = 1.0 if active > 0.5 and tuple(port) in selected_ports else 0.0
 
         for (link, t), var in self.LinkMinRate.items():
             active_rates = []
@@ -1534,233 +1616,129 @@ class MappingILPSolver:
                     if link not in set(task_path.get((tenant, task_id), ())):
                         continue
                     start_slot = int(task_start_slot.get((tenant, task_id), num_slots + 1))
-                    finish_index = int(task_complete_index.get((tenant, task_id), -1))
-                    if not (start_slot <= t <= finish_index):
+                    finish_slot = int(task_finish_slot.get((tenant, task_id), -1))
+                    if not (start_slot <= t < finish_slot):
                         continue
-                    send_idx = t - start_slot
                     sends = task_send_per_slot.get((tenant, task_id), [])
-                    if 0 <= send_idx < len(sends):
-                        active_rates.append(float(sends[send_idx]))
+                    send_amount = sends[t - start_slot] if 0 <= (t - start_slot) < len(sends) else 0.0
+                    if send_amount > 0.0:
+                        active_rates.append(send_amount)
             var.Start = min(active_rates) if active_rates else 0.0
 
-        tenant_finish_values = {}
         for tenant, var in self.tenant_finish.items():
-            finishes = [
-                int(task_finish_slot[(tenant, int(task["task_id"]))])
-                for task in tasks_by_tenant[tenant]
-                if (tenant, int(task["task_id"])) in task_finish_slot
-            ]
-            tenant_finish_value = max(finishes) if finishes else 0.0
-            var.Start = tenant_finish_value
-            tenant_finish_values[tenant] = tenant_finish_value
+            var.Start = float(tenant_finish_slots.get(tenant, 0))
         if self.T_max is not None:
-            self.T_max.Start = max(tenant_finish_values.values()) if tenant_finish_values else 0.0
+            self.T_max.Start = float(max(tenant_finish_slots.values(), default=0))
+        self.warm_start_schedule_horizon_bound = float(max(tenant_finish_slots.values(), default=0))
 
         self.model.update()
 
-    def _apply_simulator_schedule_warm_start(self, mapping, simulator_result=None):
+    @staticmethod
+    def _defined_start_value(var):
+        try:
+            start_value = var.Start
+        except Exception:
+            return None
+        if start_value == GRB.UNDEFINED or abs(float(start_value)) >= 1e100:
+            return None
+        return float(start_value)
+
+    def _mapping_horizon_bound(self, mapping):
         if not mapping:
-            return
-        if self.tenant_collective_programs is None:
-            raise ValueError("simulator-based warm start currently requires tenant_collective_programs")
+            return None
         mapping = self._canonicalize_ring_mapping(mapping)
 
-        result = simulator_result
-        if result is None:
-            result = simulate_collective_details(
-                self.datacenter.topology,
-                mapping,
-                self.datacenter.paths,
-                tenant_collective_programs=self.tenant_collective_programs,
-            )
+        simulator_result = simulate_collective_details(
+            self.datacenter.topology,
+            mapping,
+            self.datacenter.paths,
+            self.single_flow_size,
+            self.collective,
+            tenant_collective_specs=self.tenant_collective_specs,
+            tenant_collective_programs=self.tenant_collective_programs,
+        )
+        tasks_by_tenant = self.data["tasks"]
+        task_by_name = {}
+        for tenant in self.data["M"]:
+            for task in tasks_by_tenant[tenant]:
+                task_name = task.get("name")
+                if task_name is not None:
+                    task_by_name[str(task_name)] = (tenant, int(task["task_id"]))
+
+        task_finish_time = {}
+        for tx_id, finish_time in simulator_result.get("tx_complete_time", {}).items():
+            flow_id = self._simulator_flow_id(tx_id).split("-Q", 1)[0]
+            if flow_id in task_by_name:
+                key = task_by_name[flow_id]
+                task_finish_time[key] = max(task_finish_time.get(key, 0.0), float(finish_time))
+
+        expected_task_keys = {
+            (tenant, int(task["task_id"]))
+            for tenant in self.data["M"]
+            for task in tasks_by_tenant[tenant]
+        }
+        missing_task_keys = sorted(expected_task_keys - set(task_finish_time))
+        if missing_task_keys:
+            if self.verbose:
+                print(
+                    "[mapping-horizon] missing simulator timings for "
+                    f"{len(missing_task_keys)} tasks"
+                )
+            return None
 
         slot_duration = float(self.data["slot_duration"])
-        capacities = self.data["cap"]
-        tasks_by_tenant = self.data["tasks"]
-        release_gates = self.data.get("release_gates", {})
-        task_lookup = {
-            tenant: {int(task["task_id"]): task for task in tasks_by_tenant[tenant]}
-            for tenant in self.data["M"]
-        }
-        predecessors = {
-            tenant: {int(task["task_id"]): set(int(pred) for pred in task["preds"]) for task in tasks_by_tenant[tenant]}
-            for tenant in self.data["M"]
-        }
-        sender_prev = {tenant: {} for tenant in self.data["M"]}
-        for tenant in self.data["M"]:
-            for sender_rank, sender_task_ids in self.data["sender_tasks"][tenant].items():
-                previous = None
-                for task_id in sender_task_ids:
-                    task_id = int(task_id)
-                    if previous is not None:
-                        sender_prev[tenant][task_id] = int(previous)
-                    previous = task_id
+        max_finish_time = max(task_finish_time.values(), default=0.0)
+        return int(math.ceil(max_finish_time / slot_duration - 1e-9))
 
-        tx_service_start_time = result.get("tx_service_start_time", {})
-        tx_complete_time = result.get("tx_complete_time", {})
-        chunk_ready_time = result.get("chunk_ready_time", {})
+    def _apply_mapping_horizon_bound(self, mapping, margin_slots=0):
+        bound = self._mapping_horizon_bound(mapping)
+        if bound is None:
+            raise RuntimeError("Could not construct a default-mapping warm-start horizon bound.")
+        bound = int(math.ceil(float(bound) + float(margin_slots)))
+        if bound <= 0:
+            raise RuntimeError(f"Invalid default-mapping warm-start horizon bound: {bound}")
 
-        task_start_slot = {}
-        task_complete_index = {}
-        task_finish_slot = {}
-        task_send_per_slot = {}
-        task_path = {}
-        ready_slot_override = {}
-        selected_bottleneck_link_override = {}
-        predecessor_finish_slot = {}
+        num_slots = int(self.data["num_slots"])
+        if bound >= num_slots:
+            raise RuntimeError(
+                "Default-mapping warm-start horizon bound is not tighter than the model horizon: "
+                f"bound={bound}, num_slots={num_slots}"
+            )
 
-        for tenant in self.data["M"]:
-            for task in tasks_by_tenant[tenant]:
-                task_id = int(task["task_id"])
-                task_name = str(task["name"])
-                src_rank = int(task["src_rank"])
-                dst_rank = int(task["dst_rank"])
-                src_server = int(mapping[tenant][src_rank])
-                dst_server = int(mapping[tenant][dst_rank])
-                tx_id = (task_name, str(src_server), str(dst_server))
-                service_start_s = tx_service_start_time.get(tx_id)
-                finish_s = tx_complete_time.get(tx_id)
-                ready_s = chunk_ready_time.get((task_name, str(src_server)))
+        self.T_max.UB = min(float(self.T_max.UB), float(bound))
+        for tenant, var in self.tenant_finish.items():
+            var.UB = min(float(var.UB), float(bound))
+        for (tenant, task_id), finish_expr in self.task_finish.items():
+            self.model.addConstr(
+                finish_expr <= bound,
+                name=f"mapping_horizon_task_{tenant}_{task_id}",
+            )
+        self.model.update()
+        return float(bound)
 
-                if service_start_s is None or finish_s is None:
-                    continue
-                if ready_s is None:
-                    ready_s = service_start_s
+    def _apply_warm_start_horizon_bound(self, margin_slots=0):
+        if self.T_max is None:
+            return None
+        start_value = self._defined_start_value(self.T_max)
+        if start_value is None:
+            return None
 
-                ready_slot = max(0, int(math.ceil(float(ready_s) / max(slot_duration, 1e-12) - 1e-12)))
-                start_slot = max(ready_slot, int(math.ceil(float(service_start_s) / max(slot_duration, 1e-12) - 1e-12)))
-                finish_slot = max(
-                    start_slot + 1,
-                    int(math.ceil(float(finish_s) / max(slot_duration, 1e-12) - 1e-12)),
-                )
-                finish_index = finish_slot - 1
+        bound = int(math.ceil(start_value + float(margin_slots)))
+        if bound <= 0:
+            return None
 
-                edges = tuple(self.data["path_edges"][(src_server, dst_server)])
-                bottleneck = min(float(capacities[edge]) for edge in edges)
-                capacity_per_slot = bottleneck * slot_duration
-                active_slots = max(1, finish_slot - start_slot)
-                remaining_volume = float(task["V"])
-                sends = []
-                for remaining_slots in range(active_slots, 0, -1):
-                    send_amount = min(capacity_per_slot, remaining_volume / float(remaining_slots))
-                    sends.append(send_amount)
-                    remaining_volume -= send_amount
-                if remaining_volume > 1e-6 and sends:
-                    sends[-1] += remaining_volume
-
-                task_start_slot[(tenant, task_id)] = start_slot
-                task_complete_index[(tenant, task_id)] = finish_index
-                task_finish_slot[(tenant, task_id)] = finish_slot
-                task_send_per_slot[(tenant, task_id)] = sends
-                task_path[(tenant, task_id)] = edges
-                ready_slot_override[(tenant, task_id)] = ready_slot
-                predecessor_finish_slot[(tenant, task_id)] = finish_slot
-                selected_bottleneck_link_override[(tenant, task_id)] = edges[0] if edges else None
-
-        for tenant in self.data["M"]:
-            ordered_task_ids = list(self.data["schedule"].get(tenant, {}).get("task_order", []))
-            for task_id in ordered_task_ids:
-                task_id = int(task_id)
-                key = (tenant, task_id)
-                if key not in task_start_slot:
-                    continue
-                active_slots = max(1, int(task_finish_slot[key] - task_start_slot[key]))
-                ready_slot = int(ready_slot_override.get(key, task_start_slot[key]))
-                pred_finish = max(
-                    (int(task_finish_slot.get((tenant, pred), 0)) for pred in predecessors[tenant].get(task_id, set())),
-                    default=0,
-                )
-                release_finish = 0
-                if task_id in release_gates.get(tenant, {}):
-                    gate = release_gates[tenant][task_id]
-                    previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                    gap_slots = int(gate.get("gap_slots", 0))
-                    release_finish = max(
-                        (int(task_finish_slot.get((tenant, prev), 0)) for prev in previous_task_ids),
-                        default=0,
-                    ) + gap_slots
-                sender_finish = 0
-                previous_sender_task = sender_prev[tenant].get(task_id)
-                if previous_sender_task is not None:
-                    sender_finish = int(task_finish_slot.get((tenant, previous_sender_task), 0))
-                shifted_start = max(int(task_start_slot[key]), ready_slot, pred_finish, release_finish, sender_finish)
-                task_start_slot[key] = shifted_start
-                task_complete_index[key] = shifted_start + active_slots - 1
-                task_finish_slot[key] = shifted_start + active_slots
-                predecessor_finish_slot[key] = task_finish_slot[key]
-
-        for tenant in self.data["M"]:
-            for task in tasks_by_tenant[tenant]:
-                task_id = int(task["task_id"])
-                if (tenant, task_id) in predecessor_finish_slot:
-                    continue
-                preds = predecessors[tenant][task_id]
-                if preds and all((tenant, pred) in predecessor_finish_slot for pred in preds):
-                    predecessor_finish_slot[(tenant, task_id)] = max(
-                        predecessor_finish_slot[(tenant, pred)] for pred in preds
-                    )
-                elif task_id in release_gates.get(tenant, {}):
-                    gate = release_gates[tenant][task_id]
-                    previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                    gap_slots = int(gate.get("gap_slots", 0))
-                    predecessor_finish_slot[(tenant, task_id)] = max(
-                        (predecessor_finish_slot.get((tenant, prev), 0) for prev in previous_task_ids),
-                        default=0,
-                    ) + gap_slots
-
-        self._apply_slot_schedule_warm_start(
-            mapping=mapping,
-            tasks_by_tenant=tasks_by_tenant,
-            task_start_slot=task_start_slot,
-            task_complete_index=task_complete_index,
-            task_finish_slot=task_finish_slot,
-            task_send_per_slot=task_send_per_slot,
-            task_path=task_path,
-            ready_slot_override=ready_slot_override,
-            predecessor_finish_slot=predecessor_finish_slot,
-            predecessor_map=predecessors,
-            release_gates=release_gates,
-            selected_bottleneck_link_override=selected_bottleneck_link_override,
-        )
+        self.T_max.UB = min(float(self.T_max.UB), float(bound))
+        for tenant, var in self.tenant_finish.items():
+            var.UB = min(float(var.UB), float(bound))
+        for (tenant, task_id), finish_expr in self.task_finish.items():
+            self.model.addConstr(
+                finish_expr <= bound,
+                name=f"warm_start_horizon_task_{tenant}_{task_id}",
+            )
+        self.model.update()
+        return float(bound)
 
     def _copy_full_start_from_solver(self, other):
-        self.full_warm_start_values = {
-            var.VarName: var.X
-            for var in other.model.getVars()
-        }
-        self.full_warm_start_slot_duration = float(other.data["slot_duration"])
-        tenant_finish_slots = [
-            float(var.X)
-            for var in other.tenant_finish.values()
-        ]
-        self.full_warm_start_finish_sum_slots = sum(tenant_finish_slots)
-        if tenant_finish_slots:
-            incumbent_sum = float(self.full_warm_start_finish_sum_slots)
-            incumbent_makespan = float(max(tenant_finish_slots))
-            tenant_lower_bounds = self._tenant_finish_lower_bounds_slots()
-            if tenant_lower_bounds:
-                tightened_horizon = max(
-                    incumbent_sum
-                    - sum(
-                        float(bound)
-                        for other_tenant, bound in tenant_lower_bounds.items()
-                        if other_tenant != tenant
-                    )
-                    for tenant in self.data["M"]
-                )
-            else:
-                tightened_horizon = incumbent_sum
-            # Avg-JCT is the primary objective. Any solution beating the incumbent
-            # has total finish slots no larger than incumbent_sum, so tenant i
-            # cannot finish after incumbent_sum minus the lower bounds of all
-            # other tenants. Keep the incumbent makespan as a floor so the full
-            # warm start remains feasible after rebuilding with the clipped horizon.
-            self.full_warm_start_horizon_slots = max(
-                4,
-                int(math.ceil(max(incumbent_makespan, tightened_horizon) - 1e-9)),
-            )
-        if other.T_max is not None:
-            self.full_warm_start_t_max_slots = float(other.T_max.X)
         for key, var in self.X.items():
             if key in other.X:
                 var.Start = other.X[key].X
@@ -1800,99 +1778,6 @@ class MappingILPSolver:
         if self.T_max is not None and other.T_max is not None:
             self.T_max.Start = other.T_max.X
         self.model.update()
-
-    def _apply_full_warm_start_values(self, start_values):
-        if not start_values:
-            return False
-        applied = 0
-        for var in self.model.getVars():
-            value = start_values.get(var.VarName)
-            if value is None:
-                continue
-            var.Start = value
-            applied += 1
-        self.model.update()
-        return applied > 0
-
-    def _apply_full_warm_start_hints(self, start_values):
-        if not start_values:
-            return False
-        applied = 0
-        for var in self.model.getVars():
-            value = start_values.get(var.VarName)
-            if value is None:
-                continue
-            var.VarHintVal = value
-            var.VarHintPri = 10
-            applied += 1
-        self.model.update()
-        return applied > 0
-
-    def _apply_fixed_mapping_full_warm_start(self, mapping, time_limit=180.0):
-        """Find a complete incumbent by solving a fixed-X/U feasibility subproblem."""
-        if not mapping:
-            return False
-
-        fixed_mapping = self._canonicalize_ring_mapping(mapping)
-        if not self._mapping_is_valid_permutation(fixed_mapping):
-            return False
-        subsolver = MappingMILPSolver(
-            self.datacenter,
-            self.tenant_mapping,
-            tenant_flows=self.tenant_flows,
-            verbose=False,
-            name=f"{self.model_name}_fixed_seed",
-            collective=self.collective,
-            single_flow_size=self.single_flow_size,
-            tenant_collective_specs=self.tenant_collective_specs,
-            tenant_collective_programs=self.tenant_collective_programs,
-            stage_flows=self.stage_flows,
-            fairness_lambda=self.fairness_lambda,
-            fairness_iterations=self.fairness_iterations,
-            fairness_grouping=self.fairness_grouping,
-            slot_duration=self.slot_duration_override,
-            horizon_slots=self.horizon_slots_override,
-            enable_heuristic_warm_start=False,
-            enable_full_mip_start=False,
-            enable_fixed_mapping_subproblem_start=False,
-        )
-        subsolver._apply_mapping_warm_start(fixed_mapping)
-        for var_dict in (subsolver.X, subsolver.U):
-            for var in var_dict.values():
-                value = var.Start
-                if abs(value) > 1e50:
-                    return False
-                subsolver.model.addConstr(
-                    var == int(round(float(value))),
-                    name=f"fix_{var.VarName}",
-                )
-
-        subsolver.model.update()
-        subsolver.model.NumObj = 0
-        subsolver.model.update()
-        subsolver.model.setObjective(0.0, GRB.MINIMIZE)
-        subsolver.model.Params.OutputFlag = 0
-        subsolver.model.Params.SolutionLimit = 1
-        subsolver.model.Params.MIPFocus = 1
-        subsolver.model.Params.Heuristics = 1.0
-        subsolver.model.Params.IntegralityFocus = 1
-        if time_limit is not None:
-            subsolver.model.Params.TimeLimit = float(time_limit)
-
-        try:
-            subsolver.model.optimize()
-        except Exception:
-            return False
-
-        if subsolver.model.SolCount <= 0:
-            return False
-
-        self._copy_full_start_from_solver(subsolver)
-        self.warm_start_mapping = {
-            tenant: dict(rank_to_server)
-            for tenant, rank_to_server in fixed_mapping.items()
-        }
-        return True
 
     def _maybe_seed_from_fixed_mapping_subproblem(self, time_limit):
         return
@@ -1991,17 +1876,11 @@ class MappingILPSolver:
         self._maybe_seed_from_heuristic(time_limit)
         self._maybe_seed_full_mip_start(time_limit)
         self.model.Params.OptimalityTol = 1e-9
-        self.model.Params.MIPGap = 1e-3
+        self.model.Params.MIPGap = 0.0
         self.model.Params.MIPGapAbs = 1e-9
         self.model.Params.IntegralityFocus = 1
-        self.model.Params.Threads = 8
-        self.model.Params.ConcurrentMIP = 2
-        if not self._mip_start_has_valid_mapping():
-            if self.verbose:
-                print("Discarding invalid MIP start: X does not satisfy permutation constraints.")
-            self._clear_mip_start()
-            if self.warm_start_mapping is not None:
-                self._apply_mapping_hint(self.warm_start_mapping)
+        self.model.Params.Method = 1
+        self.model.Params.NodeMethod = 1
         self.model.optimize()
 
         status = self.model.Status

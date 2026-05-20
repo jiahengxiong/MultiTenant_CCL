@@ -15,7 +15,7 @@ DEFAULT_SCRIPTS = [
     # "High_contension_homo.py",
     # "dominant vs full.py",
     "mapping_vs_ilp_single.py",
-    # "mapping_vs_ilp_multi.py",
+    "mapping_vs_ilp_multi.py",
 ]
 
 

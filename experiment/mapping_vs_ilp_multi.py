@@ -108,30 +108,62 @@ def solve_with_ilp(
     time_limit: float | None,
     verbose: bool,
     warm_start_mode: str,
+    warm_start_mapping: dict[int, dict[int, int]] | None = None,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str, float | None]:
+    seed_mapping = warm_start_mapping if warm_start_mapping is not None else tenant_mapping
+    horizon_probe = MappingILPSolver(
+        datacenter,
+        tenant_mapping=tenant_mapping,
+        verbose=False,
+        tenant_collective_programs=tenant_collective_programs,
+        build_model=False,
+        enable_heuristic_warm_start=False,
+        enable_full_mip_start=False,
+        enable_fixed_mapping_subproblem_start=False,
+    )
+    default_mapping_horizon_bound = horizon_probe._mapping_horizon_bound(tenant_mapping)
+    if default_mapping_horizon_bound is None:
+        raise RuntimeError("Could not construct a default-mapping warm-start horizon bound.")
+    default_mapping_horizon_bound = int(default_mapping_horizon_bound)
+    if default_mapping_horizon_bound <= 0:
+        raise RuntimeError(f"Invalid ILP warm-start horizon bound: {default_mapping_horizon_bound}")
+
     solver = MappingILPSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         verbose=verbose,
         tenant_collective_programs=tenant_collective_programs,
+        horizon_slots=default_mapping_horizon_bound,
+        compact_task_windows=True,
+        compact_window_mapping=tenant_mapping,
         enable_heuristic_warm_start=False,
         enable_full_mip_start=(warm_start_mode == "fixed"),
         enable_fixed_mapping_subproblem_start=False,
     )
-    default_mapping_horizon_bound = solver._apply_mapping_horizon_bound(tenant_mapping)
+    solver.T_max.UB = min(float(solver.T_max.UB), float(default_mapping_horizon_bound))
+    for var in solver.tenant_finish.values():
+        var.UB = min(float(var.UB), float(default_mapping_horizon_bound))
+    solver.model.update()
     if warm_start_mode == "fixed":
-        solver._register_mapping_seed(tenant_mapping)
+        solver._register_mapping_seed(seed_mapping)
     elif warm_start_mode == "mapping":
-        solver._apply_mapping_warm_start(tenant_mapping)
+        solver._apply_mapping_warm_start(seed_mapping)
     elif warm_start_mode == "simulator":
-        solver._apply_simulator_schedule_warm_start(tenant_mapping)
+        solver._apply_simulator_schedule_warm_start(seed_mapping)
     if warm_start_mode != "none":
         solver.model.Params.StartNodeLimit = 0
     start_time = time.time()
     try:
         solver.solve(time_limit=time_limit)
         runtime_seconds = time.time() - start_time
-        return solver.get_X_mapping(), float(runtime_seconds), "ok", default_mapping_horizon_bound
+        status_code = int(solver.model.Status)
+        if status_code == 2:
+            status = "ok"
+        elif status_code == 9 and solver.model.SolCount > 0:
+            status = "time_limit_with_solution"
+        else:
+            status = f"status_{status_code}_with_solution"
+        return solver.get_X_mapping(), float(runtime_seconds), status, default_mapping_horizon_bound
     except Exception as exc:  # pragma: no cover - experiment harness
         runtime_seconds = time.time() - start_time
         return None, float(runtime_seconds), f"error: {exc}", default_mapping_horizon_bound
@@ -177,6 +209,7 @@ def summarize_case(
         time_limit=ilp_time_limit,
         verbose=ilp_verbose,
         warm_start_mode=ilp_warm_start_mode,
+        warm_start_mapping=heuristic_mapping,
     )
     if ilp_mapping is not None:
         ilp_mk, ilp_avg = evaluate_mapping(datacenter, ilp_mapping, tenant_collective_programs)
@@ -221,8 +254,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--ilp-time-limit",
         type=float,
-        default=None,
-        help="Optional time limit in seconds for the pure MILP solver. Default: no time limit.",
+        default=120.0,
+        help="Optional time limit in seconds for the pure MILP solver. Default: 120s.",
     )
     parser.add_argument(
         "--ilp-verbose",

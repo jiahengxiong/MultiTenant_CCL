@@ -38,6 +38,14 @@ class MappingILPSolver:
         fairness_grouping="phase",
         slot_duration=None,
         horizon_slots=None,
+        build_model=True,
+        compact_task_windows=False,
+        compact_window_mapping=None,
+        lp_method=1,
+        node_method=1,
+        presolve=None,
+        prepasses=None,
+        numeric_focus=None,
         enable_heuristic_warm_start=False,
         enable_full_mip_start=False,
         enable_fixed_mapping_subproblem_start=False,
@@ -60,6 +68,13 @@ class MappingILPSolver:
         self.model_name = name
         self.slot_duration_override = slot_duration
         self.horizon_slots_override = horizon_slots
+        self.compact_task_windows = bool(compact_task_windows)
+        self.compact_window_mapping = compact_window_mapping
+        self.lp_method = lp_method
+        self.node_method = node_method
+        self.presolve = presolve
+        self.prepasses = prepasses
+        self.numeric_focus = numeric_focus
         self.volume_scale = (
             1e3
             if has_collective_workload(
@@ -104,7 +119,10 @@ class MappingILPSolver:
         self.warm_start_mapping = None
         self.warm_start_schedule_horizon_bound = None
         self.warm_start_runtime = 0.0
-        self._build(name=name)
+        if build_model:
+            self._build(name=name)
+        else:
+            self.data = self._build_data()
 
     def _derive_tasks(self):
         if self.tenant_collective_programs is not None:
@@ -392,12 +410,68 @@ class MappingILPSolver:
             smallest_task_time = min_task_volume / max(min_capacity, 1e-12)
             slot_duration = min(slot_duration, max(smallest_task_time, 1e-6))
 
+        compact_op_earliest_slot = {}
+        compact_op_latest_finish_slot = {}
+        compact_op_duration_lb = {}
+        if self.compact_task_windows:
+            for tenant in tenants:
+                program = sorted(
+                    list(schedule_by_tenant.get(tenant, {}).get("collective_program", [])),
+                    key=lambda item: int(item.get("op_idx", 0)),
+                )
+                if not program:
+                    continue
+
+                tasks_by_op = defaultdict(list)
+                for task in tasks_by_tenant[tenant]:
+                    tasks_by_op[int(task.get("op_idx", 0))].append(task)
+
+                op_duration_lb = {}
+                for op in program:
+                    op_idx = int(op["op_idx"])
+                    op_tasks = tasks_by_op.get(op_idx, [])
+                    if not op_tasks:
+                        op_duration_lb[op_idx] = 0
+                        continue
+                    chain_lb = self._longest_task_chain(op_tasks)
+                    sender_lb = max(
+                        (
+                            sum(1 for task in op_tasks if int(task["src_rank"]) == rank)
+                            for rank in ranks[tenant]
+                        ),
+                        default=0,
+                    )
+                    op_duration_lb[op_idx] = max(1, int(chain_lb), int(sender_lb))
+                    compact_op_duration_lb[(tenant, op_idx)] = op_duration_lb[op_idx]
+
+                elapsed = 0
+                for op in program:
+                    op_idx = int(op["op_idx"])
+                    compact_op_earliest_slot[(tenant, op_idx)] = elapsed
+                    gap_slots = int(math.ceil(float(op.get("gap_after", 0.0)) / slot_duration - 1e-9))
+                    elapsed += op_duration_lb.get(op_idx, 0) + max(gap_slots, 0)
+
+                suffix_after = 0
+                for op in reversed(program):
+                    op_idx = int(op["op_idx"])
+                    gap_slots = int(math.ceil(float(op.get("gap_after", 0.0)) / slot_duration - 1e-9))
+                    compact_op_latest_finish_slot[(tenant, op_idx)] = max(gap_slots, 0) + suffix_after
+                    suffix_after += op_duration_lb.get(op_idx, 0) + max(gap_slots, 0)
+
         release_gates = {}
         total_gap_slots_by_tenant = {}
+        task_earliest_slot = {}
         for tenant in tenants:
             release_gates[tenant] = {}
             total_gap_slots_by_tenant[tenant] = 0
             program = list(schedule_by_tenant.get(tenant, {}).get("collective_program", []))
+            if self.compact_task_windows:
+                for task in tasks_by_tenant[tenant]:
+                    op_idx = int(task.get("op_idx", 0))
+                    task_earliest_slot[(tenant, int(task["task_id"]))] = max(
+                        0,
+                        compact_op_earliest_slot.get((tenant, op_idx), 0),
+                    )
             if not program:
                 continue
             op_by_idx = {int(op["op_idx"]): op for op in program}
@@ -430,6 +504,53 @@ class MappingILPSolver:
             )
             horizon_slots = max(horizon_slots, 4)
 
+        task_latest_finish_slot = {}
+        if self.compact_task_windows:
+            seed_op_latest_finish_slot = {}
+            if self.compact_window_mapping:
+                simulator_result = simulate_collective_details(
+                    self.datacenter.topology,
+                    self.compact_window_mapping,
+                    self.datacenter.paths,
+                    self.single_flow_size,
+                    self.collective,
+                    tenant_collective_specs=self.tenant_collective_specs,
+                    tenant_collective_programs=self.tenant_collective_programs,
+                )
+                task_by_name = {}
+                for tenant in tenants:
+                    for task in tasks_by_tenant[tenant]:
+                        task_name = task.get("name")
+                        if task_name is not None:
+                            task_by_name[str(task_name)] = (tenant, int(task.get("op_idx", 0)))
+                for tx_id, finish_time in simulator_result.get("tx_complete_time", {}).items():
+                    flow_id = self._simulator_flow_id(tx_id).split("-Q", 1)[0]
+                    if flow_id not in task_by_name:
+                        continue
+                    tenant, op_idx = task_by_name[flow_id]
+                    finish_slot = int(math.ceil(float(finish_time) / slot_duration - 1e-9)) + 1
+                    seed_op_latest_finish_slot[(tenant, op_idx)] = max(
+                        seed_op_latest_finish_slot.get((tenant, op_idx), 0),
+                        finish_slot,
+                    )
+            for tenant in tenants:
+                for task in tasks_by_tenant[tenant]:
+                    task_id = int(task["task_id"])
+                    op_idx = int(task.get("op_idx", 0))
+                    latest_finish = horizon_slots - compact_op_latest_finish_slot.get((tenant, op_idx), 0)
+                    if (tenant, op_idx) in seed_op_latest_finish_slot:
+                        seed_latest_finish = max(
+                            seed_op_latest_finish_slot[(tenant, op_idx)],
+                            task_earliest_slot.get((tenant, task_id), 0)
+                            + compact_op_duration_lb.get((tenant, op_idx), 1),
+                        )
+                        latest_finish = min(latest_finish, seed_latest_finish)
+                    latest_finish = min(
+                        horizon_slots,
+                        max(task_earliest_slot.get((tenant, task_id), 0) + 1, latest_finish),
+                    )
+                    task_latest_finish_slot[(tenant, task_id)] = latest_finish
+
         task_total_volume = dict(task_volume_upper)
         min_send_unit = min_task_volume / max(horizon_slots * 1024.0, 1.0)
         sender_task_ids = {
@@ -459,6 +580,8 @@ class MappingILPSolver:
             "min_send_unit": min_send_unit,
             "sender_tasks": sender_task_ids,
             "release_gates": release_gates,
+            "task_earliest_slot": task_earliest_slot,
+            "task_latest_finish_slot": task_latest_finish_slot,
         }
 
     def _build(self, name="mapping_ilp"):
@@ -606,6 +729,8 @@ class MappingILPSolver:
         slot_duration = self.data["slot_duration"]
         min_send_unit = self.data["min_send_unit"]
         release_gates = self.data.get("release_gates", {})
+        task_earliest_slot = self.data.get("task_earliest_slot", {})
+        task_latest_finish_slot = self.data.get("task_latest_finish_slot", {})
         required_load_terms = {
             tenant: {
                 task["task_id"]: {link: [] for link in links}
@@ -658,23 +783,43 @@ class MappingILPSolver:
             tenant: {task["task_id"]: task for task in tasks_by_tenant[tenant]}
             for tenant in tenants
         }
-        release_time_big_m = float(num_slots) * float(slot_duration)
-        max_gap_after_s = max(
-            (
-                float(release_gate.get("gap_after_s", 0.0))
-                for tenant_gates in release_gates.values()
-                for release_gate in tenant_gates.values()
-            ),
-            default=0.0,
-        )
-        release_time_big_m += max_gap_after_s + float(slot_duration)
+        def earliest_slot(tenant, task_id):
+            return min(
+                max(int(task_earliest_slot.get((tenant, task_id), 0)), 0),
+                max(num_slots - 1, 0),
+            )
+
+        def latest_finish_slot(tenant, task_id):
+            return min(
+                max(
+                    int(task_latest_finish_slot.get((tenant, task_id), num_slots)),
+                    earliest_slot(tenant, task_id) + 1,
+                ),
+                num_slots,
+            )
+
+        def task_horizon_slots(tenant, task_id):
+            return range(earliest_slot(tenant, task_id), latest_finish_slot(tenant, task_id))
+
+        def c_expr(tenant, task_id, t):
+            if t < earliest_slot(tenant, task_id):
+                return 0.0
+            if t >= latest_finish_slot(tenant, task_id):
+                return 1.0
+            return self.C[(tenant, task_id, t)]
+
+        def z_expr(tenant, task_id, t):
+            if t < earliest_slot(tenant, task_id) or t >= latest_finish_slot(tenant, task_id):
+                return 0.0
+            return self.Z[(tenant, task_id, t)]
 
         for tenant in tenants:
             task_ids = [task["task_id"] for task in tasks_by_tenant[tenant]]
             for task_id in task_ids:
                 task = task_lookup[tenant][task_id]
                 preds = list(task["preds"])
-                for t in horizon:
+                active_horizon = list(task_horizon_slots(tenant, task_id))
+                for t in active_horizon:
                     self.R[(tenant, task_id, t)] = self.model.addVar(
                         vtype=GRB.CONTINUOUS,
                         lb=0.0,
@@ -702,7 +847,7 @@ class MappingILPSolver:
                     for port, u_vars in first_hop_u_vars[tenant][task_id].items()
                 }
                 for port, port_expr in task_first_hop_exprs.items():
-                    for t in horizon:
+                    for t in active_horizon:
                         self.P_active[(tenant, task_id, port, t)] = self.model.addVar(
                             vtype=GRB.BINARY,
                             name=f"P_active_{tenant}_{task_id}_{port[0]}_{port[1]}_{t}",
@@ -732,7 +877,7 @@ class MappingILPSolver:
                     load_expr = gp.quicksum(required_load_terms[tenant][task_id][link])
                     big_m = self.data["task_total_volume"][(tenant, task_id)]
 
-                    for t in horizon:
+                    for t in active_horizon:
                         self.F[(tenant, task_id, link, t)] = self.model.addVar(
                             vtype=GRB.CONTINUOUS,
                             lb=0.0,
@@ -772,18 +917,18 @@ class MappingILPSolver:
                         )
 
                     self.model.addConstr(
-                        gp.quicksum(self.F[(tenant, task_id, link, t)] for t in horizon) == load_expr,
+                        gp.quicksum(self.F[(tenant, task_id, link, t)] for t in active_horizon) == load_expr,
                         name=f"load_balance_{tenant}_{task_id}_{link[0]}_{link[1]}",
                     )
                     cumulative = gp.LinExpr()
-                    for t in horizon:
+                    for t in active_horizon:
                         cumulative += self.F[(tenant, task_id, link, t)]
                         self.model.addConstr(
                             cumulative >= load_expr - big_m * (1 - self.C[(tenant, task_id, t)]),
                             name=f"complete_if_sent_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
-                for t in horizon:
+                for t in active_horizon:
                     self.model.addConstr(
                         gp.quicksum(
                             self.Q_bottleneck[(tenant, task_id, link, t)]
@@ -794,71 +939,91 @@ class MappingILPSolver:
                         name=f"Q_one_bottleneck_{tenant}_{task_id}_{t}",
                     )
 
-                for t in range(num_slots - 1):
+                for t in range(earliest_slot(tenant, task_id), latest_finish_slot(tenant, task_id) - 1):
                     self.model.addConstr(
                         self.C[(tenant, task_id, t)] <= self.C[(tenant, task_id, t + 1)],
                         name=f"C_mono_{tenant}_{task_id}_{t}",
                     )
 
                 self.model.addConstr(
-                    self.C[(tenant, task_id, num_slots - 1)] == 1,
+                    self.C[(tenant, task_id, latest_finish_slot(tenant, task_id) - 1)] == 1,
                     name=f"C_terminal_{tenant}_{task_id}",
                 )
 
-                if preds:
+                first_slot = earliest_slot(tenant, task_id)
+                if first_slot == 0 and preds:
                     self.model.addConstr(
                         self.Z[(tenant, task_id, 0)] == 0,
                         name=f"Z_wait_preds_{tenant}_{task_id}",
                     )
-                elif task_id in release_gates.get(tenant, {}):
+                elif first_slot == 0 and task_id in release_gates.get(tenant, {}):
                     self.model.addConstr(
                         self.Z[(tenant, task_id, 0)] == 0,
                         name=f"Z_wait_program_release_{tenant}_{task_id}",
                     )
-                else:
+                elif first_slot == 0:
                     self.model.addConstr(
                         self.Z[(tenant, task_id, 0)] == 1,
                         name=f"Z_ready_init_{tenant}_{task_id}",
                     )
-                self.model.addConstr(
-                    self.S_active[(tenant, task_id, 0)] <= self.Z[(tenant, task_id, 0)],
-                    name=f"S_init_le_Z_{tenant}_{task_id}",
-                )
-
-                for t in range(1, num_slots):
+                if first_slot == 0:
                     self.model.addConstr(
-                        self.Z[(tenant, task_id, t)] <= 1 - self.C[(tenant, task_id, t - 1)],
+                        self.S_active[(tenant, task_id, 0)] <= self.Z[(tenant, task_id, 0)],
+                        name=f"S_init_le_Z_{tenant}_{task_id}",
+                    )
+
+                for t in active_horizon:
+                    if t == 0:
+                        continue
+                    self.model.addConstr(
+                        self.Z[(tenant, task_id, t)] <= 1 - c_expr(tenant, task_id, t - 1),
                         name=f"Z_after_completion_{tenant}_{task_id}_{t}",
                     )
                     if preds:
                         for pred_task_id in preds:
                             self.model.addConstr(
-                                self.Z[(tenant, task_id, t)] <= self.C[(tenant, pred_task_id, t - 1)],
+                                self.Z[(tenant, task_id, t)] <= c_expr(tenant, pred_task_id, t - 1),
                                 name=f"pred_ready_{tenant}_{task_id}_{pred_task_id}_{t}",
                             )
                         self.model.addConstr(
                             self.Z[(tenant, task_id, t)]
                             >= 1
-                            - self.C[(tenant, task_id, t - 1)]
-                            + gp.quicksum(self.C[(tenant, pred_task_id, t - 1)] for pred_task_id in preds)
+                            - c_expr(tenant, task_id, t - 1)
+                            + gp.quicksum(c_expr(tenant, pred_task_id, t - 1) for pred_task_id in preds)
                             - len(preds),
                             name=f"Z_ready_exact_{tenant}_{task_id}_{t}",
                         )
                     elif task_id in release_gates.get(tenant, {}):
                         release_gate = release_gates[tenant][task_id]
                         previous_task_ids = list(release_gate["previous_task_ids"])
-                        gap_after_s = float(release_gate.get("gap_after_s", 0.0))
-                        release_slot_time = float(t) * float(slot_duration)
-                        for previous_task_id in previous_task_ids:
+                        gap_slots = int(release_gate.get("gap_slots", 0))
+                        release_check_t = t - gap_slots
+                        if release_check_t < 0:
                             self.model.addConstr(
-                                self.task_finish[(tenant, previous_task_id)] * slot_duration + gap_after_s
-                                <= release_slot_time
-                                + release_time_big_m * (1 - self.Z[(tenant, task_id, t)]),
-                                name=f"program_release_ready_{tenant}_{task_id}_{previous_task_id}_{t}",
+                                self.Z[(tenant, task_id, t)] == 0,
+                                name=f"Z_before_program_release_{tenant}_{task_id}_{t}",
+                            )
+                        else:
+                            for previous_task_id in previous_task_ids:
+                                self.model.addConstr(
+                                    self.Z[(tenant, task_id, t)]
+                                    <= c_expr(tenant, previous_task_id, release_check_t),
+                                    name=f"program_release_ready_{tenant}_{task_id}_{previous_task_id}_{t}",
+                                )
+                            self.model.addConstr(
+                                self.Z[(tenant, task_id, t)]
+                                >= 1
+                                - c_expr(tenant, task_id, t - 1)
+                                + gp.quicksum(
+                                    c_expr(tenant, previous_task_id, release_check_t)
+                                    for previous_task_id in previous_task_ids
+                                )
+                                - len(previous_task_ids),
+                                name=f"Z_program_release_exact_{tenant}_{task_id}_{t}",
                             )
                     else:
                         self.model.addConstr(
-                            self.Z[(tenant, task_id, t)] == 1 - self.C[(tenant, task_id, t - 1)],
+                            self.Z[(tenant, task_id, t)] == 1 - c_expr(tenant, task_id, t - 1),
                             name=f"Z_no_pred_exact_{tenant}_{task_id}_{t}",
                         )
 
@@ -868,11 +1033,11 @@ class MappingILPSolver:
                     )
                     self.model.addConstr(
                         self.S_active[(tenant, task_id, t)]
-                        >= self.S_active[(tenant, task_id, t - 1)] - self.C[(tenant, task_id, t - 1)],
+                        >= self.S_active.get((tenant, task_id, t - 1), 0.0) - c_expr(tenant, task_id, t - 1),
                         name=f"S_nonpreempt_{tenant}_{task_id}_{t}",
                     )
 
-                for t in horizon:
+                for t in active_horizon:
                     self.model.addConstr(
                         self.D_full[(tenant, task_id, t)] <= self.S_active[(tenant, task_id, t)],
                         name=f"D_full_le_S_{tenant}_{task_id}_{t}",
@@ -887,7 +1052,7 @@ class MappingILPSolver:
                         name=f"D_full_ge_active_not_done_{tenant}_{task_id}_{t}",
                     )
 
-                for t in horizon:
+                for t in active_horizon:
                     self.model.addConstr(
                         self.R[(tenant, task_id, t)]
                         <= self.data["task_total_volume"][(tenant, task_id)] * self.S_active[(tenant, task_id, t)],
@@ -900,7 +1065,7 @@ class MappingILPSolver:
                     )
 
                 self.task_finish[(tenant, task_id)] = 1 + gp.quicksum(
-                    1 - self.C[(tenant, task_id, t)] for t in horizon
+                    1 - c_expr(tenant, task_id, t) for t in horizon
                 )
 
             for sender_rank, sender_task_ids in self.data["sender_tasks"][tenant].items():
@@ -931,6 +1096,8 @@ class MappingILPSolver:
                         for task_id in sender_task_ids:
                             if port not in first_hop_u_vars[tenant][task_id]:
                                 continue
+                            if (tenant, task_id, t) not in self.Z:
+                                continue
                             port_selected = gp.quicksum(first_hop_u_vars[tenant][task_id][port])
                             self.model.addConstr(
                                 port_active_sum
@@ -944,9 +1111,10 @@ class MappingILPSolver:
                             if t == 0:
                                 start_expr = self.P_active[(tenant, task_id, port, 0)]
                             else:
+                                previous_p = self.P_active.get((tenant, task_id, port, t - 1), 0.0)
                                 start_expr = (
                                     self.P_active[(tenant, task_id, port, t)]
-                                    - self.P_active[(tenant, task_id, port, t - 1)]
+                                    - previous_p
                                 )
                             for earlier_task_id in sender_task_ids[:idx]:
                                 if port not in first_hop_u_vars[tenant][earlier_task_id]:
@@ -957,7 +1125,7 @@ class MappingILPSolver:
                                 self.model.addConstr(
                                     start_expr
                                     <= 2
-                                    - self.Z[(tenant, earlier_task_id, t)]
+                                    - z_expr(tenant, earlier_task_id, t)
                                     - earlier_port_selected,
                                     name=(
                                         f"port_fifo_start_{tenant}_{sender_rank}_{port[0]}_{port[1]}_"
@@ -1003,7 +1171,7 @@ class MappingILPSolver:
                     for task in tasks_by_tenant[tenant]:
                         task_id = task["task_id"]
                         w_key = (tenant, task_id, link)
-                        if w_key in self.W:
+                        if w_key in self.W and (tenant, task_id, t) in self.R:
                             self.model.addConstr(
                                 self.R[(tenant, task_id, t)]
                                 >= self.LinkMinRate[(link, t)]
@@ -1846,6 +2014,13 @@ class MappingILPSolver:
             fairness_grouping=self.fairness_grouping,
             slot_duration=self.slot_duration_override,
             horizon_slots=self.horizon_slots_override,
+            compact_task_windows=self.compact_task_windows,
+            compact_window_mapping=self.compact_window_mapping,
+            lp_method=self.lp_method,
+            node_method=self.node_method,
+            presolve=self.presolve,
+            prepasses=self.prepasses,
+            numeric_focus=self.numeric_focus,
             enable_heuristic_warm_start=False,
             enable_full_mip_start=False,
         )
@@ -1879,8 +2054,16 @@ class MappingILPSolver:
         self.model.Params.MIPGap = 0.0
         self.model.Params.MIPGapAbs = 1e-9
         self.model.Params.IntegralityFocus = 1
-        self.model.Params.Method = 1
-        self.model.Params.NodeMethod = 1
+        if self.lp_method is not None:
+            self.model.Params.Method = int(self.lp_method)
+        if self.node_method is not None:
+            self.model.Params.NodeMethod = int(self.node_method)
+        if self.presolve is not None:
+            self.model.Params.Presolve = int(self.presolve)
+        if self.prepasses is not None:
+            self.model.Params.PrePasses = int(self.prepasses)
+        if self.numeric_focus is not None:
+            self.model.Params.NumericFocus = int(self.numeric_focus)
         self.model.optimize()
 
         status = self.model.Status

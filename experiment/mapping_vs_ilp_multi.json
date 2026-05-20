@@ -15,9 +15,12 @@
       4
     ],
     "seed": 20250511,
-    "heuristic_time_limit": 1.0,
-    "ilp_time_limit": 1.0,
-    "ilp_pure": true
+    "heuristic_time_limit": 10.0,
+    "ilp_time_limit": 120.0,
+    "ilp_warm_start_mode": "fixed",
+    "ilp_default_mapping_horizon_bound": "mandatory",
+    "ilp_pure": true,
+    "runtime_definition": "solver_only"
   },
   "results": [
     {
@@ -58,7 +61,7 @@
           }
         ]
       },
-      "default_mapping": {
+      "initial_mapping": {
         "0": {
           "0": 1,
           "1": 2,
@@ -76,12 +79,9 @@
           "5": 4
         }
       },
-      "default": {
-        "avg_jct": 0.2805463654400578,
-        "makespan": 0.2805463654400578
-      },
       "heuristic": {
-        "runtime_seconds": 0.09803605079650879,
+        "runtime_seconds": 0.890373945236206,
+        "runtime_definition": "solver_only",
         "mapping": {
           "0": {
             "0": 0,
@@ -92,25 +92,43 @@
             "5": 10
           },
           "1": {
-            "0": 4,
-            "1": 11,
-            "2": 9,
-            "3": 8,
-            "4": 3,
-            "5": 6
+            "0": 3,
+            "1": 6,
+            "2": 4,
+            "3": 11,
+            "4": 9,
+            "5": 8
           }
         },
         "avg_jct": 0.24029677567994898,
-        "makespan": 0.24029677567994898,
-        "avg_jct_gain_pct": 14.346858387195407
+        "makespan": 0.24029677567994898
       },
       "ilp": {
-        "runtime_seconds": 236.1656050682068,
-        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
-        "mapping": null,
-        "avg_jct": null,
-        "makespan": null,
-        "avg_jct_gain_pct": null
+        "runtime_seconds": 48.49023389816284,
+        "runtime_definition": "solver_only",
+        "status": "ok",
+        "warm_start_mode": "fixed",
+        "default_mapping_horizon_bound": 105,
+        "mapping": {
+          "0": {
+            "0": 0,
+            "1": 1,
+            "2": 2,
+            "3": 5,
+            "4": 7,
+            "5": 10
+          },
+          "1": {
+            "0": 3,
+            "1": 6,
+            "2": 4,
+            "3": 11,
+            "4": 9,
+            "5": 8
+          }
+        },
+        "avg_jct": 0.24029677567994898,
+        "makespan": 0.24029677567994898
       }
     },
     {
@@ -168,7 +186,7 @@
           }
         ]
       },
-      "default_mapping": {
+      "initial_mapping": {
         "0": {
           "0": 6,
           "1": 7,
@@ -188,43 +206,60 @@
           "3": 9
         }
       },
-      "default": {
-        "avg_jct": 0.25267084629328623,
-        "makespan": 0.2589352140799589
-      },
       "heuristic": {
-        "runtime_seconds": 0.07582783699035645,
+        "runtime_seconds": 0.07281613349914551,
+        "runtime_definition": "solver_only",
         "mapping": {
           "0": {
-            "0": 6,
-            "1": 7,
-            "2": 2,
-            "3": 11
+            "0": 2,
+            "1": 11,
+            "2": 6,
+            "3": 7
           },
           "1": {
-            "0": 5,
-            "1": 1,
-            "2": 0,
-            "3": 4
+            "0": 0,
+            "1": 5,
+            "2": 4,
+            "3": 1
           },
           "2": {
-            "0": 8,
+            "0": 3,
             "1": 10,
-            "2": 3,
+            "2": 8,
             "3": 9
           }
         },
-        "avg_jct": 0.2402819208532667,
-        "makespan": 0.248336732159912,
-        "avg_jct_gain_pct": 4.9031875349953
+        "avg_jct": 0.24029153279993334,
+        "makespan": 0.248334110719912
       },
       "ilp": {
-        "runtime_seconds": 1.101125717163086,
-        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
-        "mapping": null,
-        "avg_jct": null,
-        "makespan": null,
-        "avg_jct_gain_pct": null
+        "runtime_seconds": 124.01226711273193,
+        "runtime_definition": "solver_only",
+        "status": "time_limit_with_solution",
+        "warm_start_mode": "fixed",
+        "default_mapping_horizon_bound": 97,
+        "mapping": {
+          "0": {
+            "0": 2,
+            "1": 11,
+            "2": 6,
+            "3": 7
+          },
+          "1": {
+            "0": 0,
+            "1": 5,
+            "2": 4,
+            "3": 1
+          },
+          "2": {
+            "0": 3,
+            "1": 10,
+            "2": 8,
+            "3": 9
+          }
+        },
+        "avg_jct": 0.24029153279993334,
+        "makespan": 0.248334110719912
       }
     },
     {
@@ -299,7 +334,7 @@
           }
         ]
       },
-      "default_mapping": {
+      "initial_mapping": {
         "0": {
           "0": 5,
           "1": 10,
@@ -321,12 +356,9 @@
           "2": 0
         }
       },
-      "default": {
-        "avg_jct": 0.22013528063998683,
-        "makespan": 0.23221749759996743
-      },
       "heuristic": {
-        "runtime_seconds": 0.011626005172729492,
+        "runtime_seconds": 0.011346101760864258,
+        "runtime_definition": "solver_only",
         "mapping": {
           "0": {
             "0": 5,
@@ -350,16 +382,38 @@
           }
         },
         "avg_jct": 0.22013528063998683,
-        "makespan": 0.23221749759996743,
-        "avg_jct_gain_pct": 0.0
+        "makespan": 0.23221749759996743
       },
       "ilp": {
-        "runtime_seconds": 1.0158581733703613,
-        "status": "error: Model not solved to a valid solution. Status=9, SolCount=0",
-        "mapping": null,
-        "avg_jct": null,
-        "makespan": null,
-        "avg_jct_gain_pct": null
+        "runtime_seconds": 2.9959638118743896,
+        "runtime_definition": "solver_only",
+        "status": "ok",
+        "warm_start_mode": "fixed",
+        "default_mapping_horizon_bound": 87,
+        "mapping": {
+          "0": {
+            "0": 5,
+            "1": 10,
+            "2": 11
+          },
+          "1": {
+            "0": 4,
+            "1": 6,
+            "2": 7
+          },
+          "2": {
+            "0": 1,
+            "1": 2,
+            "2": 3
+          },
+          "3": {
+            "0": 0,
+            "1": 9,
+            "2": 8
+          }
+        },
+        "avg_jct": 0.22013528063998683,
+        "makespan": 0.23221749759996743
       }
     }
   ]

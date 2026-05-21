@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import itertools
 import json
 import random
 import sys
@@ -15,6 +16,7 @@ from multitenant.config import BITS_PER_MB
 from multitenant.simulator import simulate_collective_program
 from multitenant.solvers import MappingHybridHeuristicSolver, MappingILPSolver
 from multitenant.topology import LeafSpineDatacenter
+from gurobipy import GRB
 
 
 TOPOLOGY = {
@@ -27,6 +29,8 @@ COLLECTIVE = "allgather"
 SINGLE_FLOW_SIZE_BITS = 8 * BITS_PER_MB
 NUM_COLLECTIVES = 3
 GAP_AFTER_SECONDS = 0.1
+PAIR_PATTERN_CUT_MAX_COMBINATIONS = 64
+PAIR_PATTERN_CUT_TIME_LIMIT_SECONDS = 10.0
 
 
 def build_random_server_disjoint_mapping(
@@ -101,6 +105,127 @@ def solve_with_heuristic(
     return solver.get_X_mapping(), float(runtime_seconds)
 
 
+def _fix_solver_to_ring_pattern(
+    solver: MappingILPSolver,
+    tenant: int,
+    pattern: dict[int, int],
+) -> None:
+    for pattern_idx, candidate_pattern in enumerate(solver.ring_patterns.get(tenant, [])):
+        target = 1.0 if candidate_pattern == pattern else 0.0
+        solver.Y[(tenant, pattern_idx)].LB = target
+        solver.Y[(tenant, pattern_idx)].UB = target
+
+
+def _maybe_add_pair_finish_lower_bound_cuts(
+    datacenter: LeafSpineDatacenter,
+    solver: MappingILPSolver,
+    tenant_mapping: dict[int, dict[int, int]],
+    tenant_collective_programs: dict[int, list[dict[str, object]]],
+    horizon_slots: int,
+    verbose: bool,
+) -> dict[str, int]:
+    tenants_with_patterns = [
+        tenant
+        for tenant, patterns in sorted(solver.ring_patterns.items())
+        if patterns and len(patterns) > 0
+    ]
+    stats = {
+        "aggregate_cuts": 0,
+        "nogood_cuts": 0,
+        "skipped_pairs": 0,
+        "subproblems": 0,
+    }
+    if len(tenants_with_patterns) < 2:
+        return stats
+
+    for tenant_a, tenant_b in itertools.combinations(tenants_with_patterns, 2):
+        patterns_a = solver.ring_patterns[tenant_a]
+        patterns_b = solver.ring_patterns[tenant_b]
+        pair_combinations = len(patterns_a) * len(patterns_b)
+        if pair_combinations > PAIR_PATTERN_CUT_MAX_COMBINATIONS:
+            stats["skipped_pairs"] += 1
+            continue
+
+        pair_lower_bounds = []
+        certified_pair = True
+        for pattern_idx_a, pattern_a in enumerate(patterns_a):
+            for pattern_idx_b, pattern_b in enumerate(patterns_b):
+                pair_mapping = {
+                    tenant_a: dict(pattern_a),
+                    tenant_b: dict(pattern_b),
+                }
+                pair_programs = {
+                    tenant_a: tenant_collective_programs[tenant_a],
+                    tenant_b: tenant_collective_programs[tenant_b],
+                }
+                pair_window_mapping = {
+                    tenant_a: tenant_mapping[tenant_a],
+                    tenant_b: tenant_mapping[tenant_b],
+                }
+                pair_solver = MappingILPSolver(
+                    datacenter,
+                    tenant_mapping=pair_mapping,
+                    tenant_collective_programs=pair_programs,
+                    horizon_slots=horizon_slots,
+                    compact_task_windows=True,
+                    compact_window_mapping=pair_window_mapping,
+                    enable_heuristic_warm_start=False,
+                    enable_full_mip_start=False,
+                    enable_fixed_mapping_subproblem_start=False,
+                    verbose=False,
+                )
+                _fix_solver_to_ring_pattern(pair_solver, tenant_a, dict(pattern_a))
+                _fix_solver_to_ring_pattern(pair_solver, tenant_b, dict(pattern_b))
+                pair_solver.model.Params.OutputFlag = 0
+                pair_solver.model.Params.TimeLimit = PAIR_PATTERN_CUT_TIME_LIMIT_SECONDS
+                pair_solver.model.Params.MIPGap = 0
+                pair_solver.model.Params.MIPGapAbs = 1e-9
+                pair_solver.model.optimize()
+                stats["subproblems"] += 1
+
+                if pair_solver.model.Status == GRB.OPTIMAL:
+                    pair_lower_bounds.append(
+                        sum(
+                            float(pair_solver.tenant_finish[tenant].X)
+                            for tenant in (tenant_a, tenant_b)
+                        )
+                    )
+                elif pair_solver.model.Status == GRB.INFEASIBLE:
+                    solver.model.addConstr(
+                        solver.Y[(tenant_a, pattern_idx_a)]
+                        + solver.Y[(tenant_b, pattern_idx_b)]
+                        <= 1,
+                        name=(
+                            f"pair_pattern_infeasible_{tenant_a}_{tenant_b}_"
+                            f"{pattern_idx_a}_{pattern_idx_b}"
+                        ),
+                    )
+                    stats["nogood_cuts"] += 1
+                else:
+                    certified_pair = False
+
+                pair_solver.model.dispose()
+
+        if certified_pair and pair_lower_bounds:
+            pair_finish_lb = min(pair_lower_bounds)
+            solver.model.addConstr(
+                solver.tenant_finish[tenant_a] + solver.tenant_finish[tenant_b]
+                >= pair_finish_lb,
+                name=f"pair_finish_lb_{tenant_a}_{tenant_b}",
+            )
+            stats["aggregate_cuts"] += 1
+
+    if verbose and (stats["aggregate_cuts"] or stats["nogood_cuts"]):
+        print(
+            "[pair-finish-lb] "
+            f"aggregate_cuts={stats['aggregate_cuts']}, "
+            f"nogood_cuts={stats['nogood_cuts']}, "
+            f"subproblems={stats['subproblems']}, "
+            f"skipped_pairs={stats['skipped_pairs']}"
+        )
+    return stats
+
+
 def solve_with_ilp(
     datacenter: LeafSpineDatacenter,
     tenant_mapping: dict[int, dict[int, int]],
@@ -144,16 +269,25 @@ def solve_with_ilp(
     for var in solver.tenant_finish.values():
         var.UB = min(float(var.UB), float(default_mapping_horizon_bound))
     solver.model.update()
-    if warm_start_mode == "fixed":
-        solver._register_mapping_seed(seed_mapping)
-    elif warm_start_mode == "mapping":
-        solver._apply_mapping_warm_start(seed_mapping)
-    elif warm_start_mode == "simulator":
-        solver._apply_simulator_schedule_warm_start(seed_mapping)
-    if warm_start_mode != "none":
-        solver.model.Params.StartNodeLimit = 0
     start_time = time.time()
     try:
+        _maybe_add_pair_finish_lower_bound_cuts(
+            datacenter,
+            solver,
+            tenant_mapping,
+            tenant_collective_programs,
+            default_mapping_horizon_bound,
+            verbose,
+        )
+        solver.model.update()
+        if warm_start_mode == "fixed":
+            solver._register_mapping_seed(seed_mapping)
+        elif warm_start_mode == "mapping":
+            solver._apply_mapping_warm_start(seed_mapping)
+        elif warm_start_mode == "simulator":
+            solver._apply_simulator_schedule_warm_start(seed_mapping)
+        if warm_start_mode != "none":
+            solver.model.Params.StartNodeLimit = 0
         solver.solve(time_limit=time_limit)
         runtime_seconds = time.time() - start_time
         status_code = int(solver.model.Status)

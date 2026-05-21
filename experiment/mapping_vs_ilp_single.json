@@ -42,7 +42,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.3676600456237793,
+        "runtime_seconds": 0.38207006454467773,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -66,7 +66,7 @@
         "makespan": 0.013432258559999424
       },
       "ilp": {
-        "runtime_seconds": 287.0176320075989,
+        "runtime_seconds": 312.8012843132019,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
@@ -116,7 +116,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.02866196632385254,
+        "runtime_seconds": 0.02896881103515625,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -142,7 +142,7 @@
         "makespan": 0.016111370239998916
       },
       "ilp": {
-        "runtime_seconds": 130.50930619239807,
+        "runtime_seconds": 127.98430705070496,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
@@ -196,7 +196,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.004854679107666016,
+        "runtime_seconds": 0.005244731903076172,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -224,7 +224,7 @@
         "makespan": 0.010742661119999932
       },
       "ilp": {
-        "runtime_seconds": 2.9315710067749023,
+        "runtime_seconds": 3.0283701419830322,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",

@@ -80,7 +80,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.890373945236206,
+        "runtime_seconds": 1.0731379985809326,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -104,11 +104,11 @@
         "makespan": 0.24029677567994898
       },
       "ilp": {
-        "runtime_seconds": 48.49023389816284,
+        "runtime_seconds": 30.667901039123535,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
-        "default_mapping_horizon_bound": 105,
+        "default_mapping_horizon_bound": 107,
         "mapping": {
           "0": {
             "0": 0,
@@ -207,7 +207,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.07281613349914551,
+        "runtime_seconds": 0.07251882553100586,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -233,29 +233,29 @@
         "makespan": 0.248334110719912
       },
       "ilp": {
-        "runtime_seconds": 124.01226711273193,
+        "runtime_seconds": 80.05649399757385,
         "runtime_definition": "solver_only",
-        "status": "time_limit_with_solution",
+        "status": "ok",
         "warm_start_mode": "fixed",
-        "default_mapping_horizon_bound": 97,
+        "default_mapping_horizon_bound": 99,
         "mapping": {
           "0": {
             "0": 2,
-            "1": 11,
+            "1": 7,
             "2": 6,
-            "3": 7
+            "3": 11
           },
           "1": {
             "0": 0,
-            "1": 5,
+            "1": 1,
             "2": 4,
-            "3": 1
+            "3": 5
           },
           "2": {
             "0": 3,
-            "1": 10,
+            "1": 9,
             "2": 8,
-            "3": 9
+            "3": 10
           }
         },
         "avg_jct": 0.24029153279993334,
@@ -357,7 +357,7 @@
         }
       },
       "heuristic": {
-        "runtime_seconds": 0.011346101760864258,
+        "runtime_seconds": 0.011577129364013672,
         "runtime_definition": "solver_only",
         "mapping": {
           "0": {
@@ -385,11 +385,11 @@
         "makespan": 0.23221749759996743
       },
       "ilp": {
-        "runtime_seconds": 2.9959638118743896,
+        "runtime_seconds": 3.585533857345581,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
-        "default_mapping_horizon_bound": 87,
+        "default_mapping_horizon_bound": 89,
         "mapping": {
           "0": {
             "0": 5,
@@ -408,8 +408,8 @@
           },
           "3": {
             "0": 0,
-            "1": 9,
-            "2": 8
+            "1": 8,
+            "2": 9
           }
         },
         "avg_jct": 0.22013528063998683,

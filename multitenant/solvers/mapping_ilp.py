@@ -98,6 +98,8 @@ class MappingILPSolver:
         self.model = None
 
         self.X = {}
+        self.Y = {}
+        self.ring_patterns = {}
         self.U = {}
         self.W = {}
         self.LinkMinRate = {}
@@ -481,7 +483,7 @@ class MappingILPSolver:
                     continue
                 previous_op = op_by_idx[op_idx - 1]
                 gap_after_s = float(previous_op.get("gap_after", 0.0))
-                gap_slots = int(math.ceil(gap_after_s / slot_duration))
+                gap_slots = int(math.ceil(gap_after_s / slot_duration - 1e-9))
                 total_gap_slots_by_tenant[tenant] += gap_slots
                 previous_task_ids = [int(task_id) for task_id in previous_op.get("task_ids", [])]
                 for task_id in op.get("initial_task_ids", []):
@@ -533,6 +535,37 @@ class MappingILPSolver:
                         seed_op_latest_finish_slot.get((tenant, op_idx), 0),
                         finish_slot,
                     )
+                for tenant in tenants:
+                    program = sorted(
+                        list(schedule_by_tenant.get(tenant, {}).get("collective_program", [])),
+                        key=lambda item: int(item.get("op_idx", 0)),
+                    )
+                    previous_latest = None
+                    previous_gap_slots = 0
+                    for op in program:
+                        op_idx = int(op.get("op_idx", 0))
+                        current_latest = seed_op_latest_finish_slot.get((tenant, op_idx))
+                        if current_latest is None:
+                            current_latest = (
+                                compact_op_earliest_slot.get((tenant, op_idx), 0)
+                                + compact_op_duration_lb.get((tenant, op_idx), 1)
+                            )
+                        if previous_latest is not None:
+                            # The next collective is released only after the previous
+                            # collective completes plus its fixed gap. Keep simulator
+                            # seed windows closed under that discrete release rule.
+                            current_latest = max(
+                                current_latest,
+                                previous_latest
+                                + previous_gap_slots
+                                + compact_op_duration_lb.get((tenant, op_idx), 1)
+                                + 1,
+                            )
+                        seed_op_latest_finish_slot[(tenant, op_idx)] = current_latest
+                        previous_latest = current_latest
+                        previous_gap_slots = int(
+                            math.ceil(float(op.get("gap_after", 0.0)) / slot_duration - 1e-9)
+                        )
             for tenant in tenants:
                 for task in tasks_by_tenant[tenant]:
                     task_id = int(task["task_id"])
@@ -589,6 +622,8 @@ class MappingILPSolver:
             self.model.dispose()
 
         self.X = {}
+        self.Y = {}
+        self.ring_patterns = {}
         self.U = {}
         self.W = {}
         self.LinkMinRate = {}
@@ -620,12 +655,50 @@ class MappingILPSolver:
     def _add_X(self):
         tenants, ranks, servers = self.data["M"], self.data["R"], self.data["S"]
         for tenant in tenants:
+            use_patterns = self._use_ring_pattern_formulation(tenant)
             for rank in ranks[tenant]:
                 for server in servers[tenant]:
-                    self.X[(tenant, rank, server)] = self.model.addVar(
-                        vtype=GRB.BINARY,
-                        name=f"X_{tenant}_{rank}_{server}",
-                    )
+                    if use_patterns:
+                        self.X[(tenant, rank, server)] = self.model.addVar(
+                            vtype=GRB.CONTINUOUS,
+                            lb=0.0,
+                            ub=1.0,
+                            name=f"X_{tenant}_{rank}_{server}",
+                        )
+                    else:
+                        self.X[(tenant, rank, server)] = self.model.addVar(
+                            vtype=GRB.BINARY,
+                            name=f"X_{tenant}_{rank}_{server}",
+                        )
+
+    def _use_ring_pattern_formulation(self, tenant):
+        return self.compact_task_windows and self._tenant_has_ring_rotation_symmetry(tenant)
+
+    def _canonical_ring_patterns(self, tenant):
+        tenant_ranks = list(self.data["R"][tenant])
+        tenant_servers = sorted(self.data["S"][tenant])
+        if not tenant_ranks or not tenant_servers:
+            return []
+
+        anchor_server = min(tenant_servers)
+        other_servers = [server for server in tenant_servers if server != anchor_server]
+        if len(tenant_ranks) <= 2:
+            sequences = [(anchor_server, *other_servers)]
+        else:
+            sequences = []
+            for tail in itertools.permutations(other_servers):
+                sequence = (anchor_server, *tail)
+                reversed_sequence = (anchor_server, *reversed(tail))
+                if sequence <= reversed_sequence:
+                    sequences.append(sequence)
+
+        return [
+            {
+                rank: int(sequence[idx])
+                for idx, rank in enumerate(tenant_ranks)
+            }
+            for sequence in sequences
+        ]
 
     def _tenant_has_ring_rotation_symmetry(self, tenant):
         ring_collectives = {"allgather", "reducescatter", "allreduce"}
@@ -640,6 +713,35 @@ class MappingILPSolver:
         tenants, ranks, servers = self.data["M"], self.data["R"], self.data["S"]
 
         for tenant in tenants:
+            if self._use_ring_pattern_formulation(tenant):
+                patterns = self._canonical_ring_patterns(tenant)
+                self.ring_patterns[tenant] = patterns
+                for pattern_idx, _pattern in enumerate(patterns):
+                    self.Y[(tenant, pattern_idx)] = self.model.addVar(
+                        vtype=GRB.BINARY,
+                        name=f"Y_ring_{tenant}_{pattern_idx}",
+                    )
+                self.model.addConstr(
+                    gp.quicksum(
+                        self.Y[(tenant, pattern_idx)]
+                        for pattern_idx in range(len(patterns))
+                    )
+                    == 1,
+                    name=f"ring_pattern_one_{tenant}",
+                )
+                for rank in ranks[tenant]:
+                    for server in servers[tenant]:
+                        self.model.addConstr(
+                            self.X[(tenant, rank, server)]
+                            == gp.quicksum(
+                                self.Y[(tenant, pattern_idx)]
+                                for pattern_idx, pattern in enumerate(patterns)
+                                if pattern[rank] == server
+                            ),
+                            name=f"X_from_ring_pattern_{tenant}_{rank}_{server}",
+                )
+                continue
+
             for rank in ranks[tenant]:
                 self.model.addConstr(
                     gp.quicksum(self.X[(tenant, rank, server)] for server in servers[tenant]) == 1,
@@ -647,6 +749,8 @@ class MappingILPSolver:
                 )
 
         for tenant in tenants:
+            if self._use_ring_pattern_formulation(tenant):
+                continue
             for server in servers[tenant]:
                 self.model.addConstr(
                     gp.quicksum(self.X[(tenant, rank, server)] for rank in ranks[tenant]) == 1,
@@ -660,6 +764,8 @@ class MappingILPSolver:
         for tenant in tenants:
             tenant_ranks = list(ranks[tenant])
             tenant_servers = list(servers[tenant])
+            if self._use_ring_pattern_formulation(tenant):
+                continue
             if not self._tenant_has_ring_rotation_symmetry(tenant):
                 continue
             if not tenant_ranks or not tenant_servers:
@@ -670,6 +776,20 @@ class MappingILPSolver:
                 self.X[(tenant, anchor_rank, anchor_server)] == 1,
                 name=f"ring_anchor_{tenant}",
             )
+            if self.compact_task_windows and len(tenant_ranks) > 2:
+                first_neighbor_rank = tenant_ranks[1]
+                last_neighbor_rank = tenant_ranks[-1]
+                self.model.addConstr(
+                    gp.quicksum(
+                        server * self.X[(tenant, first_neighbor_rank, server)]
+                        for server in tenant_servers
+                    )
+                    <= gp.quicksum(
+                        server * self.X[(tenant, last_neighbor_rank, server)]
+                        for server in tenant_servers
+                    ),
+                    name=f"ring_reversal_{tenant}",
+                )
 
     def _add_U_and_endpoint_constraints(self):
         tenants, servers = self.data["M"], self.data["S"]
@@ -677,6 +797,7 @@ class MappingILPSolver:
 
         for tenant in tenants:
             candidate_servers = servers[tenant]
+            patterns = self.ring_patterns.get(tenant)
             for task in tasks_by_tenant[tenant]:
                 task_id = task["task_id"]
                 logical_src = task["u"]
@@ -689,32 +810,55 @@ class MappingILPSolver:
                             continue
 
                         key = (tenant, task_id, src_server, dst_server)
-                        self.U[key] = self.model.addVar(
-                            vtype=GRB.BINARY,
-                            name=f"U_{tenant}_{task_id}_{src_server}_{dst_server}",
-                        )
+                        if patterns is not None:
+                            self.U[key] = self.model.addVar(
+                                vtype=GRB.CONTINUOUS,
+                                lb=0.0,
+                                ub=1.0,
+                                name=f"U_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
+                        else:
+                            self.U[key] = self.model.addVar(
+                                vtype=GRB.BINARY,
+                                name=f"U_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
                         flow_vars.append(self.U[key])
 
-                        self.model.addConstr(
-                            self.U[key] <= self.X[(tenant, logical_src, src_server)],
-                            name=f"U_le_Xsrc_{tenant}_{task_id}_{src_server}_{dst_server}",
-                        )
-                        self.model.addConstr(
-                            self.U[key] <= self.X[(tenant, logical_dst, dst_server)],
-                            name=f"U_le_Xdst_{tenant}_{task_id}_{src_server}_{dst_server}",
-                        )
-                        self.model.addConstr(
-                            self.U[key]
-                            >= self.X[(tenant, logical_src, src_server)]
-                            + self.X[(tenant, logical_dst, dst_server)]
-                            - 1,
-                            name=f"U_ge_AND_{tenant}_{task_id}_{src_server}_{dst_server}",
-                        )
+                        if patterns is None:
+                            self.model.addConstr(
+                                self.U[key] <= self.X[(tenant, logical_src, src_server)],
+                                name=f"U_le_Xsrc_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
+                            self.model.addConstr(
+                                self.U[key] <= self.X[(tenant, logical_dst, dst_server)],
+                                name=f"U_le_Xdst_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
+                            self.model.addConstr(
+                                self.U[key]
+                                >= self.X[(tenant, logical_src, src_server)]
+                                + self.X[(tenant, logical_dst, dst_server)]
+                                - 1,
+                                name=f"U_ge_AND_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
+                        else:
+                            self.model.addConstr(
+                                self.U[key]
+                                == gp.quicksum(
+                                    self.Y[(tenant, pattern_idx)]
+                                    for pattern_idx, pattern in enumerate(patterns)
+                                    if (
+                                        pattern[int(logical_src)] == src_server
+                                        and pattern[int(logical_dst)] == dst_server
+                                    )
+                                ),
+                                name=f"U_from_ring_pattern_{tenant}_{task_id}_{src_server}_{dst_server}",
+                            )
 
-                self.model.addConstr(
-                    gp.quicksum(flow_vars) == 1,
-                    name=f"U_onepair_{tenant}_{task_id}",
-                )
+                if patterns is None:
+                    self.model.addConstr(
+                        gp.quicksum(flow_vars) == 1,
+                        name=f"U_onepair_{tenant}_{task_id}",
+                    )
 
     def _add_task_time_model(self):
         tenants = self.data["M"]
@@ -819,6 +963,27 @@ class MappingILPSolver:
                 task = task_lookup[tenant][task_id]
                 preds = list(task["preds"])
                 active_horizon = list(task_horizon_slots(tenant, task_id))
+                task_slot_rate_ub = self.data["task_total_volume"][(tenant, task_id)]
+                if self.compact_task_windows:
+                    task_slot_rate_ub = min(
+                        task_slot_rate_ub,
+                        max(
+                            (
+                                min(
+                                    (
+                                        capacities[edge] * slot_duration
+                                        for edge in path_edges.get((src_server, dst_server), ())
+                                        if edge in capacities
+                                    ),
+                                    default=0.0,
+                                )
+                                for src_server in servers[tenant]
+                                for dst_server in servers[tenant]
+                                if src_server != dst_server
+                            ),
+                            default=task_slot_rate_ub,
+                        ),
+                    )
                 for t in active_horizon:
                     self.R[(tenant, task_id, t)] = self.model.addVar(
                         vtype=GRB.CONTINUOUS,
@@ -911,8 +1076,8 @@ class MappingILPSolver:
                         self.model.addConstr(
                             self.F[(tenant, task_id, link, t)]
                             >= self.R[(tenant, task_id, t)]
-                            - self.data["task_total_volume"][(tenant, task_id)] * (1 - self.W[(tenant, task_id, link)])
-                            - self.data["task_total_volume"][(tenant, task_id)] * (1 - self.S_active[(tenant, task_id, t)]),
+                            - task_slot_rate_ub * (1 - self.W[(tenant, task_id, link)])
+                            - task_slot_rate_ub * (1 - self.S_active[(tenant, task_id, t)]),
                             name=f"F_ge_R_if_WS_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
@@ -949,6 +1114,34 @@ class MappingILPSolver:
                     self.C[(tenant, task_id, latest_finish_slot(tenant, task_id) - 1)] == 1,
                     name=f"C_terminal_{tenant}_{task_id}",
                 )
+                if self.compact_task_windows:
+                    for t in active_horizon:
+                        if preds:
+                            for pred_task_id in preds:
+                                self.model.addConstr(
+                                    self.C[(tenant, task_id, t)]
+                                    <= c_expr(tenant, pred_task_id, t - 1),
+                                    name=f"C_after_pred_{tenant}_{task_id}_{pred_task_id}_{t}",
+                                )
+                        elif task_id in release_gates.get(tenant, {}):
+                            release_gate = release_gates[tenant][task_id]
+                            gap_slots = int(release_gate.get("gap_slots", 0))
+                            release_check_t = t - gap_slots - 1
+                            if release_check_t < 0:
+                                self.model.addConstr(
+                                    self.C[(tenant, task_id, t)] == 0,
+                                    name=f"C_before_program_release_{tenant}_{task_id}_{t}",
+                                )
+                            else:
+                                for previous_task_id in release_gate["previous_task_ids"]:
+                                    self.model.addConstr(
+                                        self.C[(tenant, task_id, t)]
+                                        <= c_expr(tenant, previous_task_id, release_check_t),
+                                        name=(
+                                            f"C_after_program_release_{tenant}_{task_id}_"
+                                            f"{previous_task_id}_{t}"
+                                        ),
+                                    )
 
                 first_slot = earliest_slot(tenant, task_id)
                 if first_slot == 0 and preds:
@@ -997,7 +1190,7 @@ class MappingILPSolver:
                         release_gate = release_gates[tenant][task_id]
                         previous_task_ids = list(release_gate["previous_task_ids"])
                         gap_slots = int(release_gate.get("gap_slots", 0))
-                        release_check_t = t - gap_slots
+                        release_check_t = t - gap_slots - 1
                         if release_check_t < 0:
                             self.model.addConstr(
                                 self.Z[(tenant, task_id, t)] == 0,
@@ -1055,7 +1248,7 @@ class MappingILPSolver:
                 for t in active_horizon:
                     self.model.addConstr(
                         self.R[(tenant, task_id, t)]
-                        <= self.data["task_total_volume"][(tenant, task_id)] * self.S_active[(tenant, task_id, t)],
+                        <= task_slot_rate_ub * self.S_active[(tenant, task_id, t)],
                         name=f"R_gate_{tenant}_{task_id}_{t}",
                     )
                     self.model.addConstr(
@@ -1154,6 +1347,7 @@ class MappingILPSolver:
                 self.LinkMinRate[(link, t)] = self.model.addVar(
                     vtype=GRB.CONTINUOUS,
                     lb=0.0,
+                    ub=capacity_per_slot if self.compact_task_windows else GRB.INFINITY,
                     name=f"Rmin_{link[0]}_{link[1]}_{t}",
                 )
                 link_flow_expr = gp.quicksum(
@@ -1172,11 +1366,20 @@ class MappingILPSolver:
                         task_id = task["task_id"]
                         w_key = (tenant, task_id, link)
                         if w_key in self.W and (tenant, task_id, t) in self.R:
+                            bn_big_m = max_rate_big_m
+                            if self.compact_task_windows:
+                                bn_big_m = min(
+                                    max_rate_big_m,
+                                    min(
+                                        self.data["task_total_volume"][(tenant, task_id)],
+                                        capacity_per_slot,
+                                    ),
+                                )
                             self.model.addConstr(
                                 self.R[(tenant, task_id, t)]
                                 >= self.LinkMinRate[(link, t)]
-                                - max_rate_big_m * (1 - self.W[w_key])
-                                - max_rate_big_m * (1 - self.S_active[(tenant, task_id, t)]),
+                                - bn_big_m * (1 - self.W[w_key])
+                                - bn_big_m * (1 - self.S_active[(tenant, task_id, t)]),
                                 name=f"bn_minrate_lb_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                             )
 
@@ -1192,7 +1395,11 @@ class MappingILPSolver:
                         )
                         self.model.addConstr(
                             self.R[(tenant, task_id, t)]
-                            <= self.LinkMinRate[(link, t)] + max_rate_big_m * (1 - q_var),
+                            <= self.LinkMinRate[(link, t)] + (
+                                min(max_rate_big_m, capacity_per_slot)
+                                if self.compact_task_windows
+                                else max_rate_big_m
+                            ) * (1 - q_var),
                             name=f"bn_minrate_eq_{tenant}_{task_id}_{link[0]}_{link[1]}_{t}",
                         )
 
@@ -1224,6 +1431,12 @@ class MappingILPSolver:
         }
         for (tenant, rank, server), var in self.X.items():
             var.Start = 1.0 if mapping.get(tenant, {}).get(rank) == server else 0.0
+        for (tenant, pattern_idx), var in self.Y.items():
+            pattern = self.ring_patterns.get(tenant, [])[pattern_idx]
+            var.Start = 1.0 if all(
+                mapping.get(tenant, {}).get(rank) == server
+                for rank, server in pattern.items()
+            ) else 0.0
         for key, var in self.U.items():
             tenant, task_id, src_server, dst_server = key
             task = next(
@@ -1268,6 +1481,10 @@ class MappingILPSolver:
                 continue
             anchor_index = ordered_servers.index(anchor_server)
             rotated = ordered_servers[anchor_index:] + ordered_servers[:anchor_index]
+            if self.compact_task_windows and len(rotated) > 2:
+                reversed_rotated = [rotated[0]] + list(reversed(rotated[1:]))
+                if tuple(reversed_rotated) < tuple(rotated):
+                    rotated = reversed_rotated
             canonical[tenant] = {
                 rank: rotated[idx]
                 for idx, rank in enumerate(tenant_ranks)
@@ -1572,7 +1789,7 @@ class MappingILPSolver:
             if task_id in release_gates.get(tenant, {}):
                 gate = release_gates[tenant][task_id]
                 previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                gap_slots = int(math.ceil(float(gate.get("gap_after_s", 0.0)) / slot_duration))
+                gap_slots = int(math.ceil(float(gate.get("gap_after_s", 0.0)) / slot_duration - 1e-9))
                 return max((task_finish_slot.get((tenant, prev), 0) for prev in previous_task_ids), default=0) + gap_slots
             return 0
 
@@ -1856,7 +2073,20 @@ class MappingILPSolver:
 
         slot_duration = float(self.data["slot_duration"])
         max_finish_time = max(task_finish_time.values(), default=0.0)
-        return int(math.ceil(max_finish_time / slot_duration - 1e-9))
+        # Program gaps are enforced with discrete release gates. A simulator finish
+        # time rounded to slots can otherwise be one slot too tight per positive gap.
+        release_alignment_slots = max(
+            (
+                sum(
+                    1
+                    for op in self.data["schedule"].get(tenant, {}).get("collective_program", [])
+                    if float(op.get("gap_after", 0.0)) > 0.0
+                )
+                for tenant in self.data["M"]
+            ),
+            default=0,
+        )
+        return int(math.ceil(max_finish_time / slot_duration - 1e-9)) + int(release_alignment_slots)
 
     def _apply_mapping_horizon_bound(self, mapping, margin_slots=0):
         bound = self._mapping_horizon_bound(mapping)

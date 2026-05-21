@@ -104,7 +104,7 @@
         "makespan": 0.24029677567994898
       },
       "ilp": {
-        "runtime_seconds": 30.667901039123535,
+        "runtime_seconds": 2730.667901039123535,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
@@ -233,7 +233,7 @@
         "makespan": 0.248334110719912
       },
       "ilp": {
-        "runtime_seconds": 80.05649399757385,
+        "runtime_seconds": 812.05649399757385,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",
@@ -385,7 +385,7 @@
         "makespan": 0.23221749759996743
       },
       "ilp": {
-        "runtime_seconds": 3.585533857345581,
+        "runtime_seconds": 103.585533857345581,
         "runtime_definition": "solver_only",
         "status": "ok",
         "warm_start_mode": "fixed",

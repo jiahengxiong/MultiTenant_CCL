@@ -123,6 +123,7 @@ def _maybe_add_pair_finish_lower_bound_cuts(
     tenant_collective_programs: dict[int, list[dict[str, object]]],
     horizon_slots: int,
     verbose: bool,
+    pair_cut_mode: str,
 ) -> dict[str, int]:
     tenants_with_patterns = [
         tenant
@@ -135,6 +136,9 @@ def _maybe_add_pair_finish_lower_bound_cuts(
         "skipped_pairs": 0,
         "subproblems": 0,
     }
+    if pair_cut_mode == "off":
+        return stats
+
     if len(tenants_with_patterns) < 2:
         return stats
 
@@ -206,7 +210,7 @@ def _maybe_add_pair_finish_lower_bound_cuts(
 
                 pair_solver.model.dispose()
 
-        if certified_pair and pair_lower_bounds:
+        if pair_cut_mode == "aggregate" and certified_pair and pair_lower_bounds:
             pair_finish_lb = min(pair_lower_bounds)
             solver.model.addConstr(
                 solver.tenant_finish[tenant_a] + solver.tenant_finish[tenant_b]
@@ -233,8 +237,9 @@ def solve_with_ilp(
     time_limit: float | None,
     verbose: bool,
     warm_start_mode: str,
+    pair_cut_mode: str,
     warm_start_mapping: dict[int, dict[int, int]] | None = None,
-) -> tuple[dict[int, dict[int, int]] | None, float, str, float | None]:
+) -> tuple[dict[int, dict[int, int]] | None, float, str, float | None, dict[str, int]]:
     seed_mapping = warm_start_mapping if warm_start_mapping is not None else tenant_mapping
     horizon_probe = MappingILPSolver(
         datacenter,
@@ -270,14 +275,21 @@ def solve_with_ilp(
         var.UB = min(float(var.UB), float(default_mapping_horizon_bound))
     solver.model.update()
     start_time = time.time()
+    pair_cut_stats = {
+        "aggregate_cuts": 0,
+        "nogood_cuts": 0,
+        "skipped_pairs": 0,
+        "subproblems": 0,
+    }
     try:
-        _maybe_add_pair_finish_lower_bound_cuts(
+        pair_cut_stats = _maybe_add_pair_finish_lower_bound_cuts(
             datacenter,
             solver,
             tenant_mapping,
             tenant_collective_programs,
             default_mapping_horizon_bound,
             verbose,
+            pair_cut_mode,
         )
         solver.model.update()
         if warm_start_mode == "fixed":
@@ -297,10 +309,16 @@ def solve_with_ilp(
             status = "time_limit_with_solution"
         else:
             status = f"status_{status_code}_with_solution"
-        return solver.get_X_mapping(), float(runtime_seconds), status, default_mapping_horizon_bound
+        return (
+            solver.get_X_mapping(),
+            float(runtime_seconds),
+            status,
+            default_mapping_horizon_bound,
+            pair_cut_stats,
+        )
     except Exception as exc:  # pragma: no cover - experiment harness
         runtime_seconds = time.time() - start_time
-        return None, float(runtime_seconds), f"error: {exc}", default_mapping_horizon_bound
+        return None, float(runtime_seconds), f"error: {exc}", default_mapping_horizon_bound, pair_cut_stats
 
 
 def normalize_mapping(mapping: dict[int, dict[int, int]] | None) -> dict[str, dict[str, int]] | None:
@@ -319,6 +337,7 @@ def summarize_case(
     ilp_time_limit: float | None,
     ilp_verbose: bool,
     ilp_warm_start_mode: str,
+    ilp_pair_cut_mode: str,
 ) -> dict[str, object]:
     datacenter = LeafSpineDatacenter(
         num_leaf=TOPOLOGY["num_leaf"],
@@ -336,13 +355,20 @@ def summarize_case(
     )
     heuristic_mk, heuristic_avg = evaluate_mapping(datacenter, heuristic_mapping, tenant_collective_programs)
 
-    ilp_mapping, ilp_runtime, ilp_status, ilp_default_mapping_horizon_bound = solve_with_ilp(
+    (
+        ilp_mapping,
+        ilp_runtime,
+        ilp_status,
+        ilp_default_mapping_horizon_bound,
+        ilp_pair_cut_stats,
+    ) = solve_with_ilp(
         datacenter,
         default_mapping,
         tenant_collective_programs,
         time_limit=ilp_time_limit,
         verbose=ilp_verbose,
         warm_start_mode=ilp_warm_start_mode,
+        pair_cut_mode=ilp_pair_cut_mode,
         warm_start_mapping=heuristic_mapping,
     )
     if ilp_mapping is not None:
@@ -366,6 +392,8 @@ def summarize_case(
             "runtime_definition": "solver_only",
             "status": ilp_status,
             "warm_start_mode": ilp_warm_start_mode,
+            "pair_cut_mode": ilp_pair_cut_mode,
+            "pair_cut_stats": ilp_pair_cut_stats,
             "default_mapping_horizon_bound": ilp_default_mapping_horizon_bound,
             "mapping": normalize_mapping(ilp_mapping),
             "avg_jct": ilp_avg,
@@ -408,6 +436,16 @@ def parse_args() -> argparse.Namespace:
         ),
     )
     parser.add_argument(
+        "--ilp-pair-cut-mode",
+        choices=("off", "nogood", "aggregate"),
+        default="aggregate",
+        help=(
+            "Controls multi-only tenant-pair proof cuts. off disables this proof shortcut; "
+            "nogood only excludes pair pattern combinations proven infeasible; aggregate also "
+            "adds certified pair finish lower bounds."
+        ),
+    )
+    parser.add_argument(
         "--output",
         type=Path,
         default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/mapping_vs_ilp_multi.json"),
@@ -427,6 +465,7 @@ def main() -> None:
             ilp_time_limit=args.ilp_time_limit,
             ilp_verbose=args.ilp_verbose,
             ilp_warm_start_mode=args.ilp_warm_start_mode,
+            ilp_pair_cut_mode=args.ilp_pair_cut_mode,
         )
         results.append(case_result)
 
@@ -452,6 +491,7 @@ def main() -> None:
             "heuristic_time_limit": args.heuristic_time_limit,
             "ilp_time_limit": args.ilp_time_limit,
             "ilp_warm_start_mode": args.ilp_warm_start_mode,
+            "ilp_pair_cut_mode": args.ilp_pair_cut_mode,
             "ilp_default_mapping_horizon_bound": "mandatory",
             "ilp_pure": True,
             "runtime_definition": "solver_only",

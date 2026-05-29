@@ -222,6 +222,8 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
 
     def _surrogate_pair_swap_polish(self, best_mapping, best_score, deadline):
         max_passes = 3
+        max_pairs_per_tenant = 512
+
         for _pass_idx in range(max_passes):
             if time.time() >= deadline:
                 break
@@ -239,7 +241,6 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
                 ]
                 if len(ranks) <= 1:
                     continue
-                max_pairs_per_tenant = 32
 
                 checked_pairs = 0
                 accepted = False

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import math
 import time
 
 from .mapping_ilp import MappingHeuristicSolver
@@ -22,16 +21,12 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
         *args,
         bnb_candidate_time_limit=1.0,
         max_bnb_tenants_per_round=2,
-        max_joint_tenants_per_round=3,
-        beam_width=4,
+        beam_width=2,
         **kwargs,
     ):
         super().__init__(*args, **kwargs)
         self.bnb_candidate_time_limit = float(bnb_candidate_time_limit)
-        requested_bnb_tenants = int(max_bnb_tenants_per_round)
-        adaptive_bnb_tenants = max(3, int(math.ceil(0.5 * max(len(self.tenants), 1))))
-        self.max_bnb_tenants_per_round = max(requested_bnb_tenants, adaptive_bnb_tenants)
-        self.max_joint_tenants_per_round = max(3, int(max_joint_tenants_per_round))
+        self.max_bnb_tenants_per_round = int(max_bnb_tenants_per_round)
         self.beam_width = max(1, int(beam_width))
         self.last_move_source = None
         self.move_source_counts = {"local": 0, "bnb": 0, "joint": 0}
@@ -196,218 +191,18 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
         ranked.sort(key=lambda entry: self._objective_sort_key(entry[0]))
         return ranked[: self.beam_width]
 
-    def _surrogate_local_repair(self, best_mapping, best_score, deadline, tenant_order=None, max_passes=2):
-        """Greedily apply local remaps that improve the global surrogate.
-
-        Beam search keeps only a small frontier. A mapping can become the best
-        solution late in the search, leaving no full round to exploit its cheap
-        one-tenant local improvements. This pass recomputes prices at the final
-        incumbent and accepts only moves that improve the same global surrogate.
-        """
-        for _pass_idx in range(max_passes):
-            if time.time() >= deadline:
-                break
-
-            improved = False
-            _, _, epoch_prices = self._compute_epoch_link_prices(best_mapping)
-            current_tenant_order = list(tenant_order) if tenant_order is not None else sorted(
-                self.tenants,
-                key=lambda tenant: (
-                    -self.tenant_pressure.get(tenant, 0.0),
-                    -self.tenant_peak_load.get(tenant, 0.0),
-                    tenant,
-                ),
-            )
-
-            for tenant in current_tenant_order:
-                if time.time() >= deadline:
-                    break
-                source, candidate_mapping, candidate_score = self._best_neighborhood_candidate(
-                    best_mapping,
-                    best_score,
-                    tenant,
-                    epoch_prices,
-                    deadline,
-                    include_local=True,
-                    allow_bnb=False,
-                )
-                if source is None:
-                    continue
-
-                best_mapping = candidate_mapping
-                best_score = candidate_score
-                improved = True
-                self.last_move_source = "local_repair"
-                self.move_source_counts["local"] = self.move_source_counts.get("local", 0) + 1
-                self._register_surrogate_candidate(best_mapping, best_score)
-
-                # Accepted moves change pressure, so refresh prices before the
-                # next tenant instead of continuing with stale marginal costs.
-                _, _, epoch_prices = self._compute_epoch_link_prices(best_mapping)
-
-            if not improved:
-                break
-
-        return best_mapping, best_score
-
-    def _build_initial_local_descent_seeds(self, deadline):
-        """Build non-default seeds by locally improving the initial mapping."""
-        base_mapping = {
-            tenant: dict(rank_to_server)
-            for tenant, rank_to_server in self.initial_tenant_mapping.items()
-        }
-        base_score = self._evaluate_surrogate_mapping(base_mapping)
-        _, _, _epoch_prices = self._compute_epoch_link_prices(base_mapping)
-        pressure_desc = sorted(
-            self.tenants,
-            key=lambda tenant: (
-                -self.tenant_pressure.get(tenant, 0.0),
-                -self.tenant_peak_load.get(tenant, 0.0),
-                tenant,
-            ),
-        )
-        pressure_asc = list(reversed(pressure_desc))
-        tenant_asc = list(self.tenants)
-        tenant_desc = list(reversed(tenant_asc))
-
-        if len(self.tenants) >= 6:
-            tenant_orders = (pressure_asc, pressure_desc, tenant_asc, tenant_desc)
-            max_passes = 3
-        else:
-            tenant_orders = (pressure_asc,)
-            max_passes = 2
-
-        seeds = []
-        seen = {self._mapping_signature(base_mapping)}
-        for tenant_order in tenant_orders:
-            if time.time() >= deadline:
-                break
-            seed_mapping = {
-                tenant: dict(rank_to_server)
-                for tenant, rank_to_server in base_mapping.items()
-            }
-            seed_mapping, seed_score = self._surrogate_local_repair(
-                seed_mapping,
-                base_score,
-                deadline,
-                tenant_order=tenant_order,
-                max_passes=max_passes,
-            )
-            signature = self._mapping_signature(seed_mapping)
-            if signature in seen:
-                continue
-            seen.add(signature)
-            seeds.append((seed_score, seed_mapping))
-        return seeds
-
-    def _build_initial_local_candidate_seeds(self, deadline):
-        """Expose one-tenant local improvements from the initial mapping."""
-        base_mapping = {
-            tenant: dict(rank_to_server)
-            for tenant, rank_to_server in self.initial_tenant_mapping.items()
-        }
-        base_score = self._evaluate_surrogate_mapping(base_mapping)
-        _, _, epoch_prices = self._compute_epoch_link_prices(base_mapping)
-        tenant_order = sorted(
-            self.tenants,
-            key=lambda tenant: (
-                -self.tenant_pressure.get(tenant, 0.0),
-                -self.tenant_peak_load.get(tenant, 0.0),
-                tenant,
-            ),
-        )
-
-        candidates = []
-        for tenant in tenant_order:
-            if time.time() >= deadline:
-                break
-            source, candidate_mapping, candidate_score = self._best_neighborhood_candidate(
-                base_mapping,
-                base_score,
-                tenant,
-                epoch_prices,
-                deadline,
-                include_local=True,
-                allow_bnb=False,
-            )
-            if source is None:
-                continue
-            candidates.append((candidate_score, candidate_mapping, "initial_local"))
-        return candidates
-
-    def _select_price_stable_candidate(self, best_mapping, best_score, deadline):
-        """Use resource price as a secondary guard within estimator tolerance."""
-        if self.extra_seed_mappings or not self._surrogate_candidates or time.time() >= deadline:
-            return best_mapping, best_score
-
-        best_makespan, best_avg_jct = best_score
-        avg_tolerance = max(1e-9, abs(float(best_avg_jct)) * 0.02)
-        makespan_tolerance = max(1e-9, abs(float(best_makespan)) * 0.05)
-
-        selected_mapping = best_mapping
-        selected_score = best_score
-        selected_price = self._mapping_induced_price_cost(best_mapping)
-
-        for candidate_score, _signature, candidate_mapping in self._surrogate_candidates:
-            if time.time() >= deadline:
-                break
-            candidate_makespan, candidate_avg_jct = candidate_score
-            if float(candidate_avg_jct) > float(best_avg_jct) + avg_tolerance:
-                continue
-            if float(candidate_makespan) > float(best_makespan) + makespan_tolerance:
-                continue
-            candidate_price = self._mapping_induced_price_cost(candidate_mapping)
-            if candidate_price < selected_price - 1e-9:
-                selected_mapping = {
-                    tenant: dict(rank_to_server)
-                    for tenant, rank_to_server in candidate_mapping.items()
-                }
-                selected_score = candidate_score
-                selected_price = candidate_price
-
-        return selected_mapping, selected_score
-
     def solve(self, time_limit=None):
         start_time = time.time()
-        max_ranks_per_tenant = max((len(ranks) for ranks in self.rank_orders.values()), default=0)
-        if max_ranks_per_tenant < 16:
-            default_budget = 30.0
-        elif len(self.tenants) < 6:
-            default_budget = 60.0
-        else:
-            default_budget = 120.0
-        total_budget = default_budget if time_limit is None else float(time_limit)
-        deadline = start_time + total_budget
-        repair_budget = min(max(total_budget * 0.15, 5.0), 20.0)
-        search_deadline = max(start_time, deadline - repair_budget)
-        final_selection_deadline = max(start_time, deadline - min(2.0, total_budget * 0.05))
+        deadline = float("inf") if time_limit is None else start_time + float(time_limit)
 
         best_mapping = None
         best_score = (float("inf"), float("inf"))
         initial_candidates = []
-
-        if time.time() < search_deadline:
-            for candidate_score, seed_mapping in self._build_initial_local_descent_seeds(search_deadline):
-                initial_candidates.append((candidate_score, seed_mapping, "initial_local"))
-                self._register_surrogate_candidate(seed_mapping, candidate_score)
-                if self._is_better_objective(candidate_score, best_score):
-                    best_mapping = seed_mapping
-                    best_score = candidate_score
-
-        if time.time() < search_deadline:
-            for candidate_score, seed_mapping, source in self._build_initial_local_candidate_seeds(search_deadline):
-                initial_candidates.append((candidate_score, seed_mapping, source))
-                self._register_surrogate_candidate(seed_mapping, candidate_score)
-                if self._is_better_objective(candidate_score, best_score):
-                    best_mapping = seed_mapping
-                    best_score = candidate_score
-
         for seed_mapping in self._seed_mappings():
-            if time.time() >= search_deadline:
+            if time.time() >= deadline:
                 break
             candidate_score = self._evaluate_surrogate_mapping(seed_mapping)
             initial_candidates.append((candidate_score, seed_mapping, None))
-            self._register_surrogate_candidate(seed_mapping, candidate_score)
             if self._is_better_objective(candidate_score, best_score):
                 best_mapping = seed_mapping
                 best_score = candidate_score
@@ -425,17 +220,13 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
             beam = [(best_score, best_mapping, None)]
 
         round_idx = 0
-        while round_idx < self.max_price_rounds and time.time() < search_deadline:
+        while round_idx < self.max_price_rounds and time.time() < deadline:
             round_idx += 1
             improved = False
             next_candidates = list(beam)
-            previous_beam_signatures = [
-                self._mapping_signature(mapping)
-                for _score, mapping, _source in beam
-            ]
 
             for beam_score, beam_mapping, _beam_source in beam:
-                if time.time() >= search_deadline:
+                if time.time() >= deadline:
                     break
 
                 _, _, epoch_prices = self._compute_epoch_link_prices(beam_mapping)
@@ -449,14 +240,14 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
                 )
 
                 for tenant in tenant_order:
-                    if time.time() >= search_deadline:
+                    if time.time() >= deadline:
                         break
                     source, candidate_mapping, candidate_score = self._best_neighborhood_candidate(
                         beam_mapping,
                         beam_score,
                         tenant,
                         epoch_prices,
-                        search_deadline,
+                        deadline,
                         include_local=True,
                         allow_bnb=False,
                     )
@@ -464,17 +255,17 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
                         continue
                     next_candidates.append((candidate_score, candidate_mapping, source))
 
-                if self.max_bnb_tenants_per_round > 0 and time.time() < search_deadline:
+                if self.max_bnb_tenants_per_round > 0 and time.time() < deadline:
                     _, _, epoch_prices = self._compute_epoch_link_prices(beam_mapping)
                     for tenant in tenant_order[: self.max_bnb_tenants_per_round]:
-                        if time.time() >= search_deadline:
+                        if time.time() >= deadline:
                             break
                         source, candidate_mapping, candidate_score = self._best_neighborhood_candidate(
                             beam_mapping,
                             beam_score,
                             tenant,
                             epoch_prices,
-                            search_deadline,
+                            deadline,
                             include_local=False,
                             allow_bnb=True,
                         )
@@ -482,27 +273,26 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
                             continue
                         next_candidates.append((candidate_score, candidate_mapping, source))
 
-                if len(tenant_order) >= 2 and time.time() < search_deadline:
+                if len(self.tenants) == 2 and len(tenant_order) >= 2 and time.time() < deadline:
                     _, _, epoch_prices = self._compute_epoch_link_prices(beam_mapping)
-                    joint_width = self.max_joint_tenants_per_round
-                    joint_tenants = tenant_order[: min(len(tenant_order), joint_width)]
+                    joint_tenants = tenant_order[: max(2, self.max_bnb_tenants_per_round)]
                     for idx, tenant_a in enumerate(joint_tenants):
-                        if time.time() >= search_deadline:
+                        if time.time() >= deadline:
                             break
                         for tenant_b in joint_tenants[idx + 1 :]:
-                            if time.time() >= search_deadline:
+                            if time.time() >= deadline:
                                 break
                             joint_candidates = self._joint_pair_candidate(
                                 beam_mapping,
                                 tenant_a,
                                 tenant_b,
                                 epoch_prices,
-                                search_deadline,
+                                deadline,
                             )
                             if not joint_candidates:
                                 continue
                             for candidate_mapping in joint_candidates:
-                                if time.time() >= search_deadline:
+                                if time.time() >= deadline:
                                     break
                                 candidate_score = self._evaluate_surrogate_mapping(candidate_mapping)
                                 if self._is_better_objective(candidate_score, beam_score):
@@ -525,43 +315,10 @@ class MappingMultiNeighborhoodHeuristicSolver(MappingLocalSearchHeuristicSolver)
             beam = ranked_candidates
 
             if not improved:
-                current_beam_signatures = [
-                    self._mapping_signature(mapping)
-                    for _score, mapping, _source in beam
-                ]
-                if current_beam_signatures == previous_beam_signatures:
-                    break
+                break
 
         if time.time() < deadline:
-            best_mapping, best_score = self._select_price_stable_candidate(
-                best_mapping,
-                best_score,
-                deadline,
-            )
-
-        if time.time() < final_selection_deadline:
-            best_mapping, best_score = self._surrogate_local_repair(
-                best_mapping,
-                best_score,
-                final_selection_deadline,
-            )
-
-        if time.time() < final_selection_deadline:
-            best_mapping, best_score = self._select_price_stable_candidate(
-                best_mapping,
-                best_score,
-                final_selection_deadline,
-            )
-
-        if time.time() < final_selection_deadline:
             best_mapping, best_score = self._surrogate_pair_swap_polish(
-                best_mapping,
-                best_score,
-                final_selection_deadline,
-            )
-
-        if time.time() < deadline:
-            best_mapping, best_score = self._select_price_stable_candidate(
                 best_mapping,
                 best_score,
                 deadline,

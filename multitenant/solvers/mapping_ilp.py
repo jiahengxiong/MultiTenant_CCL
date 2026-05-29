@@ -1562,7 +1562,7 @@ class MappingILPSolver:
             src_server = int(mapping[tenant][src_rank])
             dst_server = int(mapping[tenant][dst_rank])
             volume = float(task["V"])
-            edges = tuple(path_edges[(int(tenant), int(src_server), int(dst_server))])
+            edges = tuple(path_edges[(src_server, dst_server)])
             bottleneck = min(float(capacities[edge]) for edge in edges)
             full_slot_capacity = bottleneck * slot_duration
             active_slots = max(1, int(math.ceil(volume / max(full_slot_capacity, 1e-12))))
@@ -2260,6 +2260,7 @@ class MappingILPSolver:
             single_flow_size=self.single_flow_size,
             tenant_collective_specs=self.tenant_collective_specs,
             tenant_collective_programs=self.tenant_collective_programs,
+            tenant_start_times=self.tenant_start_times,
             stage_flows=self.stage_flows,
             fairness_lambda=self.fairness_lambda,
             fairness_iterations=self.fairness_iterations,
@@ -2385,12 +2386,12 @@ LegacyTimeSlotMappingILPSolver = MappingMILPSolver
 
 
 class MappingHeuristicSolver:
-    """Pure-mapping solver with interval-overlap contention estimation.
+    """Pure-mapping solver with task-centric surrogate evaluation.
 
-    A communication program is compiled into a resource-coupled task DAG. The
-    estimator advances the DAG with a lightweight active-set model: ready tasks
-    share the sender, receiver, and ECMP-link resources on their paths, and task
-    completion events define the intervals used by the search prices.
+    The canonical abstraction is task-level: a communication program is compiled
+    into a resource-coupled task DAG. For structured staged collectives, the
+    default evaluator uses a collapsed fast path that aggregates the task-level
+    surrogate at the epoch/frontier granularity for efficiency.
     """
 
     def __init__(
@@ -2412,7 +2413,7 @@ class MappingHeuristicSolver:
         slot_duration=None,
         horizon_slots=None,
         validate_with_simulator=None,
-        surrogate_mode="interval",
+        surrogate_mode="collapsed",
         path_table=None,
         extra_seed_mappings=None,
     ):
@@ -2447,8 +2448,8 @@ class MappingHeuristicSolver:
         self.horizon_slots_override = horizon_slots
         self.validate_with_simulator = bool(validate_with_simulator)
         normalized_surrogate_mode = str(surrogate_mode).lower()
-        if normalized_surrogate_mode in {"epoch", "collapsed", "task"}:
-            normalized_surrogate_mode = "interval"
+        if normalized_surrogate_mode == "epoch":
+            normalized_surrogate_mode = "collapsed"
         self.surrogate_mode = normalized_surrogate_mode
         self.fairness_lambda = float(fairness_lambda)
         self.fairness_iterations = max(1, int(fairness_iterations))
@@ -2489,8 +2490,6 @@ class MappingHeuristicSolver:
         }
         self._score_cache: dict[tuple[tuple[int, tuple[int, ...]], ...], tuple[float, float]] = {}
         self._surrogate_cache: dict[tuple[tuple[int, tuple[int, ...]], ...], tuple[float, float]] = {}
-        self._interval_state_cache: dict[tuple[tuple[int, tuple[int, ...]], ...], dict[str, object]] = {}
-        self._induced_price_cost_cache: dict[tuple[tuple[int, tuple[int, ...]], ...], float] = {}
         self._surrogate_candidate_limit = 32 if self.tenant_collective_programs is not None else 16
         self._surrogate_candidates: list[tuple[tuple[float, float], tuple[tuple[int, tuple[int, ...]], ...], dict[int, dict[int, int]]]] = []
         self.tenant_pressure: dict[int, float] = {}
@@ -2565,7 +2564,6 @@ class MappingHeuristicSolver:
                 if not tenant_tasks:
                     task_surrogate[tenant] = {
                         "preds": {},
-                        "release_gates": {},
                         "task_order": [],
                         "task_levels": {},
                         "task_info": {},
@@ -2579,54 +2577,30 @@ class MappingHeuristicSolver:
                     key=lambda task_id: (int(base_levels.get(int(task_id), 0)), int(task_id)),
                 )
                 topo_pos = {int(task_id): idx for idx, task_id in enumerate(topo_order)}
-                augmented_edges = (
-                    list(tenant_schedule.get("collective_edges", []))
-                    + list(tenant_schedule.get("sender_order_edges", []))
-                )
-                if not augmented_edges:
-                    augmented_edges = unified_edges
+                receiver_order = defaultdict(list)
+                for task in tenant_tasks:
+                    receiver_order[int(task["dst_rank"])].append(int(task["task_id"]))
+                receiver_edges = []
+                for dst_rank, task_ids in receiver_order.items():
+                    task_ids.sort(key=lambda task_id: topo_pos[int(task_id)])
+                    for earlier_task_id, later_task_id in zip(task_ids, task_ids[1:]):
+                        receiver_edges.append(
+                            {
+                                "src_task_id": int(earlier_task_id),
+                                "dst_task_id": int(later_task_id),
+                                "type": "receiver_order",
+                                "receiver": int(dst_rank),
+                            }
+                        )
+
+                augmented_edges = unified_edges + receiver_edges
                 levels = task_levels(tenant_tasks, augmented_edges)
                 preds_by_task = {int(task["task_id"]): [] for task in tenant_tasks}
                 for edge in augmented_edges:
                     preds_by_task[int(edge["dst_task_id"])].append(int(edge["src_task_id"]))
-                release_gates = {}
-                program = sorted(
-                    list(tenant_schedule.get("collective_program", [])),
-                    key=lambda item: int(item.get("op_idx", 0)),
-                )
-                if program:
-                    op_by_idx = {int(op.get("op_idx", idx)): op for idx, op in enumerate(program)}
-                    for op in program:
-                        op_idx = int(op.get("op_idx", 0))
-                        if op_idx == 0:
-                            continue
-                        previous_op = op_by_idx.get(op_idx - 1)
-                        if previous_op is None:
-                            continue
-                        previous_task_ids = [int(task_id) for task_id in previous_op.get("task_ids", [])]
-                        gap_after_s = float(previous_op.get("gap_after", 0.0))
-                        for task_id in op.get("initial_task_ids", []):
-                            release_gates[int(task_id)] = {
-                                "previous_task_ids": previous_task_ids,
-                                "gap_after_s": gap_after_s,
-                            }
-                            preds_by_task[int(task_id)].extend(previous_task_ids)
-                order_level_cache = {}
-
-                def order_level(task_id):
-                    task_id = int(task_id)
-                    if task_id in order_level_cache:
-                        return order_level_cache[task_id]
-                    task_preds = preds_by_task.get(task_id, [])
-                    if not task_preds:
-                        order_level_cache[task_id] = 0
-                    else:
-                        order_level_cache[task_id] = 1 + max(order_level(pred) for pred in task_preds)
-                    return order_level_cache[task_id]
-
                 ordered_task_ids = sorted(
                     preds_by_task.keys(),
-                    key=lambda task_id: (int(order_level(task_id)), int(task_id)),
+                    key=lambda task_id: (int(levels.get(int(task_id), 0)), int(task_id)),
                 )
                 task_info = {}
                 level_tasks = defaultdict(list)
@@ -2643,7 +2617,6 @@ class MappingHeuristicSolver:
 
                 task_surrogate[tenant] = {
                     "preds": {int(task_id): list(preds) for task_id, preds in preds_by_task.items()},
-                    "release_gates": release_gates,
                     "task_order": [int(task_id) for task_id in ordered_task_ids],
                     "task_levels": {int(task_id): int(level) for task_id, level in levels.items()},
                     "task_info": task_info,
@@ -2916,351 +2889,6 @@ class MappingHeuristicSolver:
 
         return level_edge_loads, level_sender_loads, level_receiver_loads
 
-    def _task_resources_for_mapping(self, path_edges, tenant, src_server, dst_server):
-        resources = [("sender", int(src_server)), ("receiver", int(dst_server))]
-        resources.extend(
-            ("edge", tuple(edge))
-            for edge in self._path_edges_for_pair(path_edges, tenant, src_server, dst_server)
-        )
-        return tuple(resources)
-
-    def _resource_capacity(self, resource):
-        kind, key = resource
-        if kind == "edge":
-            return float(self.data["edge_capacity"][key])
-        if kind == "sender":
-            return float(self.data["server_send_capacity"][int(key)])
-        if kind == "receiver":
-            return float(self.data["server_recv_capacity"][int(key)])
-        raise KeyError(f"Unknown resource kind {kind!r}")
-
-    def _compute_interval_contention_state(self, mapping):
-        mapping = self._canonicalize_ring_mapping(mapping)
-        signature = self._mapping_signature(mapping)
-        cached = self._interval_state_cache.get(signature)
-        if cached is not None:
-            return cached
-
-        task_surrogate = self.data.get("task_surrogate", {})
-        path_edges = self.data["path_edges"]
-        epsilon = 1e-12
-
-        records: list[dict[str, object]] = []
-        records_by_key: dict[tuple[int, int], dict[str, object]] = {}
-        nominal_finish: dict[tuple[int, int], float] = {}
-
-        for tenant in self.tenants:
-            tenant_meta = task_surrogate.get(tenant, {})
-            preds = tenant_meta.get("preds", {})
-            release_gates = tenant_meta.get("release_gates", {})
-            for task_id in tenant_meta.get("task_order", []):
-                task_id = int(task_id)
-                _task_id, src_rank, dst_rank, volume = tenant_meta["task_info"][task_id]
-                src_server = int(mapping[tenant][src_rank])
-                dst_server = int(mapping[tenant][dst_rank])
-                resources = self._task_resources_for_mapping(path_edges, tenant, src_server, dst_server)
-                isolated_capacity = min(
-                    (self._resource_capacity(resource) for resource in resources),
-                    default=1.0,
-                )
-                isolated_duration = float(volume) / max(float(isolated_capacity), epsilon)
-                dependency_ready = max(
-                    (nominal_finish[(tenant, int(pred_task_id))] for pred_task_id in preds.get(task_id, [])),
-                    default=0.0,
-                )
-                release_ready = 0.0
-                gate = release_gates.get(task_id)
-                if gate is not None:
-                    previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                    release_ready = (
-                        max((nominal_finish[(tenant, prev)] for prev in previous_task_ids), default=0.0)
-                        + float(gate.get("gap_after_s", 0.0))
-                    )
-                tenant_start = float(self.tenant_start_times.get(int(tenant), 0.0))
-                nominal_ready = max(float(tenant_start), float(dependency_ready), float(release_ready))
-                nominal_done = nominal_ready + isolated_duration
-                record = {
-                    "tenant": int(tenant),
-                    "task_id": task_id,
-                    "src_rank": int(src_rank),
-                    "dst_rank": int(dst_rank),
-                    "src_server": src_server,
-                    "dst_server": dst_server,
-                    "volume": float(volume),
-                    "resources": resources,
-                    "resource_set": set(resources),
-                    "nominal_ready": float(nominal_ready),
-                    "nominal_finish": float(nominal_done),
-                    "nominal_duration": float(isolated_duration),
-                    "interval_ready": float(nominal_ready),
-                    "interval_finish": float(nominal_done),
-                    "interval_duration": float(isolated_duration),
-                }
-                records.append(record)
-                records_by_key[(int(tenant), task_id)] = record
-                nominal_finish[(int(tenant), task_id)] = float(nominal_done)
-
-        def estimate_pressures_from_current_intervals():
-            task_resource_pressure: dict[tuple[int, int], dict[tuple[str, object], float]] = {}
-            resource_loads: dict[str, dict[object, float]] = {
-                "edge": defaultdict(float),
-                "sender": defaultdict(float),
-                "receiver": defaultdict(float),
-            }
-            task_service: dict[tuple[int, int], float] = {}
-            task_peak_pressure: dict[tuple[int, int], float] = {}
-
-            for target in records:
-                target_key = (int(target["tenant"]), int(target["task_id"]))
-                target_resources = tuple(target["resources"])
-                target_resource_set = target["resource_set"]
-                pressures = {resource: 0.0 for resource in target_resources}
-                target_start = float(target["interval_ready"])
-                target_finish = float(target["interval_finish"])
-                for source in records:
-                    overlap = min(target_finish, float(source["interval_finish"])) - max(
-                        target_start,
-                        float(source["interval_ready"]),
-                    )
-                    if overlap <= 0.0:
-                        continue
-                    source_duration = max(float(source["interval_duration"]), epsilon)
-                    theta = float(overlap) / source_duration
-                    shared_resources = target_resource_set.intersection(source["resource_set"])
-                    if not shared_resources:
-                        continue
-                    source_volume = float(source["volume"])
-                    for resource in shared_resources:
-                        pressures[resource] += theta * source_volume / max(self._resource_capacity(resource), epsilon)
-
-                task_resource_pressure[target_key] = pressures
-                service_estimate = max(pressures.values(), default=0.0)
-                task_service[target_key] = float(service_estimate)
-                task_peak_pressure[target_key] = float(service_estimate)
-                for resource, pressure in pressures.items():
-                    kind, key = resource
-                    resource_loads[kind][key] = max(float(resource_loads[kind].get(key, 0.0)), float(pressure))
-            return task_resource_pressure, resource_loads, task_service, task_peak_pressure
-
-        def max_min_rates(active_keys):
-            rates = {key: 0.0 for key in active_keys}
-            unsaturated = set(active_keys)
-            remaining_capacity: dict[tuple[str, object], float] = {}
-
-            def grouped_resources(keys):
-                resource_tenants: dict[tuple[str, object], set[int]] = defaultdict(set)
-                for key in keys:
-                    record = records_by_key[key]
-                    tenant = int(record["tenant"])
-                    for resource in record["resources"]:
-                        resource_tenants[resource].add(tenant)
-                expanded: dict[tuple[int, int], tuple[tuple[tuple[str, object], int], ...]] = {}
-                for key in keys:
-                    record = records_by_key[key]
-                    tenant = int(record["tenant"])
-                    task_group_resources = []
-                    for resource in record["resources"]:
-                        tenant_count = max(len(resource_tenants.get(resource, ())), 1)
-                        task_group_resources.append((resource, tenant))
-                        remaining_capacity.setdefault(
-                            (resource, tenant),
-                            self._resource_capacity(resource) / float(tenant_count),
-                        )
-                    expanded[key] = tuple(task_group_resources)
-                return expanded
-
-            active_group_resources = grouped_resources(active_keys)
-
-            while unsaturated:
-                resource_user_count: dict[tuple[tuple[str, object], int], int] = defaultdict(int)
-                for key in unsaturated:
-                    for resource in active_group_resources[key]:
-                        resource_user_count[resource] += 1
-                rate_increment = min(
-                    (
-                        remaining_capacity[resource] / max(count, 1)
-                        for resource, count in resource_user_count.items()
-                        if count > 0
-                    ),
-                    default=0.0,
-                )
-                if rate_increment <= epsilon:
-                    break
-                for key in unsaturated:
-                    rates[key] += float(rate_increment)
-                for resource, count in resource_user_count.items():
-                    remaining_capacity[resource] = max(
-                        0.0,
-                        float(remaining_capacity[resource]) - float(rate_increment) * float(count),
-                    )
-                saturated_resources = {
-                    resource
-                    for resource in resource_user_count
-                    if remaining_capacity[resource] <= 1e-9
-                }
-                frozen = {
-                    key
-                    for key in unsaturated
-                    if set(active_group_resources[key]).intersection(saturated_resources)
-                }
-                if not frozen:
-                    frozen = set(unsaturated)
-                unsaturated.difference_update(frozen)
-
-            return rates
-
-        def active_set_estimate():
-            finish_by_task: dict[tuple[int, int], float] = {}
-            ready_by_task: dict[tuple[int, int], float] = {}
-            tenant_finish: dict[int, float] = {}
-            remaining = {
-                key: float(record["volume"])
-                for key, record in records_by_key.items()
-            }
-            not_started = set(records_by_key.keys())
-            active: set[tuple[int, int]] = set()
-
-            def current_ready_time(key):
-                tenant, task_id = key
-                tenant_meta = task_surrogate.get(tenant, {})
-                preds = tenant_meta.get("preds", {})
-                release_gates = tenant_meta.get("release_gates", {})
-                pred_ids = [int(pred_task_id) for pred_task_id in preds.get(task_id, [])]
-                if any((tenant, pred_task_id) not in finish_by_task for pred_task_id in pred_ids):
-                    return float("inf")
-                dependency_ready = max(
-                    (finish_by_task[(tenant, pred_task_id)] for pred_task_id in pred_ids),
-                    default=0.0,
-                )
-                release_ready = 0.0
-                gate = release_gates.get(task_id)
-                if gate is not None:
-                    previous_task_ids = [int(prev) for prev in gate.get("previous_task_ids", [])]
-                    if any((tenant, prev) not in finish_by_task for prev in previous_task_ids):
-                        return float("inf")
-                    release_ready = (
-                        max((finish_by_task[(tenant, prev)] for prev in previous_task_ids), default=0.0)
-                        + float(gate.get("gap_after_s", 0.0))
-                    )
-                tenant_start = float(self.tenant_start_times.get(int(tenant), 0.0))
-                return max(float(tenant_start), float(dependency_ready), float(release_ready))
-
-            now = 0.0
-            while len(finish_by_task) < len(records_by_key):
-                ready_now = [
-                    key
-                    for key in list(not_started)
-                    if current_ready_time(key) <= now + 1e-9
-                ]
-                for key in ready_now:
-                    not_started.remove(key)
-                    active.add(key)
-                    ready_by_task[key] = float(now)
-                    record = records_by_key[key]
-                    record["interval_ready"] = float(now)
-
-                if not active:
-                    next_ready = min((current_ready_time(key) for key in not_started), default=float("inf"))
-                    if next_ready == float("inf"):
-                        raise RuntimeError(
-                            "contention estimator could not find a ready task; "
-                            f"unfinished={len(records_by_key) - len(finish_by_task)}, "
-                            f"not_started={len(not_started)}, active={len(active)}"
-                        )
-                    now = max(now, float(next_ready))
-                    continue
-
-                rates = max_min_rates(active)
-                positive_rates = {key: rate for key, rate in rates.items() if rate > epsilon}
-                if not positive_rates:
-                    raise RuntimeError(
-                        "contention estimator produced zero service rates; "
-                        f"active={len(active)}, sample_active={list(active)[:5]}"
-                    )
-                delta = min(remaining[key] / rate for key, rate in positive_rates.items())
-                if not math.isfinite(delta) or delta <= 0.0:
-                    raise RuntimeError(
-                        "contention estimator event step underflow; "
-                        f"delta={delta}, active={len(active)}, "
-                        f"min_remaining={min(remaining[key] for key in active)}"
-                    )
-                next_time = now + float(delta)
-                completed_now = []
-                for key, rate in positive_rates.items():
-                    remaining[key] = max(0.0, remaining[key] - float(rate) * float(delta))
-                    if remaining[key] <= max(1e-6, float(records_by_key[key]["volume"]) * 1e-9):
-                        completed_now.append(key)
-
-                now = next_time
-                for key in completed_now:
-                    if key not in active:
-                        continue
-                    active.remove(key)
-                    finish_by_task[key] = float(now)
-                    record = records_by_key[key]
-                    record["interval_finish"] = float(now)
-                    record["interval_duration"] = max(
-                        float(now) - float(record["interval_ready"]),
-                        epsilon,
-                    )
-
-            for tenant in self.tenants:
-                tenant_meta = task_surrogate.get(tenant, {})
-                tenant_finish[int(tenant)] = max(
-                    (finish_by_task[(int(tenant), int(task_id))] for task_id in tenant_meta.get("task_order", [])),
-                    default=0.0,
-                )
-            return ready_by_task, finish_by_task, tenant_finish
-
-        task_resource_pressure = {}
-        resource_loads = {"edge": defaultdict(float), "sender": defaultdict(float), "receiver": defaultdict(float)}
-        task_service = {}
-        task_peak_pressure = {}
-        ready_by_task = {}
-        finish_by_task = {}
-        tenant_finish = {}
-        tenant_pressure = {}
-        tenant_peak_load = {}
-        ready_by_task, finish_by_task, tenant_finish = active_set_estimate()
-        task_resource_pressure, resource_loads, task_service, task_peak_pressure = (
-            estimate_pressures_from_current_intervals()
-        )
-        tenant_pressure = {}
-        tenant_peak_load = {}
-        for tenant in self.tenants:
-            tenant_meta = task_surrogate.get(tenant, {})
-            tenant_task_pressures = [
-                float(task_peak_pressure.get((int(tenant), int(task_id)), 0.0))
-                for task_id in tenant_meta.get("task_order", [])
-            ]
-            tenant_pressure[int(tenant)] = float(sum(tenant_task_pressures))
-            tenant_peak_load[int(tenant)] = float(max(tenant_task_pressures, default=0.0))
-
-        makespan = float(max(tenant_finish.values(), default=0.0))
-        avg_jct = float(sum(tenant_finish.values()) / max(len(tenant_finish), 1))
-        _epoch_loads, _epoch_sender_loads, _epoch_receiver_loads, tenant_epoch_maxima = (
-            self._compute_tenant_epoch_resource_load_state(mapping)
-        )
-        queue_pressure_makespan, queue_pressure_avg = self._surrogate_score_from_tenant_epoch_max(
-            tenant_epoch_maxima
-        )
-        makespan = max(makespan, float(queue_pressure_makespan))
-        avg_jct = max(avg_jct, float(queue_pressure_avg))
-        state = {
-            "score": (makespan, avg_jct),
-            "records": records,
-            "ready_by_task": ready_by_task,
-            "finish_by_task": finish_by_task,
-            "task_service": task_service,
-            "task_resource_pressure": task_resource_pressure,
-            "resource_loads": resource_loads,
-            "tenant_finish": tenant_finish,
-            "tenant_pressure": tenant_pressure,
-            "tenant_peak_load": tenant_peak_load,
-        }
-        self._interval_state_cache[signature] = state
-        return state
-
     def _resource_price_value(self, capacity, normalized_load):
         base_cost = 1.0 / max(capacity, 1e-12)
         return base_cost * (1.0 + self.link_price_beta * (float(normalized_load) ** self.link_price_gamma))
@@ -3269,44 +2897,25 @@ class MappingHeuristicSolver:
         return self._resource_price_value(self.data["edge_capacity"][edge], normalized_load)
 
     def _compute_epoch_link_prices(self, mapping):
-        state = self._compute_interval_contention_state(mapping)
-        resource_loads = state["resource_loads"]
-        self.tenant_pressure = {
-            int(tenant): float(pressure)
-            for tenant, pressure in state["tenant_pressure"].items()
-        }
-        self.tenant_peak_load = {
-            int(tenant): float(pressure)
-            for tenant, pressure in state["tenant_peak_load"].items()
-        }
+        epoch_loads, epoch_sender_loads, epoch_receiver_loads, epoch_maxima = self._compute_epoch_resource_load_state(mapping)
+        epoch_prices: list[dict[str, dict[object, float]]] = []
         server_send_capacity = self.data["server_send_capacity"]
         server_recv_capacity = self.data["server_recv_capacity"]
-        edge_prices = {
-            edge: self._edge_price_value(edge, normalized_load)
-            for edge, normalized_load in resource_loads["edge"].items()
-        }
-        sender_prices = {
-            server: self._resource_price_value(server_send_capacity[server], normalized_load)
-            for server, normalized_load in resource_loads["sender"].items()
-        }
-        receiver_prices = {
-            server: self._resource_price_value(server_recv_capacity[server], normalized_load)
-            for server, normalized_load in resource_loads["receiver"].items()
-        }
-        price_state = {
-            "edge": edge_prices,
-            "sender": sender_prices,
-            "receiver": receiver_prices,
-        }
-        global_max_epoch = max(0, int(self.data["compiled_schedule"]["global_max_epoch"]))
-        epoch_prices = [price_state for _ in range(global_max_epoch + 1)]
-        epoch_loads = [resource_loads["edge"] for _ in range(global_max_epoch + 1)]
-        max_load = max(
-            max(resource_loads["edge"].values(), default=0.0),
-            max(resource_loads["sender"].values(), default=0.0),
-            max(resource_loads["receiver"].values(), default=0.0),
-        )
-        epoch_maxima = [float(max_load) for _ in range(global_max_epoch + 1)]
+        for epoch_idx, epoch_load in enumerate(epoch_loads):
+            edge_prices = {}
+            for edge, normalized_load in epoch_load.items():
+                edge_prices[edge] = self._edge_price_value(edge, normalized_load)
+            sender_prices = {}
+            for server, normalized_load in epoch_sender_loads[epoch_idx].items():
+                sender_prices[server] = self._resource_price_value(server_send_capacity[server], normalized_load)
+            receiver_prices = {}
+            for server, normalized_load in epoch_receiver_loads[epoch_idx].items():
+                receiver_prices[server] = self._resource_price_value(server_recv_capacity[server], normalized_load)
+            epoch_prices.append({
+                "edge": edge_prices,
+                "sender": sender_prices,
+                "receiver": receiver_prices,
+            })
         return epoch_loads, epoch_maxima, epoch_prices
 
     def _pair_epoch_price_lookup(self, tenant, candidate_servers, epoch_prices):
@@ -3347,28 +2956,6 @@ class MappingHeuristicSolver:
             src_server = int(mapping[tenant][src_rank])
             dst_server = int(mapping[tenant][dst_rank])
             total_cost += float(volume) * pair_epoch_price[(int(epoch), src_server, dst_server)]
-        return float(total_cost)
-
-    def _mapping_induced_price_cost(self, mapping):
-        mapping = self._canonicalize_ring_mapping(mapping)
-        signature = self._mapping_signature(mapping)
-        cached = self._induced_price_cost_cache.get(signature)
-        if cached is not None:
-            return cached
-
-        previous_tenant_pressure = dict(self.tenant_pressure)
-        previous_tenant_peak_load = dict(self.tenant_peak_load)
-        try:
-            _epoch_loads, _epoch_maxima, epoch_prices = self._compute_epoch_link_prices(mapping)
-        finally:
-            self.tenant_pressure = previous_tenant_pressure
-            self.tenant_peak_load = previous_tenant_peak_load
-        total_cost = 0.0
-        for tenant in self.tenants:
-            current_servers = tuple(mapping[tenant][rank] for rank in self.rank_orders[tenant])
-            pair_epoch_price = self._pair_epoch_price_lookup(tenant, current_servers, epoch_prices)
-            total_cost += self._tenant_price_cost(tenant, mapping, pair_epoch_price)
-        self._induced_price_cost_cache[signature] = float(total_cost)
         return float(total_cost)
 
     def _surrogate_score_from_epoch_max(self, epoch_maxima):
@@ -3427,14 +3014,54 @@ class MappingHeuristicSolver:
                 "tenant_collective_programs, tenant_collective_specs, or collective/single_flow_size."
             )
 
-        if self.surrogate_mode != "interval":
+        if self.surrogate_mode == "task":
+            level_edge_loads, level_sender_loads, level_receiver_loads = self._compute_task_level_resource_load_state(mapping)
+            tenant_finish = {}
+            path_edges = self.data["path_edges"]
+            compiled_schedule = self.data["compiled_schedule"]["per_tenant"]
+            task_surrogate = self.data.get("task_surrogate", {})
+            for tenant, tenant_meta in task_surrogate.items():
+                finish_by_task = {}
+                for task_id in tenant_meta["task_order"]:
+                    task_level = int(tenant_meta["task_levels"][int(task_id)])
+                    _task_id, src_rank, dst_rank, _volume = tenant_meta["task_info"][int(task_id)]
+                    src_server = int(mapping[tenant][src_rank])
+                    dst_server = int(mapping[tenant][dst_rank])
+                    path = self._path_edges_for_pair(path_edges, tenant, src_server, dst_server)
+                    task_cost = max(
+                        max((level_edge_loads[task_level][edge] for edge in path), default=0.0),
+                        float(level_sender_loads[task_level].get(src_server, 0.0)),
+                        float(level_receiver_loads[task_level].get(dst_server, 0.0)),
+                    )
+                    ready_time = max(
+                        (finish_by_task[int(pred)] for pred in tenant_meta["preds"].get(int(task_id), [])),
+                        default=0.0,
+                    )
+                    finish_by_task[int(task_id)] = ready_time + float(task_cost)
+                tenant_finish[tenant] = (
+                    max(finish_by_task.values(), default=0.0)
+                    + float(compiled_schedule[tenant].get("tenant_gap_time", 0.0))
+                )
+            score = (
+                float(max(tenant_finish.values(), default=0.0)),
+                float(sum(tenant_finish.values()) / max(len(tenant_finish), 1)),
+            )
+            self._surrogate_cache[signature] = score
+            self._register_surrogate_candidate(mapping, score)
+            return score
+
+        if self.surrogate_mode not in {"collapsed", "task"}:
             raise ValueError(
                 f"Unsupported surrogate_mode={self.surrogate_mode!r}; "
-                "expected 'interval' (legacy aliases: 'task', 'collapsed', 'epoch')."
+                "expected 'task' or 'collapsed' (legacy alias: 'epoch')."
             )
 
-        state = self._compute_interval_contention_state(mapping)
-        score = state["score"]
+        _, global_epoch_deltas = self._compute_epoch_link_load_state(mapping)
+        _, tenant_epoch_deltas = self._compute_tenant_epoch_link_load_state(mapping)
+
+        global_score = self._surrogate_score_from_epoch_max(global_epoch_deltas)
+        tenant_score = self._surrogate_score_from_tenant_epoch_max(tenant_epoch_deltas)
+        score = (float(global_score[0]), float(tenant_score[1]))
         self._surrogate_cache[signature] = score
         self._register_surrogate_candidate(mapping, score)
         return score
@@ -3478,52 +3105,19 @@ class MappingHeuristicSolver:
     def _seed_mappings(self):
         seeds = []
         seen = set()
-        default_signature = self._mapping_signature(self.initial_tenant_mapping)
 
-        def add_seed(mapping, *, allow_default=False):
+        def add_seed(mapping):
             mapping = self._canonicalize_ring_mapping(mapping)
             signature = self._mapping_signature(mapping)
-            if not allow_default and signature == default_signature:
-                return
             if signature in seen:
                 return
             seen.add(signature)
             seeds.append(mapping)
 
         for seed_mapping in self.extra_seed_mappings:
-            add_seed(seed_mapping, allow_default=True)
+            add_seed(seed_mapping)
 
-        def leaf_balanced_orders(server_order):
-            groups = {}
-            for server in sorted((int(server) for server in server_order), key=self._server_leaf_sort_key):
-                leaf, _server_id = self._server_leaf_sort_key(server)
-                groups.setdefault(int(leaf), []).append(int(server))
-
-            def round_robin(leaf_order):
-                buckets = {leaf: list(groups[leaf]) for leaf in leaf_order}
-                ordered = []
-                while any(buckets.values()):
-                    for leaf in leaf_order:
-                        if buckets[leaf]:
-                            ordered.append(buckets[leaf].pop(0))
-                return tuple(ordered)
-
-            leaves_by_id = tuple(sorted(groups))
-            leaves_rare_first = tuple(sorted(groups, key=lambda leaf: (len(groups[leaf]), leaf)))
-            leaves_common_first = tuple(reversed(leaves_rare_first))
-
-            candidates = [
-                round_robin(leaves_by_id),
-                round_robin(tuple(reversed(leaves_by_id))),
-                round_robin(leaves_rare_first),
-                round_robin(leaves_common_first),
-            ]
-            leaf_local = tuple(sorted((int(server) for server in server_order), key=self._server_leaf_sort_key))
-            if len(leaf_local) > 2:
-                middle = len(leaf_local) // 2
-                candidates.append(leaf_local[:middle] + tuple(reversed(leaf_local[middle:])))
-                candidates.append(tuple(reversed(leaf_local[:middle])) + leaf_local[middle:])
-            return candidates
+        add_seed(self.initial_tenant_mapping)
 
         # A global leaf-local ordering is a deterministic baseline that should
         # always be in the candidate pool, not only per-tenant one-off variants.
@@ -3552,28 +3146,6 @@ class MappingHeuristicSolver:
         }
         add_seed(global_leaf_local_rev)
 
-        for global_order_idx in range(6):
-            global_seed = {}
-            complete = True
-            for tenant in self.tenants:
-                ranks = self.rank_orders[tenant]
-                current_servers = [self.initial_tenant_mapping[tenant][rank] for rank in ranks]
-                orders = leaf_balanced_orders(current_servers)
-                if global_order_idx >= len(orders):
-                    complete = False
-                    break
-                global_seed[tenant] = self._apply_server_order(
-                    self.initial_tenant_mapping,
-                    tenant,
-                    orders[global_order_idx],
-                )[tenant]
-            if complete:
-                add_seed(global_seed)
-
-        coordinated_ring_seed = self._coordinated_ring_pressure_seed()
-        if coordinated_ring_seed is not None:
-            add_seed(coordinated_ring_seed)
-
         for tenant in self.tenants:
             ranks = self.rank_orders[tenant]
             current_servers = [self.initial_tenant_mapping[tenant][rank] for rank in ranks]
@@ -3584,8 +3156,6 @@ class MappingHeuristicSolver:
             leaf_local = tuple(sorted(current_servers, key=self._server_leaf_sort_key))
             add_seed(self._apply_server_order(self.initial_tenant_mapping, tenant, leaf_local))
             add_seed(self._apply_server_order(self.initial_tenant_mapping, tenant, tuple(reversed(leaf_local))))
-            for leaf_balanced in leaf_balanced_orders(current_servers):
-                add_seed(self._apply_server_order(self.initial_tenant_mapping, tenant, leaf_balanced))
 
             rotation_count = min(len(current_servers) - 1, 8)
             rotation_shifts = sorted({
@@ -3597,118 +3167,6 @@ class MappingHeuristicSolver:
                 add_seed(self._apply_server_order(self.initial_tenant_mapping, tenant, tuple(rotated)))
 
         return seeds
-
-    def _coordinated_ring_pressure_seed(self):
-        if not self._collective_mode():
-            return None
-        if any(not self._tenant_has_ring_rotation_symmetry(tenant) for tenant in self.tenants):
-            return None
-        if any(len(self.rank_orders[tenant]) > 8 for tenant in self.tenants):
-            return None
-
-        path_edges = self.data["path_edges"]
-        edge_capacity = self.data["edge_capacity"]
-        server_send_capacity = self.data["server_send_capacity"]
-        server_recv_capacity = self.data["server_recv_capacity"]
-
-        def resource_load_vector(tenant, rank_to_server):
-            loads = defaultdict(float)
-            compiled_tenant = self.data["compiled_schedule"]["per_tenant"][tenant]
-            representative_volume = max(
-                (float(volume) for _epoch, _src_rank, _dst_rank, volume in compiled_tenant["all_flows"]),
-                default=0.0,
-            )
-            ranks = list(self.rank_orders[tenant])
-            if representative_volume <= 0.0 or len(ranks) <= 1:
-                return {}
-            for idx, src_rank in enumerate(ranks):
-                dst_rank = ranks[(idx + 1) % len(ranks)]
-                src_server = int(rank_to_server[int(src_rank)])
-                dst_server = int(rank_to_server[int(dst_rank)])
-                loads[("sender", src_server)] += representative_volume / max(server_send_capacity[src_server], 1e-12)
-                loads[("receiver", dst_server)] += representative_volume / max(server_recv_capacity[dst_server], 1e-12)
-                for edge in self._path_edges_for_pair(path_edges, tenant, src_server, dst_server):
-                    loads[("edge", edge)] += representative_volume / max(edge_capacity[edge], 1e-12)
-            return dict(loads)
-
-        def load_score(loads):
-            values = list(loads.values())
-            return (
-                max(values, default=0.0),
-                sum(value * value for value in values),
-                sum(values),
-            )
-
-        def merge_loads(left, right):
-            merged = defaultdict(float)
-            merged.update(left)
-            for resource, load in right.items():
-                merged[resource] += float(load)
-            return dict(merged)
-
-        tenant_candidates = {}
-        tenant_total_volume = {}
-        for tenant in self.tenants:
-            ranks = list(self.rank_orders[tenant])
-            servers = tuple(sorted(
-                (int(self.initial_tenant_mapping[tenant][rank]) for rank in ranks),
-                key=self._server_leaf_sort_key,
-            ))
-            if len(servers) != len(ranks):
-                return None
-            if not servers:
-                tenant_candidates[tenant] = []
-                tenant_total_volume[tenant] = 0.0
-                continue
-
-            anchor = min(servers)
-            rest = tuple(server for server in servers if int(server) != int(anchor))
-            candidates = []
-            for perm_rest in itertools.permutations(rest):
-                ordered_servers = (anchor,) + tuple(int(server) for server in perm_rest)
-                tenant_mapping = {
-                    int(rank): int(server)
-                    for rank, server in zip(ranks, ordered_servers)
-                }
-                loads = resource_load_vector(tenant, tenant_mapping)
-                score = load_score(loads)
-                candidates.append((score, tenant_mapping, loads))
-            candidates.sort(key=lambda item: item[0])
-            tenant_candidates[tenant] = candidates
-            tenant_total_volume[tenant] = sum(
-                float(volume)
-                for _epoch, _src_rank, _dst_rank, volume in self.data["compiled_schedule"]["per_tenant"][tenant]["all_flows"]
-            )
-
-        if any(not tenant_candidates.get(tenant) for tenant in self.tenants):
-            return None
-
-        combined_loads = {}
-        coordinated_mapping = {
-            tenant: dict(rank_to_server)
-            for tenant, rank_to_server in self.initial_tenant_mapping.items()
-        }
-        tenant_order = sorted(
-            self.tenants,
-            key=lambda tenant: (-tenant_total_volume.get(tenant, 0.0), tenant),
-        )
-        for tenant in tenant_order:
-            best_choice = None
-            for _candidate_score, tenant_mapping, loads in tenant_candidates[tenant]:
-                candidate_loads = merge_loads(combined_loads, loads)
-                candidate_score = load_score(candidate_loads)
-                if best_choice is None or candidate_score < best_choice[0]:
-                    best_choice = (candidate_score, tenant_mapping, loads)
-            if best_choice is None:
-                return None
-            _score, tenant_mapping, loads = best_choice
-            coordinated_mapping[tenant] = {
-                int(rank): int(server)
-                for rank, server in tenant_mapping.items()
-            }
-            combined_loads = merge_loads(combined_loads, loads)
-
-        return self._canonicalize_ring_mapping(coordinated_mapping)
 
     def _server_leaf_sort_key(self, server):
         server_id = int(server)

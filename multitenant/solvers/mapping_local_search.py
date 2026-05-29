@@ -22,6 +22,7 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
             dst_server = int(mapping[tenant][dst_rank])
             total_cost += float(volume) * self._path_epoch_price(
                 epoch_prices,
+                tenant,
                 epoch,
                 src_server,
                 dst_server,
@@ -53,8 +54,8 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
             old_dst = int(current_tenant_mapping[dst_rank])
             new_src = swapped_server(src_rank)
             new_dst = swapped_server(dst_rank)
-            old_cost = self._path_epoch_price(epoch_prices, epoch, old_src, old_dst)
-            new_cost = self._path_epoch_price(epoch_prices, epoch, new_src, new_dst)
+            old_cost = self._path_epoch_price(epoch_prices, tenant, epoch, old_src, old_dst)
+            new_cost = self._path_epoch_price(epoch_prices, tenant, epoch, new_src, new_dst)
             delta += float(volume) * (new_cost - old_cost)
         return float(delta)
 
@@ -84,8 +85,8 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
             old_dst = int(current_tenant_mapping[dst_rank])
             new_src = reassigned_server(src_rank)
             new_dst = reassigned_server(dst_rank)
-            old_cost = self._path_epoch_price(epoch_prices, epoch, old_src, old_dst)
-            new_cost = self._path_epoch_price(epoch_prices, epoch, new_src, new_dst)
+            old_cost = self._path_epoch_price(epoch_prices, tenant, epoch, old_src, old_dst)
+            new_cost = self._path_epoch_price(epoch_prices, tenant, epoch, new_src, new_dst)
             delta += float(volume) * (new_cost - old_cost)
         return float(delta)
 
@@ -221,8 +222,6 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
 
     def _surrogate_pair_swap_polish(self, best_mapping, best_score, deadline):
         max_passes = 3
-        max_pairs_per_tenant = 512
-
         for _pass_idx in range(max_passes):
             if time.time() >= deadline:
                 break
@@ -240,6 +239,7 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
                 ]
                 if len(ranks) <= 1:
                     continue
+                max_pairs_per_tenant = 32
 
                 checked_pairs = 0
                 accepted = False

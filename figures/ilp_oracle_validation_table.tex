@@ -1,0 +1,17 @@
+\begin{table}[t]
+\centering
+\caption{Heuristic quality against the MILP oracle. The gap is measured relative to the MILP objective on oracle-solvable instances.}
+\label{tab:ilp-oracle-validation}
+\begin{tabular}{lcccccc}
+\toprule
+Program & \# Tenants & Avg. JCT gap & Makespan gap & Heur. time (s) & ILP time (s) & Speedup \\
+\midrule
+Single & 2 & 0.0000\% & 0.0000\% & 0.382 & 312.8 & 819$\times$ \\
+Single & 3 & 0.0130\% & 0.0000\% & 0.029 & 128.0 & 4418$\times$ \\
+Single & 4 & 0.0000\% & 0.0000\% & 0.005 & 3.0 & 577$\times$ \\
+Multi & 2 & 0.0000\% & 0.0000\% & 1.073 & 2730.7 & 2545$\times$ \\
+Multi & 3 & 0.0000\% & 0.0000\% & 0.073 & 812.1 & 11198$\times$ \\
+Multi & 4 & 0.0000\% & 0.0000\% & 0.012 & 103.6 & 8947$\times$ \\
+\bottomrule
+\end{tabular}
+\end{table}

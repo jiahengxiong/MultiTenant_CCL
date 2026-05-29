@@ -162,11 +162,12 @@ def _run_case(
     datacenter = LeafSpineDatacenter(*TOPOLOGY)
     tenant_mapping = placement_factory()
     program = program_factory()
+    default_path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
 
     default_ms, default_avg = simulate_collective(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        default_path_table,
         tenant_collective_programs=program,
     )
 
@@ -178,15 +179,17 @@ def _run_case(
         verbose=False,
         tenant_collective_programs=program,
         validate_with_simulator=False,
+        path_table=default_path_table,
     )
     mapping_solver.solve(time_limit=mapping_time_limit)
     mapped = mapping_solver.get_X_mapping()
     mapping_wall = time.time() - t0
+    mapped_path_table = datacenter.build_tenant_ecmp_path_table(mapped)
 
     mapping_ms, mapping_avg = simulate_collective(
         datacenter.topology,
         mapped,
-        datacenter.paths,
+        mapped_path_table,
         tenant_collective_programs=program,
     )
 
@@ -195,7 +198,7 @@ def _run_case(
         datacenter,
         tenant_mapping,
         None,
-        datacenter.paths,
+        default_path_table,
         None,
         None,
         verbose=False,
@@ -208,7 +211,7 @@ def _run_case(
     default_h_ms, default_h_avg = simulate_collective(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        default_path_table,
         tenant_collective_programs=program,
         tenant_start_times=_extract_start_times(baseline_schedule),
         collective_start_times=harmonics.get_collective_start_times(),
@@ -222,7 +225,7 @@ def _run_case(
         datacenter,
         mapped,
         None,
-        datacenter.paths,
+        mapped_path_table,
         None,
         None,
         verbose=False,
@@ -235,7 +238,7 @@ def _run_case(
     mapping_h_ms, mapping_h_avg = simulate_collective(
         datacenter.topology,
         mapped,
-        datacenter.paths,
+        mapped_path_table,
         tenant_collective_programs=program,
         tenant_start_times=_extract_start_times(mapped_schedule),
         collective_start_times=harmonics_on_mapping.get_collective_start_times(),

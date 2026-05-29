@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
 from multitenant.diagnostics import sample_link_capacities
 from multitenant.topology import LeafSpineDatacenter
 
@@ -22,8 +29,10 @@ def main():
         print(f"  {edge}: {capacity:.1f} bps")
 
     example_src, example_dst = 0, min(5, datacenter.num_server - 1)
-    print("\nSample ECMP-style path:")
-    print(f"  {example_src} -> {example_dst}: {datacenter.paths[(example_src, example_dst)]}")
+    path_table = datacenter.build_tenant_ecmp_path_table({0: 0, 1: 1})
+    print("\nSample tenant-aware ECMP-style paths:")
+    for tenant in (0, 1):
+        print(f"  tenant {tenant}, {example_src} -> {example_dst}: {path_table[(tenant, example_src, example_dst)]}")
 
 
 if __name__ == "__main__":

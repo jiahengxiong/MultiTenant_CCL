@@ -14,8 +14,12 @@ from multitenant.collectives import normalize_collective_programs
 from multitenant.workloads import build_collective_program_schedule, build_collective_schedule
 
 
-def _path_edges(path_table, src, dst):
-    path = path_table.get((src, dst))
+def _lookup_path(path_table, tenant, src, dst):
+    return path_table.get((int(tenant), int(src), int(dst)))
+
+
+def _path_edges(path_table, tenant, src, dst):
+    path = _lookup_path(path_table, tenant, src, dst)
     if not path:
         return []
     return list(zip(path[:-1], path[1:]))
@@ -180,7 +184,7 @@ def build_simulator_topology(graph: nx.DiGraph) -> nx.DiGraph:
 
 def _policy_from_schedule(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     schedule: dict[int, dict[str, object]],
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -213,6 +217,15 @@ def _policy_from_schedule(
         tenant_schedule = schedule.get(tenant, {})
         tasks = tenant_schedule.get("tasks", [])
         task_lookup = {int(task["task_id"]): task for task in tasks}
+        incoming_task_ids: dict[int, list[int]] = {
+            int(task["task_id"]): [int(pred_task_id) for pred_task_id in task.get("preds", [])]
+            for task in tasks
+        }
+        schedule_edges = list(tenant_schedule.get("edges", []))
+        if schedule_edges:
+            incoming_task_ids = {int(task["task_id"]): [] for task in tasks}
+            for edge in schedule_edges:
+                incoming_task_ids.setdefault(int(edge["dst_task_id"]), []).append(int(edge["src_task_id"]))
         dependency_chunk_lookup: dict[str, str] = {}
         program_releases: dict[int, tuple[list[str], float, float | None]] = {}
         program = tenant_schedule.get("collective_program", [])
@@ -234,7 +247,7 @@ def _policy_from_schedule(
             task = task_lookup[int(task_id)]
             src_phys = mapping[int(task["src_rank"])]
             dst_phys = mapping[int(task["dst_rank"])]
-            path = path_table.get((src_phys, dst_phys))
+            path = _lookup_path(path_table, tenant, src_phys, dst_phys)
             if not path:
                 continue
 
@@ -250,9 +263,11 @@ def _policy_from_schedule(
             else:
                 scheduled_abs = None
                 deps = _resolve_dependency_names(
-                    [str(task_lookup[int(pred_task_id)]["name"]) for pred_task_id in task["preds"]],
+                    [str(task_lookup[int(pred_task_id)]["name"]) for pred_task_id in incoming_task_ids.get(int(task_id), [])],
                     dependency_chunk_lookup,
                 )
+                if schedule_edges and deps:
+                    dependency_scope = "global"
             chunk_size_bytes = int(round(float(task["V"]) * 1e9 / 8.0))
             task_time = start_time
             if "op_idx" in task:
@@ -265,7 +280,7 @@ def _policy_from_schedule(
             task_rate = rate
             if "op_idx" in task and int(task["op_idx"]) in tenant_collective_rate_scales:
                 rate_scale = float(tenant_collective_rate_scales[int(task["op_idx"])])
-                path_edges = _path_edges(path_table, src_phys, dst_phys)
+                path_edges = _path_edges(path_table, tenant, src_phys, dst_phys)
                 path_bottleneck_bps = min(
                     (edge_capacities[edge] for edge in path_edges if edge in edge_capacities),
                     default=0.0,
@@ -273,7 +288,7 @@ def _policy_from_schedule(
                 if path_bottleneck_bps > 0.0 and rate_scale < 1.0 - 1e-12:
                     task_rate = rate_scale * path_bottleneck_bps
             rate_windows = None
-            path_edges = _path_edges(path_table, src_phys, dst_phys)
+            path_edges = _path_edges(path_table, tenant, src_phys, dst_phys)
             path_bottleneck_bps = min(
                 (edge_capacities[edge] for edge in path_edges if edge in edge_capacities),
                 default=0.0,
@@ -335,7 +350,7 @@ def _policy_from_schedule(
 
 def allgather_policy(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     single_flow_size_bytes: int,
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -352,7 +367,7 @@ def allgather_policy(
 
 def reducescatter_policy(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     chunk_size_bytes: int,
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -369,7 +384,7 @@ def reducescatter_policy(
 
 def alltoall_policy(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     chunk_size_bytes: int,
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -386,7 +401,7 @@ def alltoall_policy(
 
 def allreduce_policy(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     chunk_size_bytes: int,
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -434,7 +449,7 @@ def _run_simulation_worker(sim_topology: nx.DiGraph, policy: list[PolicyEntry]) 
 def simulate_collective(
     topology: nx.DiGraph,
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     single_flow_size_bits: int | None = None,
     collective: str | None = None,
     tenant_start_times: dict[int, float] | None = None,
@@ -487,7 +502,7 @@ def simulate_collective(
 def simulate_collective_details(
     topology: nx.DiGraph,
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     single_flow_size_bits: int | None = None,
     collective: str | None = None,
     tenant_start_times: dict[int, float] | None = None,
@@ -539,7 +554,7 @@ def simulate_collective_details(
 
 def collective_program_policy(
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     tenant_collective_programs: dict[int, list[dict[str, object]]],
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,
@@ -569,7 +584,7 @@ def collective_program_policy(
 def simulate_collective_program(
     topology: nx.DiGraph,
     tenant_servers: dict[int, dict[int, int]],
-    path_table: dict[tuple[int, int], list[int]],
+    path_table: dict[tuple[int, int, int], list[int]],
     tenant_collective_programs: dict[int, list[dict[str, object]]],
     tenant_start_times: dict[int, float] | None = None,
     tenant_rates: dict[int, float] | None = None,

@@ -31,8 +31,8 @@ WORKLOAD_TRACES = {
 }
 COLLECTIVE_GAP_S = 0.001
 TASK_SIZE_MULTIPLIER = 8
-SIMULATOR_MAX_CHUNK_BYTES = 2_000_000_000
 FULL_MAPPING_MIN_MSG_SIZE_BYTES = 64 * 1024 * 1024
+SMALL_COLLECTIVE_GAP_S = 0.001
 
 
 def derive_seed(base_seed: int, *components: object) -> int:
@@ -260,6 +260,11 @@ def build_full_mapping_programs(
         program: list[dict[str, object]] = []
         for op in profile["program"]:
             if int(op["source_msg_size_bytes"]) <= int(min_msg_size_bytes):
+                folded_gap = SMALL_COLLECTIVE_GAP_S + float(op["gap_after"])
+                if program:
+                    program[-1]["gap_after"] = float(program[-1]["gap_after"]) + folded_gap
+                else:
+                    start_times[tenant] += folded_gap
                 continue
             program.append(
                 {
@@ -282,55 +287,18 @@ def build_full_mapping_programs(
     return programs, start_times
 
 
-def make_simulator_safe_programs(
-    programs: dict[int, list[dict[str, object]]],
-) -> dict[int, list[dict[str, object]]]:
-    safe_programs: dict[int, list[dict[str, object]]] = {}
-    for tenant, program in programs.items():
-        safe_ops: list[dict[str, object]] = []
-        for op in program:
-            collective = str(op["collective"])
-            task_bits = int(op["single_flow_size_bits"])
-            gap_after = float(op["gap_after"])
-            total_bytes = task_bits // 8
-            if total_bytes <= SIMULATOR_MAX_CHUNK_BYTES:
-                safe_ops.append(
-                    {
-                        "collective": collective,
-                        "single_flow_size_bits": task_bits,
-                        "gap_after": gap_after,
-                    }
-                )
-                continue
-
-            num_chunks = (total_bytes + SIMULATOR_MAX_CHUNK_BYTES - 1) // SIMULATOR_MAX_CHUNK_BYTES
-            base_bytes = total_bytes // num_chunks
-            extra_bytes = total_bytes % num_chunks
-            for chunk_idx in range(num_chunks):
-                chunk_bytes = base_bytes + (1 if chunk_idx < extra_bytes else 0)
-                safe_ops.append(
-                    {
-                        "collective": collective,
-                        "single_flow_size_bits": int(chunk_bytes * 8),
-                        "gap_after": gap_after if chunk_idx == num_chunks - 1 else 0.0,
-                    }
-                )
-        safe_programs[tenant] = safe_ops
-    return safe_programs
-
-
 def evaluate_full_program(
     datacenter: LeafSpineDatacenter,
     mapping: dict[int, dict[int, int]],
     full_programs: dict[int, list[dict[str, object]]],
     initial_start_times: dict[int, float],
 ) -> tuple[float, float]:
-    simulator_programs = make_simulator_safe_programs(full_programs)
+    path_table = datacenter.build_tenant_ecmp_path_table(mapping)
     makespan, avg_jct = simulate_collective(
         datacenter.topology,
         mapping,
-        datacenter.paths,
-        tenant_collective_programs=simulator_programs,
+        path_table,
+        tenant_collective_programs=full_programs,
         tenant_start_times=initial_start_times,
     )
     return float(makespan), float(avg_jct)
@@ -342,13 +310,19 @@ def run_mapping_solver(
     *,
     tenant_collective_specs: dict[int, dict[str, object]] | None = None,
     tenant_collective_programs: dict[int, list[dict[str, object]]] | None = None,
+    tenant_start_times: dict[int, float] | None = None,
+    extra_seed_mappings: list[dict[int, dict[int, int]]] | None = None,
 ) -> tuple[dict[int, dict[int, int]], float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_specs=tenant_collective_specs,
         tenant_collective_programs=tenant_collective_programs,
+        tenant_start_times=tenant_start_times,
         verbose=False,
+        path_table=path_table,
+        extra_seed_mappings=extra_seed_mappings,
     )
     start = time.time()
     solver.solve()
@@ -387,6 +361,8 @@ def summarize_case(
         datacenter,
         tenant_mapping,
         tenant_collective_programs=full_mapping_programs,
+        tenant_start_times=full_mapping_start_times,
+        extra_seed_mappings=[dominant_mapping],
     )
 
     print(f"  [tenant_count={tenant_count}] evaluating full trace on simulator...", flush=True)

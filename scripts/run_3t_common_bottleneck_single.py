@@ -45,12 +45,13 @@ def _run_six_way():
     datacenter = LeafSpineDatacenter(num_leaf=3, num_spine=2, per_leaf_server=4)
     tenant_mapping = _mapping()
     program = _program()
+    default_path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
 
     t0 = time.time()
     default = simulate_collective_details(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        default_path_table,
         tenant_collective_programs=program,
         policy_qpid_mode="tenant",
     )
@@ -70,7 +71,7 @@ def _run_six_way():
     default_h = simulate_collective_details(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        default_path_table,
         tenant_collective_programs=program,
         collective_start_times=harmonics.get_collective_start_times(),
         policy_qpid_mode="tenant",
@@ -87,13 +88,15 @@ def _run_six_way():
         tenant_collective_programs=program,
         verbose=False,
         validate_with_simulator=False,
+        path_table=default_path_table,
     )
     mapping_solver.solve()
     mapped = mapping_solver.get_X_mapping()
+    mapped_path_table = datacenter.build_tenant_ecmp_path_table(mapped)
     mapping = simulate_collective_details(
         datacenter.topology,
         mapped,
-        datacenter.paths,
+        mapped_path_table,
         tenant_collective_programs=program,
         policy_qpid_mode="tenant",
     )
@@ -108,12 +111,13 @@ def _run_six_way():
         single_flow_size=0,
         tenant_collective_programs=program,
         verbose=False,
+        path_table=mapped_path_table,
     )
     mapped_h_solver.solve()
     mapping_h = simulate_collective_details(
         datacenter.topology,
         mapped,
-        datacenter.paths,
+        mapped_path_table,
         tenant_collective_programs=program,
         collective_start_times=mapped_h_solver.get_collective_start_times(),
         policy_qpid_mode="tenant",
@@ -123,10 +127,11 @@ def _run_six_way():
     t0 = time.time()
     locality_solver = LeafLocalBaseline(tenant_mapping)
     local = locality_solver.solve()
+    local_path_table = datacenter.build_tenant_ecmp_path_table(local)
     locality = simulate_collective_details(
         datacenter.topology,
         local,
-        datacenter.paths,
+        local_path_table,
         tenant_collective_programs=program,
         policy_qpid_mode="tenant",
     )
@@ -141,12 +146,13 @@ def _run_six_way():
         single_flow_size=0,
         tenant_collective_programs=program,
         verbose=False,
+        path_table=local_path_table,
     )
     local_h_solver.solve()
     locality_h = simulate_collective_details(
         datacenter.topology,
         local,
-        datacenter.paths,
+        local_path_table,
         tenant_collective_programs=program,
         collective_start_times=local_h_solver.get_collective_start_times(),
         policy_qpid_mode="tenant",

@@ -16,11 +16,12 @@ def resolve_flow_paths(
     tenant_flows: dict[int, list[tuple[int, int, float]]],
 ) -> list[dict[str, object]]:
     resolved = []
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     for tenant, flows in tenant_flows.items():
         for flow_index, (logical_src, logical_dst, volume_gbit) in enumerate(flows):
             physical_src = tenant_mapping[tenant][logical_src]
             physical_dst = tenant_mapping[tenant][logical_dst]
-            path = datacenter.paths.get((physical_src, physical_dst), [])
+            path = path_table.get((int(tenant), int(physical_src), int(physical_dst)), [])
             resolved.append(
                 {
                     "tenant": tenant,

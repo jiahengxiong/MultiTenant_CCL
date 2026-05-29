@@ -50,12 +50,13 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
         rng=rng,
         servers_per_tenant=servers_per_tenant,
     )
+    default_path_table = dc.build_tenant_ecmp_path_table(tenant_mapping)
     program = _make_program(cfg.num_tenants, single_flow_size_bits=int(0.25 * BITS_PER_MB))
 
     default_ms, default_avg = simulate_collective(
         dc.topology,
         tenant_mapping,
-        dc.paths,
+        default_path_table,
         tenant_collective_programs=program,
     )
 
@@ -66,14 +67,16 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
         verbose=False,
         tenant_collective_programs=program,
         validate_with_simulator=False,
+        path_table=default_path_table,
     )
     mapping_solver.solve(time_limit=0.2)
     heuristic_mapping = mapping_solver.get_X_mapping()
+    heuristic_path_table = dc.build_tenant_ecmp_path_table(heuristic_mapping)
 
     mapping_ms, mapping_avg = simulate_collective(
         dc.topology,
         heuristic_mapping,
-        dc.paths,
+        heuristic_path_table,
         tenant_collective_programs=program,
     )
 
@@ -81,7 +84,7 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
         dc,
         tenant_mapping,
         None,
-        dc.paths,
+        default_path_table,
         None,
         None,
         verbose=False,
@@ -92,7 +95,7 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
     default_h_ms, default_h_avg = simulate_collective(
         dc.topology,
         tenant_mapping,
-        dc.paths,
+        default_path_table,
         tenant_collective_programs=program,
         tenant_start_times=_extract_start_times(schedule),
         collective_start_times=harmonics.get_collective_start_times(),
@@ -103,7 +106,7 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
         dc,
         heuristic_mapping,
         None,
-        dc.paths,
+        heuristic_path_table,
         None,
         None,
         verbose=False,
@@ -114,7 +117,7 @@ def _run_one(num_tenants: int, seed: int, *, servers_per_tenant: int):
     mapping_h_ms, mapping_h_avg = simulate_collective(
         dc.topology,
         heuristic_mapping,
-        dc.paths,
+        heuristic_path_table,
         tenant_collective_programs=program,
         tenant_start_times=_extract_start_times(schedule_on_mapping),
         collective_start_times=harmonics_on_mapping.get_collective_start_times(),

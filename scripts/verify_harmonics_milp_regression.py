@@ -21,11 +21,12 @@ def _pct_change(new_value: float, old_value: float) -> float:
 
 def _run_case(name: str, mapping, program, *, slot_duration: float, timelimit: float):
     dc = LeafSpineDatacenter(3, 2, 2)
+    path_table = dc.build_tenant_ecmp_path_table(mapping)
 
     default_ms, default_avg = simulate_collective(
         dc.topology,
         mapping,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
     )
 
@@ -33,7 +34,7 @@ def _run_case(name: str, mapping, program, *, slot_duration: float, timelimit: f
         dc,
         mapping,
         None,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
         verbose=False,
         slot_duration=slot_duration,
@@ -45,7 +46,7 @@ def _run_case(name: str, mapping, program, *, slot_duration: float, timelimit: f
     harmonics_ms, harmonics_avg = simulate_collective(
         dc.topology,
         mapping,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
         collective_start_times=starts,
         collective_rate_scales=solver.get_collective_rate_scales(),
@@ -68,11 +69,12 @@ def _run_case(name: str, mapping, program, *, slot_duration: float, timelimit: f
 
 def _run_zero_offset_case(name: str, mapping, program, *, slot_duration: float, timelimit: float):
     dc = LeafSpineDatacenter(3, 2, 2)
+    path_table = dc.build_tenant_ecmp_path_table(mapping)
     solver = HarmonicsProgramILP(
         dc,
         mapping,
         None,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
         verbose=False,
         slot_duration=slot_duration,

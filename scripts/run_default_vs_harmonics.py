@@ -47,13 +47,14 @@ def run_once(*, num_tenants: int, seed: int, servers_per_tenant: int, op_size_bi
         rng=random.Random(seed),
         servers_per_tenant=servers_per_tenant,
     )
+    path_table = dc.build_tenant_ecmp_path_table(mapping)
     program = _make_program(cfg.num_tenants, single_flow_size_bits=op_size_bits)
 
     t0 = time.time()
     default_ms, default_avg = simulate_collective(
         dc.topology,
         mapping,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
     )
     default_wall = time.time() - t0
@@ -62,7 +63,7 @@ def run_once(*, num_tenants: int, seed: int, servers_per_tenant: int, op_size_bi
         dc,
         mapping,
         None,
-        dc.paths,
+        path_table,
         None,
         None,
         verbose=False,
@@ -78,7 +79,7 @@ def run_once(*, num_tenants: int, seed: int, servers_per_tenant: int, op_size_bi
     dh_ms, dh_avg = simulate_collective(
         dc.topology,
         mapping,
-        dc.paths,
+        path_table,
         tenant_collective_programs=program,
         tenant_start_times=_extract_start_times(schedule),
         collective_start_times=harmonics.get_collective_start_times(),

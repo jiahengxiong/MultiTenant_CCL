@@ -61,10 +61,11 @@ def _run_single_experiment(
         config.num_tenants,
         rng=rng,
     )
+    tenant_path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     random_makespan, random_avg_jct = simulate_collective(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        tenant_path_table,
         config.single_flow_size_bits,
         config.collective,
         tenant_collective_specs=config.tenant_collective_specs,
@@ -72,10 +73,11 @@ def _run_single_experiment(
     )
 
     leaf_local_mapping = LeafLocalBaseline(tenant_mapping).solve()
+    leaf_local_path_table = datacenter.build_tenant_ecmp_path_table(leaf_local_mapping)
     leaf_local_makespan, leaf_local_avg_jct = simulate_collective(
         datacenter.topology,
         leaf_local_mapping,
-        datacenter.paths,
+        leaf_local_path_table,
         config.single_flow_size_bits,
         config.collective,
         tenant_collective_specs=config.tenant_collective_specs,
@@ -86,7 +88,7 @@ def _run_single_experiment(
         datacenter,
         tenant_mapping,
         None,
-        datacenter.paths,
+        tenant_path_table,
         config.single_flow_size_bits,
         config.collective,
         verbose=False,
@@ -103,7 +105,7 @@ def _run_single_experiment(
     baseline_makespan, baseline_avg_jct = simulate_collective(
         datacenter.topology,
         tenant_mapping,
-        datacenter.paths,
+        tenant_path_table,
         config.single_flow_size_bits,
         config.collective,
         tenant_start_times=baseline_start_times,
@@ -124,15 +126,17 @@ def _run_single_experiment(
         single_flow_size=config.single_flow_size_bits,
         tenant_collective_specs=config.tenant_collective_specs,
         tenant_collective_programs=config.tenant_collective_programs,
+        path_table=tenant_path_table,
     )
     proposed_mapping.solve()
     mapping = proposed_mapping.get_X_mapping()
 
     if mapping:
+        mapping_path_table = datacenter.build_tenant_ecmp_path_table(mapping)
         mapping_makespan, mapping_avg_jct = simulate_collective(
             datacenter.topology,
             mapping,
-            datacenter.paths,
+            mapping_path_table,
             config.single_flow_size_bits,
             config.collective,
             tenant_collective_specs=config.tenant_collective_specs,
@@ -143,7 +147,7 @@ def _run_single_experiment(
             datacenter,
             mapping,
             None,
-            datacenter.paths,
+            mapping_path_table,
             config.single_flow_size_bits,
             config.collective,
             verbose=False,
@@ -160,7 +164,7 @@ def _run_single_experiment(
         mapping_harmonics_makespan, mapping_harmonics_avg_jct = simulate_collective(
             datacenter.topology,
             mapping,
-            datacenter.paths,
+            mapping_path_table,
             config.single_flow_size_bits,
             config.collective,
             tenant_start_times=mapping_start_times,
@@ -282,6 +286,7 @@ def run_small_scale_proposed_mapping_validation(
             num_tenants,
             rng=rng,
         )
+        tenant_path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
         ilp_start = time.time()
         proposed_mapping_ilp = MappingILPSolver(
             datacenter,
@@ -290,6 +295,7 @@ def run_small_scale_proposed_mapping_validation(
             verbose=False,
             collective=collective,
             single_flow_size=single_flow_size_bits,
+            path_table=tenant_path_table,
         )
         proposed_mapping_ilp.solve(time_limit=60)
         ilp_runtimes.append(time.time() - ilp_start)
@@ -297,10 +303,11 @@ def run_small_scale_proposed_mapping_validation(
         if proposed_mapping_ilp.final_obj is not None:
             ilp_objective = proposed_mapping_ilp.final_obj
             ilp_mapping = proposed_mapping_ilp.get_X_mapping()
+            ilp_path_table = datacenter.build_tenant_ecmp_path_table(ilp_mapping)
             ilp_makespan, ilp_avg_jct = simulate_collective(
                 datacenter.topology,
                 ilp_mapping,
-                datacenter.paths,
+                ilp_path_table,
                 single_flow_size_bits,
                 collective,
             )
@@ -317,6 +324,7 @@ def run_small_scale_proposed_mapping_validation(
             verbose=False,
             collective=collective,
             single_flow_size=single_flow_size_bits,
+            path_table=tenant_path_table,
         )
         proposed_mapping_heuristic.solve(time_limit=5.0)
         heuristic_mapping = proposed_mapping_heuristic.get_X_mapping()
@@ -324,10 +332,11 @@ def run_small_scale_proposed_mapping_validation(
 
         if proposed_mapping_heuristic.final_obj is not None and heuristic_mapping:
             heuristic_objective = proposed_mapping_heuristic.final_obj
+            heuristic_path_table = datacenter.build_tenant_ecmp_path_table(heuristic_mapping)
             heuristic_makespan, heuristic_avg_jct = simulate_collective(
                 datacenter.topology,
                 heuristic_mapping,
-                datacenter.paths,
+                heuristic_path_table,
                 single_flow_size_bits,
                 collective,
             )
@@ -421,6 +430,7 @@ def run_large_scale_proposed_mapping(
             verbose=False,
             collective=collective,
             single_flow_size=single_flow_size_bits,
+            path_table=datacenter.build_tenant_ecmp_path_table(tenant_mapping),
         )
         proposed_mapping.solve(time_limit=5.0)
         mapping = proposed_mapping.get_X_mapping()
@@ -429,10 +439,11 @@ def run_large_scale_proposed_mapping(
         mapping_makespan = float("inf")
         mapping_avg_jct = float("inf")
         if mapping:
+            mapping_path_table = datacenter.build_tenant_ecmp_path_table(mapping)
             mapping_makespan, mapping_avg_jct = simulate_collective(
                 datacenter.topology,
                 mapping,
-                datacenter.paths,
+                mapping_path_table,
                 single_flow_size_bits,
                 collective,
             )

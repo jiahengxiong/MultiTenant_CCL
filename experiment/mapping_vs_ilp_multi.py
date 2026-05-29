@@ -78,10 +78,11 @@ def evaluate_mapping(
     mapping: dict[int, dict[int, int]],
     tenant_collective_programs: dict[int, list[dict[str, object]]],
 ) -> tuple[float, float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(mapping)
     makespan, avg_jct = simulate_collective_program(
         datacenter.topology,
         mapping,
-        datacenter.paths,
+        path_table,
         tenant_collective_programs=tenant_collective_programs,
     )
     return float(makespan), float(avg_jct)
@@ -93,11 +94,13 @@ def solve_with_heuristic(
     tenant_collective_programs: dict[int, list[dict[str, object]]],
     time_limit: float,
 ) -> tuple[dict[int, dict[int, int]], float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_programs=tenant_collective_programs,
         verbose=False,
+        path_table=path_table,
     )
     start_time = time.time()
     solver.solve(time_limit=time_limit)
@@ -166,6 +169,7 @@ def _maybe_add_pair_finish_lower_bound_cuts(
                     tenant_a: tenant_mapping[tenant_a],
                     tenant_b: tenant_mapping[tenant_b],
                 }
+                pair_path_table = datacenter.build_tenant_ecmp_path_table(pair_mapping)
                 pair_solver = MappingILPSolver(
                     datacenter,
                     tenant_mapping=pair_mapping,
@@ -177,6 +181,7 @@ def _maybe_add_pair_finish_lower_bound_cuts(
                     enable_full_mip_start=False,
                     enable_fixed_mapping_subproblem_start=False,
                     verbose=False,
+                    path_table=pair_path_table,
                 )
                 _fix_solver_to_ring_pattern(pair_solver, tenant_a, dict(pattern_a))
                 _fix_solver_to_ring_pattern(pair_solver, tenant_b, dict(pattern_b))
@@ -241,6 +246,7 @@ def solve_with_ilp(
     warm_start_mapping: dict[int, dict[int, int]] | None = None,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str, float | None, dict[str, int]]:
     seed_mapping = warm_start_mapping if warm_start_mapping is not None else tenant_mapping
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     horizon_probe = MappingILPSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
@@ -250,6 +256,7 @@ def solve_with_ilp(
         enable_heuristic_warm_start=False,
         enable_full_mip_start=False,
         enable_fixed_mapping_subproblem_start=False,
+        path_table=path_table,
     )
     default_mapping_horizon_bound = horizon_probe._mapping_horizon_bound(tenant_mapping)
     if default_mapping_horizon_bound is None:
@@ -269,6 +276,7 @@ def solve_with_ilp(
         enable_heuristic_warm_start=False,
         enable_full_mip_start=(warm_start_mode == "fixed"),
         enable_fixed_mapping_subproblem_start=False,
+        path_table=path_table,
     )
     solver.T_max.UB = min(float(solver.T_max.UB), float(default_mapping_horizon_bound))
     for var in solver.tenant_finish.values():

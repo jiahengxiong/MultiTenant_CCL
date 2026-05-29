@@ -55,10 +55,11 @@ def evaluate_mapping(
     datacenter: LeafSpineDatacenter,
     mapping: dict[int, dict[int, int]],
 ) -> tuple[float, float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(mapping)
     makespan, avg_jct = simulate_collective(
         datacenter.topology,
         mapping,
-        datacenter.paths,
+        path_table,
         SINGLE_FLOW_SIZE_BITS,
         COLLECTIVE,
     )
@@ -70,12 +71,14 @@ def solve_with_heuristic(
     tenant_mapping: dict[int, dict[int, int]],
     time_limit: float,
 ) -> tuple[dict[int, dict[int, int]], float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         collective=COLLECTIVE,
         single_flow_size=SINGLE_FLOW_SIZE_BITS,
         verbose=False,
+        path_table=path_table,
     )
     start_time = time.time()
     solver.solve(time_limit=time_limit)
@@ -90,6 +93,7 @@ def solve_with_ilp(
     verbose: bool,
     warm_start_mode: str,
 ) -> tuple[dict[int, dict[int, int]] | None, float, str, float | None]:
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     solver = MappingILPSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
@@ -99,6 +103,7 @@ def solve_with_ilp(
         enable_heuristic_warm_start=False,
         enable_full_mip_start=(warm_start_mode == "fixed"),
         enable_fixed_mapping_subproblem_start=False,
+        path_table=path_table,
     )
     default_mapping_horizon_bound = solver._apply_mapping_horizon_bound(tenant_mapping)
     if warm_start_mode == "fixed":

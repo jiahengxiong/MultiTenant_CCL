@@ -206,10 +206,11 @@ def evaluate_collective(
     collective_rate_schedule: dict[int, dict[int, list[tuple[float, float]]]] | None = None,
     task_rate_schedule: dict[int, dict[int, dict[int, list[tuple[float, float]]]]] | None = None,
 ) -> tuple[float, float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(mapping)
     makespan, avg_jct = simulate_collective(
         datacenter.topology,
         mapping,
-        datacenter.paths,
+        path_table,
         tenant_collective_specs=tenant_collective_specs,
         tenant_start_times=tenant_start_times,
         collective_start_times=collective_start_times,
@@ -227,6 +228,7 @@ def run_harmonics(
     *,
     time_limit_s: float | None,
 ) -> tuple[dict[str, object], float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(mapping)
     solver_kwargs = {
         "verbose": False,
         "tenant_collective_specs": tenant_collective_specs,
@@ -237,7 +239,7 @@ def run_harmonics(
         datacenter,
         mapping,
         None,
-        datacenter.paths,
+        path_table,
         None,
         None,
         **solver_kwargs,
@@ -281,11 +283,13 @@ def run_mapping(
     tenant_mapping: dict[int, dict[int, int]],
     tenant_collective_specs: dict[int, dict[str, object]],
 ) -> tuple[dict[int, dict[int, int]], float]:
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
     solver = MappingHybridHeuristicSolver(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_specs=tenant_collective_specs,
         verbose=False,
+        path_table=path_table,
     )
     start = time.time()
     solver.solve()

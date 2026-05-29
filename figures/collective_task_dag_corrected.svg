@@ -1,0 +1,252 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1920" height="1080" viewBox="0 0 1920 1080">
+<defs>
+  <linearGradient id="bg" x1="0" x2="1" y1="0" y2="1">
+    <stop offset="0%" stop-color="#ffffff"/>
+    <stop offset="100%" stop-color="#eef5ff"/>
+  </linearGradient>
+  <linearGradient id="callout" x1="0" x2="1">
+    <stop offset="0%" stop-color="#fff7df"/>
+    <stop offset="100%" stop-color="#fff1bd"/>
+  </linearGradient>
+  <marker id="arrow" viewBox="0 0 10 10" refX="8" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+    <path d="M 0 0 L 10 5 L 0 10 z" fill="context-stroke"/>
+  </marker>
+  <style>
+    text { font-family: Avenir Next, Aptos, Helvetica, Arial, sans-serif; }
+  </style>
+</defs>
+<rect width="1920" height="1080" fill="url(#bg)"/>
+<rect x="0" y="0" width="132" height="118" fill="#ffffff"/>
+<path d="M35 36 L85 82 L101 64 L49 20 Z" fill="#f59e0b"/>
+<rect x="132" y="0" width="4" height="118" fill="#063b79"/>
+<rect x="0" y="118" width="1920" height="14" fill="#063b79"/>
+<rect x="0" y="132" width="420" height="12" fill="#d8e4f2"/>
+<rect x="1660" y="0" width="260" height="18" fill="#063b79"/>
+
+<text x="150" y="48" text-anchor="start" style="font-size:38px;font-weight:900;fill:#073b78;">Collective-Aware Rank Mapping for Multi-Tenant Training</text>
+<text x="150" y="94" text-anchor="start" style="font-size:32px;font-weight:800;fill:#073b78;">From Collective Semantics to Task-Level Communication Constraints</text>
+<rect x="235" y="156" width="1450" height="72" rx="12" fill="url(#callout)" fill-opacity="1.0" stroke="#f0bd53" stroke-width="2"/>
+<text x="960" y="187" text-anchor="middle" style="font-size:31px;font-weight:900;fill:#111827;">We compile collective semantics into transmission tasks,</text>
+<text x="960" y="221" text-anchor="middle" style="font-size:30px;font-weight:900;fill:#111827;">then add algorithmic dependencies, port-order constraints, and inter-collective release gates.</text>
+<rect x="38" y="252" width="332" height="46" rx="8" fill="#063b79" fill-opacity="1.0" stroke="#063b79" stroke-width="0"/><text x="204.0" y="283" text-anchor="middle" style="font-size:23px;font-weight:800;fill:#ffffff;">1) Collective Program</text>
+<text x="38" y="334" text-anchor="start" style="font-size:20px;font-weight:800;fill:#111827;font-style:italic;">Per-tenant communication program</text>
+<rect x="68" y="356" width="272" height="420" rx="28" fill="#ffffff" fill-opacity="1.0" stroke="#2f6fb3" stroke-width="2"/>
+<rect x="68" y="364" width="272" height="420" rx="28" fill="none" stroke="#2f6fb3" stroke-width="3" stroke-dasharray="10 10"/>
+<rect x="100" y="350" width="208" height="76" rx="12" fill="#ffd6b6" fill-opacity="1.0" stroke="#d97706" stroke-width="2"/><text x="204.0" y="383" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">AllReduce</text><text x="204.0" y="411" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">size = S1</text>
+<text x="204" y="458" text-anchor="middle" style="font-size:20px;font-weight:800;fill:#ef1717;">gap_after = g1</text>
+<text x="204" y="503" text-anchor="middle" style="font-size:33px;font-weight:900;fill:#111827;">...</text>
+<rect x="100" y="538" width="208" height="76" rx="12" fill="#cdf4c2" fill-opacity="1.0" stroke="#4c9a42" stroke-width="2"/><text x="204.0" y="571" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">AllGather</text><text x="204.0" y="599" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">size = S2</text>
+<text x="204" y="647" text-anchor="middle" style="font-size:20px;font-weight:800;fill:#ef1717;">gap_after = g2</text>
+<text x="204" y="693" text-anchor="middle" style="font-size:33px;font-weight:900;fill:#111827;">...</text>
+<rect x="100" y="728" width="208" height="76" rx="12" fill="#cfe5ff" fill-opacity="1.0" stroke="#2f6fb3" stroke-width="2"/><text x="204.0" y="761" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">AllToAll</text><text x="204.0" y="789" text-anchor="middle" style="font-size:22px;font-weight:800;fill:#111827;">size = S3</text>
+<text x="56" y="898" text-anchor="start" style="font-size:20px;font-weight:600;fill:#111827;">Specifies what and pacing;</text>
+<text x="56" y="930" text-anchor="start" style="font-size:20px;font-weight:800;fill:#0b4db3;">not an execution schedule.</text>
+<rect x="418" y="252" width="475" height="46" rx="8" fill="#063b79" fill-opacity="1.0" stroke="#063b79" stroke-width="0"/><text x="655.5" y="283" text-anchor="middle" style="font-size:23px;font-weight:800;fill:#ffffff;">2) Per-Collective Expansion</text>
+<text x="655.5" y="334" text-anchor="middle" style="font-size:20px;font-weight:800;fill:#111827;font-style:italic;">Example: Ring AllReduce (N = 4)</text>
+<rect x="418" y="356" width="475" height="278" rx="14" fill="#ffffff" fill-opacity="1.0" stroke="#5b8ec9" stroke-width="2"/>
+<text x="655.5" y="384" text-anchor="middle" style="font-size:19px;font-weight:800;fill:#0b4db3;">Reduce-Scatter: 4 chunks, 3 steps</text>
+<text x="509" y="431" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C0</text>
+<circle cx="543" cy="424" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="543" y="432" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="543" y="461" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<line x1="565" y1="424" x2="603" y2="424" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="424" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="625" y="432" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="625" y="461" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<line x1="647" y1="424" x2="685" y2="424" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="424" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="707" y="432" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="707" y="461" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<text x="509" y="479" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C1</text>
+<circle cx="543" cy="472" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="543" y="480" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="543" y="509" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<line x1="565" y1="472" x2="603" y2="472" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="472" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="625" y="480" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="625" y="509" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<line x1="647" y1="472" x2="685" y2="472" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="472" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="707" y="480" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="707" y="509" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<text x="509" y="527" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C2</text>
+<circle cx="543" cy="520" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="543" y="528" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="543" y="557" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<line x1="565" y1="520" x2="603" y2="520" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="520" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="625" y="528" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="625" y="557" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<line x1="647" y1="520" x2="685" y2="520" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="520" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="707" y="528" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="707" y="557" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<text x="509" y="575" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C3</text>
+<circle cx="543" cy="568" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="543" y="576" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="543" y="605" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<line x1="565" y1="568" x2="603" y2="568" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="568" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="625" y="576" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="625" y="605" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<line x1="647" y1="568" x2="685" y2="568" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="568" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="707" y="576" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="707" y="605" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<rect x="418" y="658" width="475" height="250" rx="14" fill="#ffffff" fill-opacity="1.0" stroke="#5b8ec9" stroke-width="2"/>
+<text x="655.5" y="686" text-anchor="middle" style="font-size:19px;font-weight:800;fill:#0b4db3;">AllGather: 4 chunks, 3 steps</text>
+<text x="509" y="733" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C0</text>
+<circle cx="543" cy="726" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="543" y="734" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="543" y="763" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<line x1="565" y1="726" x2="603" y2="726" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="726" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="625" y="734" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="625" y="763" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<line x1="647" y1="726" x2="685" y2="726" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="726" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="707" y="734" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="707" y="763" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<text x="509" y="779" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C1</text>
+<circle cx="543" cy="772" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="543" y="780" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="543" y="809" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<line x1="565" y1="772" x2="603" y2="772" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="772" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="625" y="780" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="625" y="809" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<line x1="647" y1="772" x2="685" y2="772" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="772" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="707" y="780" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="707" y="809" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<text x="509" y="825" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C2</text>
+<circle cx="543" cy="818" r="20" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/><text x="543" y="826" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">1</text>
+<text x="543" y="855" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">1-&gt;2</text>
+<line x1="565" y1="818" x2="603" y2="818" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="818" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="625" y="826" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="625" y="855" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<line x1="647" y1="818" x2="685" y2="818" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="818" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="707" y="826" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="707" y="855" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<text x="509" y="871" text-anchor="end" style="font-size:18px;font-weight:700;fill:#0b3a78;">C3</text>
+<circle cx="543" cy="864" r="20" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/><text x="543" y="872" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">2</text>
+<text x="543" y="901" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">2-&gt;3</text>
+<line x1="565" y1="864" x2="603" y2="864" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="625" cy="864" r="20" fill="#ffe28a" stroke="#17406f" stroke-width="2"/><text x="625" y="872" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">3</text>
+<text x="625" y="901" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">3-&gt;0</text>
+<line x1="647" y1="864" x2="685" y2="864" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="707" cy="864" r="20" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/><text x="707" y="872" text-anchor="middle" style="font-size:18px;font-weight:700;fill:#111827;">0</text>
+<text x="707" y="901" text-anchor="middle" style="font-size:13px;font-weight:700;fill:#1f2937;">0-&gt;1</text>
+<line x1="382" y1="575" x2="410" y2="575" stroke="#063b79" stroke-width="8" marker-end="url(#arrow)"/>
+<line x1="907" y1="575" x2="935" y2="575" stroke="#063b79" stroke-width="8" marker-end="url(#arrow)"/>
+<line x1="1462" y1="575" x2="1490" y2="575" stroke="#063b79" stroke-width="8" marker-end="url(#arrow)"/>
+<rect x="950" y="252" width="500" height="46" rx="8" fill="#063b79" fill-opacity="1.0" stroke="#063b79" stroke-width="0"/><text x="1200.0" y="283" text-anchor="middle" style="font-size:23px;font-weight:800;fill:#ffffff;">3) Task DAG + Constraints</text>
+<text x="1200.0" y="334" text-anchor="middle" style="font-size:20px;font-weight:800;fill:#111827;font-style:italic;">Add resource order and release timing</text>
+<rect x="950" y="356" width="500" height="524" rx="18" fill="#ffffff" fill-opacity="1.0" stroke="#111827" stroke-width="2"/>
+<line x1="982" y1="390" x2="1050" y2="390" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<text x="1080" y="397" text-anchor="start" style="font-size:18px;font-weight:500;fill:#111827;">Algorithmic dependency</text>
+<line x1="982" y1="420" x2="1050" y2="420" stroke="#22a447" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+<text x="1080" y="427" text-anchor="start" style="font-size:18px;font-weight:500;fill:#111827;">Port-order dependency (same first-hop port)</text>
+<line x1="982" y1="450" x2="1050" y2="450" stroke="#ef1717" stroke-width="2" stroke-dasharray="7 7"/>
+<circle cx="982" cy="450" r="4" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<circle cx="1050" cy="450" r="4" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<text x="1080" y="457" text-anchor="start" style="font-size:18px;font-weight:500;fill:#111827;">Release gate: previous op finish + gap_after</text>
+<circle cx="1038" cy="510" r="24" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/>
+<text x="1038" y="517" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">0-&gt;1</text>
+<line x1="1064" y1="510" x2="1110" y2="510" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1038" y1="536" x2="1038" y2="554" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1138" cy="510" r="24" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/>
+<text x="1138" y="517" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">1-&gt;2</text>
+<line x1="1164" y1="510" x2="1210" y2="510" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1138" y1="536" x2="1138" y2="554" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1238" cy="510" r="24" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/>
+<text x="1238" y="517" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">2-&gt;3</text>
+<line x1="1264" y1="510" x2="1310" y2="510" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1238" y1="536" x2="1238" y2="554" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1338" cy="510" r="24" fill="#ffe28a" stroke="#17406f" stroke-width="2"/>
+<text x="1338" y="517" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">3-&gt;0</text>
+<line x1="1338" y1="536" x2="1338" y2="554" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1038" cy="582" r="24" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/>
+<text x="1038" y="589" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">1-&gt;2</text>
+<line x1="1064" y1="582" x2="1110" y2="582" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1038" y1="608" x2="1038" y2="626" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1138" cy="582" r="24" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/>
+<text x="1138" y="589" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">2-&gt;3</text>
+<line x1="1164" y1="582" x2="1210" y2="582" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1138" y1="608" x2="1138" y2="626" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1238" cy="582" r="24" fill="#ffe28a" stroke="#17406f" stroke-width="2"/>
+<text x="1238" y="589" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">3-&gt;0</text>
+<line x1="1264" y1="582" x2="1310" y2="582" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1238" y1="608" x2="1238" y2="626" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1338" cy="582" r="24" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/>
+<text x="1338" y="589" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">0-&gt;1</text>
+<line x1="1338" y1="608" x2="1338" y2="626" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1038" cy="654" r="24" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/>
+<text x="1038" y="661" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">2-&gt;3</text>
+<line x1="1064" y1="654" x2="1110" y2="654" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1038" y1="680" x2="1038" y2="698" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1138" cy="654" r="24" fill="#ffe28a" stroke="#17406f" stroke-width="2"/>
+<text x="1138" y="661" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">3-&gt;0</text>
+<line x1="1164" y1="654" x2="1210" y2="654" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1138" y1="680" x2="1138" y2="698" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1238" cy="654" r="24" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/>
+<text x="1238" y="661" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">0-&gt;1</text>
+<line x1="1264" y1="654" x2="1310" y2="654" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<line x1="1238" y1="680" x2="1238" y2="698" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1338" cy="654" r="24" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/>
+<text x="1338" y="661" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">1-&gt;2</text>
+<line x1="1338" y1="680" x2="1338" y2="698" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1038" cy="726" r="24" fill="#ffe28a" stroke="#17406f" stroke-width="2"/>
+<text x="1038" y="733" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">3-&gt;0</text>
+<line x1="1064" y1="726" x2="1110" y2="726" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1138" cy="726" r="24" fill="#ffbf8a" stroke="#17406f" stroke-width="2"/>
+<text x="1138" y="733" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">0-&gt;1</text>
+<line x1="1164" y1="726" x2="1210" y2="726" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1238" cy="726" r="24" fill="#b8e7a8" stroke="#17406f" stroke-width="2"/>
+<text x="1238" y="733" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">1-&gt;2</text>
+<line x1="1264" y1="726" x2="1310" y2="726" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1338" cy="726" r="24" fill="#a9d4ff" stroke="#17406f" stroke-width="2"/>
+<text x="1338" y="733" text-anchor="middle" style="font-size:15px;font-weight:800;fill:#111827;">2-&gt;3</text>
+<line x1="1062" y1="528" x2="1116" y2="564" stroke="#22a447" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+<line x1="1162" y1="528" x2="1216" y2="564" stroke="#22a447" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+<line x1="1262" y1="672" x2="1316" y2="708" stroke="#22a447" stroke-width="2" stroke-dasharray="7 7" marker-end="url(#arrow)"/>
+<line x1="1038" y1="810" x2="1338" y2="810" stroke="#ef1717" stroke-width="2" stroke-dasharray="8 8"/>
+<line x1="1038" y1="756" x2="1038" y2="810" stroke="#ef1717" stroke-width="2" stroke-dasharray="8 8"/>
+<circle cx="1038" cy="810" r="5" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<line x1="1138" y1="756" x2="1138" y2="810" stroke="#ef1717" stroke-width="2" stroke-dasharray="8 8"/>
+<circle cx="1138" cy="810" r="5" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<line x1="1238" y1="756" x2="1238" y2="810" stroke="#ef1717" stroke-width="2" stroke-dasharray="8 8"/>
+<circle cx="1238" cy="810" r="5" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<line x1="1338" y1="756" x2="1338" y2="810" stroke="#ef1717" stroke-width="2" stroke-dasharray="8 8"/>
+<circle cx="1338" cy="810" r="5" fill="#ffffff" stroke="#ef1717" stroke-width="2"/>
+<text x="1363" y="816" text-anchor="start" style="font-size:18px;font-weight:800;fill:#ef1717;">gap_after</text>
+<line x1="1080" y1="822" x2="1080" y2="862" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1080" cy="886" r="20" fill="#d9d9d9" stroke="#6b7280" stroke-width="2"/>
+<line x1="1180" y1="822" x2="1180" y2="862" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1180" cy="886" r="20" fill="#d9d9d9" stroke="#6b7280" stroke-width="2"/>
+<line x1="1280" y1="822" x2="1280" y2="862" stroke="#111827" stroke-width="2" marker-end="url(#arrow)"/>
+<circle cx="1280" cy="886" r="20" fill="#d9d9d9" stroke="#6b7280" stroke-width="2"/>
+<text x="1038" y="906" text-anchor="start" style="font-size:17px;font-weight:600;fill:#111827;">next op initial tasks</text>
+<rect x="1500" y="252" width="376" height="46" rx="8" fill="#063b79" fill-opacity="1.0" stroke="#063b79" stroke-width="0"/><text x="1688.0" y="283" text-anchor="middle" style="font-size:23px;font-weight:800;fill:#ffffff;">4) Used by Solvers</text>
+<rect x="1500" y="356" width="376" height="110" rx="16" fill="#f5f0ff" fill-opacity="1.0" stroke="#b9a7e0" stroke-width="2"/>
+<circle cx="1558" cy="383" r="8" fill="#ffffff" stroke="#111827" stroke-width="4"/>
+<circle cx="1530" cy="419" r="8" fill="#ffffff" stroke="#111827" stroke-width="4"/>
+<circle cx="1586" cy="419" r="8" fill="#ffffff" stroke="#111827" stroke-width="4"/>
+<circle cx="1510" cy="451" r="8" fill="#ffffff" stroke="#111827" stroke-width="4"/>
+<circle cx="1606" cy="451" r="8" fill="#ffffff" stroke="#111827" stroke-width="4"/>
+<line x1="1558" y1="391" x2="1530" y2="411" stroke="#111827" stroke-width="4"/>
+<line x1="1558" y1="391" x2="1586" y2="411" stroke="#111827" stroke-width="4"/>
+<line x1="1530" y1="427" x2="1510" y2="443" stroke="#111827" stroke-width="4"/>
+<line x1="1586" y1="427" x2="1606" y2="443" stroke="#111827" stroke-width="4"/>
+<text x="1752" y="401" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">ILP Oracle</text>
+<text x="1752" y="432" text-anchor="middle" style="font-size:19px;font-weight:600;fill:#111827;">mapping + scheduling</text>
+<rect x="1500" y="494" width="376" height="110" rx="16" fill="#f5f0ff" fill-opacity="1.0" stroke="#b9a7e0" stroke-width="2"/>
+<circle cx="1550" cy="541" r="30" fill="#ffffff" stroke="#111827" stroke-width="5"/>
+<line x1="1574" y1="565" x2="1613" y2="604" stroke="#111827" stroke-width="7"/>
+<line x1="1533" y1="551" x2="1548" y2="537" stroke="#22a447" stroke-width="4"/>
+<line x1="1548" y1="537" x2="1566" y2="553" stroke="#22a447" stroke-width="4"/>
+<text x="1752" y="529" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">Rank Mapping</text>
+<text x="1752" y="555" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">Search</text>
+<text x="1752" y="585" text-anchor="middle" style="font-size:19px;font-weight:600;fill:#111827;">remap / swap</text>
+<rect x="1500" y="632" width="376" height="110" rx="16" fill="#f5f0ff" fill-opacity="1.0" stroke="#b9a7e0" stroke-width="2"/>
+<rect x="1526" y="695" width="18" height="28" rx="0" fill="#111827" fill-opacity="1.0" stroke="#111827" stroke-width="0"/>
+<rect x="1554" y="675" width="18" height="48" rx="0" fill="#111827" fill-opacity="1.0" stroke="#111827" stroke-width="0"/>
+<rect x="1582" y="653" width="18" height="70" rx="0" fill="#111827" fill-opacity="1.0" stroke="#111827" stroke-width="0"/>
+<text x="1752" y="667" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">Contention</text>
+<text x="1752" y="693" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">Estimation</text>
+<text x="1752" y="723" text-anchor="middle" style="font-size:19px;font-weight:600;fill:#111827;">link load + overlap</text>
+<rect x="1500" y="770" width="376" height="110" rx="16" fill="#f5f0ff" fill-opacity="1.0" stroke="#b9a7e0" stroke-width="2"/>
+<rect x="1520" y="793" width="76" height="20" rx="3" fill="#ffffff" fill-opacity="1.0" stroke="#111827" stroke-width="3"/>
+<circle cx="1536" cy="803" r="3" fill="#111827" stroke="#111827" stroke-width="0"/>
+<rect x="1520" y="821" width="76" height="20" rx="3" fill="#ffffff" fill-opacity="1.0" stroke="#111827" stroke-width="3"/>
+<circle cx="1536" cy="831" r="3" fill="#111827" stroke="#111827" stroke-width="0"/>
+<rect x="1520" y="849" width="76" height="20" rx="3" fill="#ffffff" fill-opacity="1.0" stroke="#111827" stroke-width="3"/>
+<circle cx="1536" cy="859" r="3" fill="#111827" stroke="#111827" stroke-width="0"/>
+<text x="1752" y="815" text-anchor="middle" style="font-size:22px;font-weight:900;fill:#111827;">Simulator</text>
+<text x="1752" y="846" text-anchor="middle" style="font-size:19px;font-weight:600;fill:#111827;">runtime execution</text>
+<rect x="200" y="960" width="1520" height="66" rx="12" fill="#eaf3ff" fill-opacity="1.0" stroke="#0b4db3" stroke-width="2"/>
+<text x="960" y="988" text-anchor="middle" style="font-size:24px;font-weight:900;fill:#111827;">The representation captures collective semantics plus resource-level ordering,</text>
+<text x="960" y="1018" text-anchor="middle" style="font-size:24px;font-weight:900;fill:#111827;">enabling contention-aware rank mapping, ILP validation, and simulator evaluation.</text>
+</svg>

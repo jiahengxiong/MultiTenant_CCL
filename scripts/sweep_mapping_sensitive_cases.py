@@ -82,7 +82,7 @@ def _simulate(datacenter, mapping, programs, harmonics=None, schedule=None):
     return simulate_collective_details(
         datacenter.topology,
         mapping,
-        datacenter.paths,
+        datacenter.build_tenant_ecmp_path_table(mapping),
         tenant_collective_programs=programs,
         **kwargs,
     )
@@ -224,6 +224,7 @@ def scenarios() -> list[Scenario]:
 def run_scenario(scenario: Scenario, *, mapping_time_limit=2.0, harmonics_time_limit=0.5):
     datacenter = LeafSpineDatacenter(*TOPOLOGY)
     default_mapping = _mapping_from_servers(scenario.tenant_servers)
+    default_path_table = datacenter.build_tenant_ecmp_path_table(default_mapping)
     shared_servers, max_share = _server_sharing(default_mapping)
 
     t0 = time.time()
@@ -235,7 +236,7 @@ def run_scenario(scenario: Scenario, *, mapping_time_limit=2.0, harmonics_time_l
         datacenter,
         default_mapping,
         None,
-        datacenter.paths,
+        default_path_table,
         None,
         None,
         verbose=False,
@@ -254,9 +255,11 @@ def run_scenario(scenario: Scenario, *, mapping_time_limit=2.0, harmonics_time_l
         verbose=False,
         tenant_collective_programs=scenario.programs,
         validate_with_simulator=False,
+        path_table=default_path_table,
     )
     mapping_solver.solve(time_limit=mapping_time_limit)
     mapped = mapping_solver.get_X_mapping()
+    mapped_path_table = datacenter.build_tenant_ecmp_path_table(mapped)
     mapping_wall = time.time() - t0
     mapping_details = _simulate(datacenter, mapped, scenario.programs)
 
@@ -265,7 +268,7 @@ def run_scenario(scenario: Scenario, *, mapping_time_limit=2.0, harmonics_time_l
         datacenter,
         mapped,
         None,
-        datacenter.paths,
+        mapped_path_table,
         None,
         None,
         verbose=False,

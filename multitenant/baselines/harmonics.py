@@ -12,8 +12,8 @@ from multitenant.simulator.adapter import simulate_collective_details
 from multitenant.workloads import build_collective_program_schedule, build_collective_schedule
 
 
-def _path_edges(path_table, src, dst):
-    path = path_table.get((src, dst))
+def _path_edges(path_table, tenant, src, dst):
+    path = path_table.get((int(tenant), int(src), int(dst)))
     if not path:
         return []
     return list(zip(path[:-1], path[1:]))
@@ -151,7 +151,7 @@ def _build_program_metadata(
             task_id = int(task["task_id"])
             src_phys = mapping[int(task["src_rank"])]
             dst_phys = mapping[int(task["dst_rank"])]
-            path_edges = _path_edges(path_table, src_phys, dst_phys)
+            path_edges = _path_edges(path_table, tenant, src_phys, dst_phys)
             volume_bits = float(task["V"]) * 1e9
             path_bottleneck_bps = min(
                 (
@@ -348,7 +348,9 @@ class HarmonicsProgramILP:
         self.datacenter = datacenter
         self.tenant_mapping = tenant_mapping
         self.tenant_flows = tenant_flows
-        self.path_table = path_table
+        self.path_table = path_table or self.datacenter.build_tenant_ecmp_path_table(
+            sorted(int(tenant) for tenant in tenant_mapping)
+        )
         self.single_flow_size = single_flow_size
         self.collective = collective
         self.tenant_collective_specs = tenant_collective_specs
@@ -756,7 +758,9 @@ class HarmonicsProgramILP(MappingILPSolver):
         enable_offset_scan_fallback=True,
         **kwargs,
     ):
-        self.path_table = path_table or getattr(datacenter, "paths", None)
+        self.path_table = path_table or datacenter.build_tenant_ecmp_path_table(
+            sorted(int(tenant) for tenant in tenant_mapping)
+        )
         self._enable_offset_scan_fallback = bool(enable_offset_scan_fallback)
         self._spawn_args = dict(
             datacenter=datacenter,
@@ -819,6 +823,7 @@ class HarmonicsProgramILP(MappingILPSolver):
             horizon_slots=horizon_slots,
             enable_heuristic_warm_start=False,
             enable_full_mip_start=False,
+            path_table=self.path_table,
             **kwargs,
         )
 
@@ -933,7 +938,7 @@ class HarmonicsProgramILP(MappingILPSolver):
     def _task_path_edges(self, tenant, task):
         src_server = self.tenant_mapping[tenant][int(task["src_rank"])]
         dst_server = self.tenant_mapping[tenant][int(task["dst_rank"])]
-        return list(self.data["path_edges"].get((src_server, dst_server), []))
+        return list(self.data["path_edges"].get((int(tenant), int(src_server), int(dst_server)), []))
 
     def _add_release_variables(self):
         schedule = self.data["schedule"]
@@ -1460,7 +1465,9 @@ class HarmonicsBaselineHeuristic:
         self.datacenter = datacenter
         self.tenant_mapping = tenant_mapping
         self.tenant_flows = tenant_flows
-        self.path_table = path_table or getattr(datacenter, "paths", None)
+        self.path_table = path_table or datacenter.build_tenant_ecmp_path_table(
+            sorted(int(tenant) for tenant in tenant_mapping)
+        )
         self.single_flow_size = single_flow_size
         self.collective = collective
         self.tenant_collective_specs = tenant_collective_specs

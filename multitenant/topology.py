@@ -75,11 +75,14 @@ class LeafSpineDatacenter:
         value = int.from_bytes(hashed[:-1], "big")
         return value
 
-    def _paired_spines(self, src: int, dst: int) -> tuple[int, int]:
+    def _paired_spines(self, src: int, dst: int, flow_key: object | None = None) -> tuple[int, int]:
         if self.num_spine <= 0:
             raise ValueError("Leaf-spine topology must have at least one spine")
 
-        key = f"{min(src, dst)}<->{max(src, dst)}".encode("utf-8")
+        if flow_key is None:
+            key = f"{min(src, dst)}<->{max(src, dst)}".encode("utf-8")
+        else:
+            key = f"{flow_key}:{src}->{dst}".encode("utf-8")
         base_value = self._hash_value(key)
         forward_spine = self.spine_index[base_value % self.num_spine]
 
@@ -91,7 +94,7 @@ class LeafSpineDatacenter:
         reverse_spine = self.spine_index[reverse_index]
         return forward_spine, reverse_spine
 
-    def get_ecmp_path(self, src: int, dst: int) -> list[int]:
+    def get_ecmp_path(self, src: int, dst: int, flow_key: object | None = None) -> list[int]:
         if src == dst:
             raise ValueError("src == dst is not allowed")
 
@@ -101,7 +104,7 @@ class LeafSpineDatacenter:
         if leaf_src == leaf_dst:
             return [src, leaf_src, dst]
 
-        forward_spine, reverse_spine = self._paired_spines(src, dst)
+        forward_spine, reverse_spine = self._paired_spines(src, dst, flow_key=flow_key)
         spine = forward_spine if src < dst else reverse_spine
         return [src, leaf_src, spine, leaf_dst, dst]
 
@@ -115,12 +118,36 @@ class LeafSpineDatacenter:
                 table[(src, dst)] = self.get_ecmp_path(src, dst)
         return table
 
+    def build_tenant_ecmp_path_table(
+        self,
+        tenant_ports: dict[int, object] | list[int] | tuple[int, ...] | set[int],
+    ) -> dict[tuple[int, int, int], list[int]]:
+        if not isinstance(tenant_ports, dict):
+            tenant_ports = {int(tenant): int(tenant) for tenant in tenant_ports}
+        else:
+            tenant_ports = {
+                int(tenant): (int(tenant) if isinstance(port, dict) else port)
+                for tenant, port in tenant_ports.items()
+            }
+        table: dict[tuple[int, int, int], list[int]] = {}
+        servers = self.get_all_servers()
+        for tenant, port in tenant_ports.items():
+            for src in servers:
+                for dst in servers:
+                    if src == dst:
+                        continue
+                    table[(int(tenant), src, dst)] = self.get_ecmp_path(src, dst, flow_key=port)
+        return table
+
     @staticmethod
     def path_to_edges(path: list[int]) -> list[tuple[int, int]]:
         return list(zip(path[:-1], path[1:]))
 
     def build_ecmp_edge_table(self) -> dict[tuple[int, int], list[tuple[int, int]]]:
         return {key: self.path_to_edges(path) for key, path in self.paths.items()}
+
+    def build_edge_table_from_paths(self, paths: dict[tuple, list[int]]) -> dict[tuple, list[tuple[int, int]]]:
+        return {key: self.path_to_edges(path) for key, path in paths.items()}
 
     @staticmethod
     def _build_edge_set_and_hops(

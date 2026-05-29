@@ -1,5 +1,12 @@
 from __future__ import annotations
 
+import sys
+from pathlib import Path
+
+repo_root = Path(__file__).resolve().parents[1]
+if str(repo_root) not in sys.path:
+    sys.path.insert(0, str(repo_root))
+
 from multitenant.baselines import HarmonicsBaselineHeuristic, HarmonicsBaselineILP
 from multitenant.topology import LeafSpineDatacenter
 
@@ -17,13 +24,14 @@ def main():
         1: [(0, 1, 0.5)],
         2: [(0, 1, 0.5)],
     }
+    path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
 
     print("=== Harmonics Baseline Debug ===")
     heuristic = HarmonicsBaselineHeuristic(
         datacenter,
         tenant_mapping,
         tenant_flows,
-        datacenter.paths,
+        path_table,
         single_flow_size=8 * 1024 * 1024,
         collective="allreduce",
         verbose=True,
@@ -35,7 +43,7 @@ def main():
         datacenter,
         tenant_mapping,
         tenant_flows,
-        datacenter.paths,
+        path_table,
         single_flow_size=8 * 1024 * 1024,
         collective="allreduce",
         verbose=True,

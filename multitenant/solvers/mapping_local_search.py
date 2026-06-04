@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import time
 
-from .mapping_ilp import MappingHeuristicSolver
+from .mapping_hybrid import MappingHeuristicSolver
 
 
 class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
@@ -14,22 +14,16 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
     comparisons against the BnB variant.
     """
 
-    def _tenant_price_cost_lazy(self, tenant, mapping, epoch_prices):
+    def _tenant_price_cost_lazy(self, tenant, mapping, pair_epoch_price):
         compiled_tenant = self.data["compiled_schedule"]["per_tenant"][tenant]
         total_cost = 0.0
         for epoch, src_rank, dst_rank, volume in compiled_tenant["all_flows"]:
             src_server = int(mapping[tenant][src_rank])
             dst_server = int(mapping[tenant][dst_rank])
-            total_cost += float(volume) * self._path_epoch_price(
-                epoch_prices,
-                tenant,
-                epoch,
-                src_server,
-                dst_server,
-            )
+            total_cost += float(volume) * pair_epoch_price[(int(epoch), src_server, dst_server)]
         return float(total_cost)
 
-    def _rank_swap_price_delta(self, tenant, mapping, epoch_prices, left_rank, right_rank):
+    def _rank_swap_price_delta(self, tenant, mapping, pair_epoch_price, left_rank, right_rank):
         compiled_tenant = self.data["compiled_schedule"]["per_tenant"][tenant]
         affected_flows = {}
         for flow in compiled_tenant["rank_incidence"].get(left_rank, []):
@@ -54,12 +48,12 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
             old_dst = int(current_tenant_mapping[dst_rank])
             new_src = swapped_server(src_rank)
             new_dst = swapped_server(dst_rank)
-            old_cost = self._path_epoch_price(epoch_prices, tenant, epoch, old_src, old_dst)
-            new_cost = self._path_epoch_price(epoch_prices, tenant, epoch, new_src, new_dst)
+            old_cost = pair_epoch_price[(int(epoch), old_src, old_dst)]
+            new_cost = pair_epoch_price[(int(epoch), new_src, new_dst)]
             delta += float(volume) * (new_cost - old_cost)
         return float(delta)
 
-    def _rank_reassignment_price_delta(self, tenant, mapping, epoch_prices, reassignment):
+    def _rank_reassignment_price_delta(self, tenant, mapping, pair_epoch_price, reassignment):
         if not reassignment:
             return 0.0
 
@@ -85,8 +79,8 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
             old_dst = int(current_tenant_mapping[dst_rank])
             new_src = reassigned_server(src_rank)
             new_dst = reassigned_server(dst_rank)
-            old_cost = self._path_epoch_price(epoch_prices, tenant, epoch, old_src, old_dst)
-            new_cost = self._path_epoch_price(epoch_prices, tenant, epoch, new_src, new_dst)
+            old_cost = pair_epoch_price[(int(epoch), old_src, old_dst)]
+            new_cost = pair_epoch_price[(int(epoch), new_src, new_dst)]
             delta += float(volume) * (new_cost - old_cost)
         return float(delta)
 
@@ -122,13 +116,23 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
     def _optimize_tenant_block_with_prices(self, base_mapping, tenant, epoch_prices, deadline):
         ranks = [int(rank) for rank in self.rank_orders[tenant]]
         if len(ranks) <= 1:
-            return base_mapping, self._tenant_price_cost_lazy(tenant, base_mapping, epoch_prices)
+            pair_epoch_price = self._pair_epoch_price_lookup(
+                tenant,
+                self.server_sets[tenant],
+                epoch_prices,
+            )
+            return base_mapping, self._tenant_price_cost_lazy(tenant, base_mapping, pair_epoch_price)
 
         best_mapping = {
             current_tenant: dict(rank_to_server)
             for current_tenant, rank_to_server in base_mapping.items()
         }
-        best_cost = self._tenant_price_cost_lazy(tenant, best_mapping, epoch_prices)
+        pair_epoch_price = self._pair_epoch_price_lookup(
+            tenant,
+            self.server_sets[tenant],
+            epoch_prices,
+        )
+        best_cost = self._tenant_price_cost_lazy(tenant, best_mapping, pair_epoch_price)
         branch_order = [
             int(rank)
             for rank in self.data["compiled_schedule"]["per_tenant"][tenant]["branch_order"]
@@ -139,7 +143,10 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
 
         anchor_limit = min(len(branch_order), 32)
         partner_limit = min(len(ranks), 64)
-        max_passes = 3
+        # Time-expanded prices are link-slot marginal signals for the current
+        # mapping; take one move and let the outer loop re-estimate before the
+        # next move.
+        max_passes = 1 if getattr(self, "surrogate_mode", None) == "time_expanded" else 3
         block_groups = self._block_move_rank_groups(
             branch_order,
             anchor_limit=anchor_limit,
@@ -175,7 +182,7 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
                     delta = self._rank_swap_price_delta(
                         tenant,
                         best_mapping,
-                        epoch_prices,
+                        pair_epoch_price,
                         pair[0],
                         pair[1],
                     )
@@ -204,7 +211,7 @@ class MappingLocalSearchHeuristicSolver(MappingHeuristicSolver):
                     delta = self._rank_reassignment_price_delta(
                         tenant,
                         best_mapping,
-                        epoch_prices,
+                        pair_epoch_price,
                         reassignment,
                     )
                     if delta < best_delta - 1e-12:

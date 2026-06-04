@@ -221,11 +221,6 @@ def _policy_from_schedule(
             int(task["task_id"]): [int(pred_task_id) for pred_task_id in task.get("preds", [])]
             for task in tasks
         }
-        schedule_edges = list(tenant_schedule.get("edges", []))
-        if schedule_edges:
-            incoming_task_ids = {int(task["task_id"]): [] for task in tasks}
-            for edge in schedule_edges:
-                incoming_task_ids.setdefault(int(edge["dst_task_id"]), []).append(int(edge["src_task_id"]))
         dependency_chunk_lookup: dict[str, str] = {}
         program_releases: dict[int, tuple[list[str], float, float | None]] = {}
         program = tenant_schedule.get("collective_program", [])
@@ -266,8 +261,6 @@ def _policy_from_schedule(
                     [str(task_lookup[int(pred_task_id)]["name"]) for pred_task_id in incoming_task_ids.get(int(task_id), [])],
                     dependency_chunk_lookup,
                 )
-                if schedule_edges and deps:
-                    dependency_scope = "global"
             chunk_size_bytes = int(round(float(task["V"]) * 1e9 / 8.0))
             task_time = start_time
             if "op_idx" in task:

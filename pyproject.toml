@@ -12,6 +12,7 @@ dependencies = [
   "matplotlib",
   "networkx",
   "numpy",
+  "pybind11",
   "scipy",
   "simpy",
 ]

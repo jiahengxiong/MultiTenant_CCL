@@ -8,7 +8,7 @@ import time
 from multiprocessing import Pool
 from pathlib import Path
 
-REPO_ROOT = Path(__file__).resolve().parents[1]
+REPO_ROOT = Path(__file__).resolve().parents[2]
 if str(REPO_ROOT) not in sys.path:
     sys.path.insert(0, str(REPO_ROOT))
 
@@ -18,10 +18,10 @@ from multitenant.topology import LeafSpineDatacenter
 
 
 DEFAULT_INPUTS = (
-    Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/Low_contension.json"),
-    Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/High_contension.json"),
-    Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/Low_contension_homo.json"),
-    Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/High_contension_homo.json"),
+    REPO_ROOT / "experiment" / "Low_contension.json",
+    REPO_ROOT / "experiment" / "High_contension.json",
+    REPO_ROOT / "experiment" / "Low_contension_homo.json",
+    REPO_ROOT / "experiment" / "High_contension_homo.json",
 )
 
 
@@ -317,7 +317,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/dominant_mapping_quality_audit.json"),
+        default=Path(__file__).resolve().parent / "dominant_mapping_quality_audit.json",
     )
     return parser.parse_args()
 

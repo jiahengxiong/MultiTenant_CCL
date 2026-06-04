@@ -6,3 +6,13 @@ results/
 model.ilp
 build/
 simcore_cpp.cpython-*.so
+.DS_Store
+gurobi.log
+paper/*.aux
+paper/*.log
+paper/
+paper_outline.md
+multitenant/solvers/_te_accel.cpython-*.so
+debug/**/*.json
+debug/**/*.log
+debug/**/*.prof

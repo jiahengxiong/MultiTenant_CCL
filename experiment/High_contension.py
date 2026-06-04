@@ -17,7 +17,7 @@ if str(REPO_ROOT) not in sys.path:
 
 from multitenant.baselines import HarmonicsBaselineHeuristic, build_leaf_local_mapping
 from multitenant.simulator import simulate_collective
-from multitenant.solvers import MappingHybridHeuristicSolver
+from multitenant.solvers import MappingEstimatorBlackBoxOptimizer
 from multitenant.topology import LeafSpineDatacenter
 
 
@@ -41,6 +41,7 @@ WORKLOAD_TRACES = {
     "DeepSeek16B": Path("/Users/xiongjiaheng/COCA/MultiTenant/workload/DeepSeek16B_trace_dp32_ws32.csv"),
 }
 TASK_SIZE_MULTIPLIER = 4
+MAPPING_TIME_LIMIT_SECONDS = 150.0
 
 
 def derive_seed(base_seed: int, *components: object) -> int:
@@ -338,7 +339,7 @@ def run_mapping(
     tenant_collective_specs: dict[int, dict[str, object]],
 ) -> tuple[dict[int, dict[int, int]], float]:
     path_table = datacenter.build_tenant_ecmp_path_table(tenant_mapping)
-    solver = MappingHybridHeuristicSolver(
+    solver = MappingEstimatorBlackBoxOptimizer(
         datacenter,
         tenant_mapping=tenant_mapping,
         tenant_collective_specs=tenant_collective_specs,
@@ -346,7 +347,7 @@ def run_mapping(
         path_table=path_table,
     )
     start = time.time()
-    solver.solve()
+    solver.solve(time_limit=MAPPING_TIME_LIMIT_SECONDS)
     runtime_s = time.time() - start
     return solver.get_X_mapping(), float(runtime_s)
 
@@ -580,6 +581,8 @@ def main() -> None:
             "cpu_count": cpu_count,
             "pool_size": pool_size,
             "harmonics_time_limit_seconds": args.harmonics_time_limit,
+            "mapping_solver": "MappingEstimatorBlackBoxOptimizer",
+            "mapping_solver_time_limit_seconds": MAPPING_TIME_LIMIT_SECONDS,
             "task_size_rule": "single dominant DP collective per tenant; msg_size is in bytes; task_size_bits = (msg_size_bytes * 4) / occupied_servers",
             "dominant_profiles": profiles,
         },

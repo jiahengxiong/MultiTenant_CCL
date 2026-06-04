@@ -1916,52 +1916,16 @@ class TimeExpandedEstimatorCore:
 
     def _time_expanded_epoch_prices_from_state(self, state):
         global_max_epoch = int(self.data["compiled_schedule"]["global_max_epoch"])
-        cached_epoch_slots = state.get("epoch_active_slots")
-        if cached_epoch_slots is not None:
-            epoch_slot_sets = [
-                set(int(slot) for slot in cached_epoch_slots[epoch])
-                if epoch < len(cached_epoch_slots)
-                else set()
-                for epoch in range(global_max_epoch + 1)
-            ]
-        else:
-            epoch_slot_sets = [set() for _ in range(global_max_epoch + 1)]
-            task_state = state["task_state"]
-            for task_key, active_slots in state["task_active_slots"].items():
-                task_epoch = int(task_state[task_key].get("epoch", 0))
-                if 0 <= task_epoch <= global_max_epoch:
-                    epoch_slot_sets[task_epoch].update(int(slot) for slot in active_slots)
-
-        epoch_prices: list[dict[str, dict[object, float]]] = []
-        epoch_maxima = []
-        slot_prices = state["slot_prices"]
-        for slot_set in epoch_slot_sets:
-            edge_prices: dict[object, float] = defaultdict(float)
-            sender_prices: dict[object, float] = defaultdict(float)
-            receiver_prices: dict[object, float] = defaultdict(float)
-            for slot_idx in slot_set:
-                if slot_idx < 0 or slot_idx >= len(slot_prices):
-                    continue
-                price_state = slot_prices[slot_idx]
-                for edge, price in price_state.get("edge", {}).items():
-                    edge_prices[edge] = max(float(edge_prices[edge]), float(price))
-                for server, price in price_state.get("sender", {}).items():
-                    sender_prices[server] = max(float(sender_prices[server]), float(price))
-                for server, price in price_state.get("receiver", {}).items():
-                    receiver_prices[server] = max(float(receiver_prices[server]), float(price))
-            epoch_prices.append({
-                "edge": dict(edge_prices),
-                "sender": dict(sender_prices),
-                "receiver": dict(receiver_prices),
-            })
-            epoch_maxima.append(
-                max(
-                    max(edge_prices.values(), default=0.0),
-                    max(sender_prices.values(), default=0.0),
-                    max(receiver_prices.values(), default=0.0),
-                )
-            )
-        return epoch_maxima, epoch_prices
+        if _te_accel is None or not hasattr(_te_accel, "aggregate_epoch_prices"):
+            raise RuntimeError("C++ aggregate_epoch_prices kernel is required")
+        if "slot_prices" not in state or "epoch_active_slots" not in state:
+            raise RuntimeError("time-expanded state lacks slot_prices or epoch_active_slots")
+        epoch_maxima, epoch_prices = _te_accel.aggregate_epoch_prices(
+            state["slot_prices"],
+            state["epoch_active_slots"],
+            global_max_epoch,
+        )
+        return list(epoch_maxima), list(epoch_prices)
 
     def _resource_price_value(self, capacity, normalized_load):
         base_cost = 1.0 / max(capacity, 1e-12)

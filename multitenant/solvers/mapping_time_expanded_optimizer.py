@@ -833,25 +833,20 @@ class MappingTimeExpandedEstimatorOptimizer:
         return float(price)
 
     def _coarse_pair_epoch_prices(self, tenant, servers, epoch_prices):
-        lookup = {}
         server_tuple = tuple(int(server) for server in servers)
         pair_edges = self._server_pair_edges(tenant, server_tuple)
         default_edge_price, default_sender_price, default_receiver_price = self._default_resource_prices()
-        for epoch in range(len(epoch_prices)):
-            state = epoch_prices[int(epoch)]
-            edge_prices = state["edge"]
-            sender_prices = state["sender"]
-            receiver_prices = state["receiver"]
-            for src_server in server_tuple:
-                sender_price = sender_prices.get(src_server, default_sender_price[src_server])
-                for dst_server in server_tuple:
-                    if src_server == dst_server:
-                        continue
-                    price = sender_price + receiver_prices.get(dst_server, default_receiver_price[dst_server])
-                    for edge in pair_edges[(src_server, dst_server)]:
-                        price += edge_prices.get(edge, default_edge_price[edge])
-                    lookup[(int(epoch), src_server, dst_server)] = float(price)
-        return lookup
+        if _te_accel is None or not hasattr(_te_accel, "coarse_pair_epoch_prices"):
+            raise RuntimeError("C++ coarse_pair_epoch_prices kernel is required")
+        return _te_accel.coarse_pair_epoch_prices(
+            int(tenant),
+            list(server_tuple),
+            list(epoch_prices),
+            pair_edges,
+            default_edge_price,
+            default_sender_price,
+            default_receiver_price,
+        )
 
     def _cached_pair_epoch_prices(self, namespace, mapping, tenant, servers, epoch_prices):
         signature = self._mapping_signature(self._normalize_mapping(mapping))

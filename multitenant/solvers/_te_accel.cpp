@@ -2912,6 +2912,166 @@ py::list price_guided_remap_candidates_dense(
     return result;
 }
 
+py::tuple aggregate_epoch_prices(
+    const py::list &slot_prices,
+    const py::list &epoch_active_slots,
+    const int global_max_epoch
+) {
+    py::list epoch_maxima;
+    py::list epoch_prices;
+    const py::ssize_t slot_count = slot_prices.size();
+
+    for (int epoch = 0; epoch <= global_max_epoch; ++epoch) {
+        py::dict edge_prices;
+        std::unordered_map<int, double> sender_prices;
+        std::unordered_map<int, double> receiver_prices;
+
+        if (epoch >= 0 && epoch < static_cast<int>(epoch_active_slots.size())) {
+            py::iterable slot_iterable = py::reinterpret_borrow<py::iterable>(epoch_active_slots[epoch]);
+            for (py::handle slot_handle : slot_iterable) {
+                const int slot_idx = py::cast<int>(slot_handle);
+                if (slot_idx < 0 || slot_idx >= slot_count) {
+                    continue;
+                }
+
+                py::dict price_state = py::reinterpret_borrow<py::dict>(slot_prices[slot_idx]);
+                if (price_state.contains("edge")) {
+                    py::dict edge_state = py::reinterpret_borrow<py::dict>(price_state["edge"]);
+                    for (auto item : edge_state) {
+                        py::object edge_key = py::reinterpret_borrow<py::object>(item.first);
+                        const double price = py::cast<double>(item.second);
+                        double current = 0.0;
+                        if (edge_prices.contains(edge_key)) {
+                            current = py::cast<double>(edge_prices[edge_key]);
+                        }
+                        if (price > current) {
+                            edge_prices[edge_key] = py::float_(price);
+                        }
+                    }
+                }
+                if (price_state.contains("sender")) {
+                    py::dict sender_state = py::reinterpret_borrow<py::dict>(price_state["sender"]);
+                    for (auto item : sender_state) {
+                        const int server = py::cast<int>(item.first);
+                        const double price = py::cast<double>(item.second);
+                        auto existing = sender_prices.find(server);
+                        if (existing == sender_prices.end() || price > existing->second) {
+                            sender_prices[server] = price;
+                        }
+                    }
+                }
+                if (price_state.contains("receiver")) {
+                    py::dict receiver_state = py::reinterpret_borrow<py::dict>(price_state["receiver"]);
+                    for (auto item : receiver_state) {
+                        const int server = py::cast<int>(item.first);
+                        const double price = py::cast<double>(item.second);
+                        auto existing = receiver_prices.find(server);
+                        if (existing == receiver_prices.end() || price > existing->second) {
+                            receiver_prices[server] = price;
+                        }
+                    }
+                }
+            }
+        }
+
+        py::dict sender_dict;
+        double epoch_max = 0.0;
+        for (const auto &[server, price] : sender_prices) {
+            sender_dict[py::int_(server)] = py::float_(price);
+            if (price > epoch_max) {
+                epoch_max = price;
+            }
+        }
+
+        py::dict receiver_dict;
+        for (const auto &[server, price] : receiver_prices) {
+            receiver_dict[py::int_(server)] = py::float_(price);
+            if (price > epoch_max) {
+                epoch_max = price;
+            }
+        }
+
+        for (auto item : edge_prices) {
+            const double price = py::cast<double>(item.second);
+            if (price > epoch_max) {
+                epoch_max = price;
+            }
+        }
+
+        py::dict state;
+        state["edge"] = edge_prices;
+        state["sender"] = sender_dict;
+        state["receiver"] = receiver_dict;
+        epoch_prices.append(state);
+        epoch_maxima.append(py::float_(epoch_max));
+    }
+
+    return py::make_tuple(epoch_maxima, epoch_prices);
+}
+
+static double dict_get_double(const py::dict &dict, const py::object &key, const double default_value) {
+    if (dict.contains(key)) {
+        return py::cast<double>(dict[key]);
+    }
+    return default_value;
+}
+
+static double dict_get_double_int(const py::dict &dict, const int key, const double default_value) {
+    py::int_ py_key(key);
+    if (dict.contains(py_key)) {
+        return py::cast<double>(dict[py_key]);
+    }
+    return default_value;
+}
+
+py::dict coarse_pair_epoch_prices(
+    const int tenant,
+    const std::vector<int> &servers,
+    const py::list &epoch_prices,
+    const py::dict &pair_edges,
+    const py::dict &default_edge_price,
+    const py::dict &default_sender_price,
+    const py::dict &default_receiver_price
+) {
+    py::dict lookup;
+    const py::ssize_t epoch_count = epoch_prices.size();
+
+    for (py::ssize_t epoch = 0; epoch < epoch_count; ++epoch) {
+        py::dict state = py::reinterpret_borrow<py::dict>(epoch_prices[epoch]);
+        py::dict edge_prices = py::reinterpret_borrow<py::dict>(state["edge"]);
+        py::dict sender_prices = py::reinterpret_borrow<py::dict>(state["sender"]);
+        py::dict receiver_prices = py::reinterpret_borrow<py::dict>(state["receiver"]);
+
+        for (const int src_server : servers) {
+            const double default_sender = dict_get_double_int(default_sender_price, src_server, 0.0);
+            const double sender_price = dict_get_double_int(sender_prices, src_server, default_sender);
+
+            for (const int dst_server : servers) {
+                if (src_server == dst_server) {
+                    continue;
+                }
+                const double default_receiver = dict_get_double_int(default_receiver_price, dst_server, 0.0);
+                double price = sender_price + dict_get_double_int(receiver_prices, dst_server, default_receiver);
+
+                py::tuple pair_key = py::make_tuple(src_server, dst_server);
+                if (pair_edges.contains(pair_key)) {
+                    py::iterable edges = py::reinterpret_borrow<py::iterable>(pair_edges[pair_key]);
+                    for (py::handle edge_handle : edges) {
+                        py::object edge_key = py::reinterpret_borrow<py::object>(edge_handle);
+                        const double default_edge = dict_get_double(default_edge_price, edge_key, 0.0);
+                        price += dict_get_double(edge_prices, edge_key, default_edge);
+                    }
+                }
+
+                lookup[py::make_tuple(static_cast<int>(epoch), src_server, dst_server)] = py::float_(price);
+            }
+        }
+    }
+
+    (void)tenant;
+    return lookup;
+}
+
 PYBIND11_MODULE(_te_accel, m) {
     m.doc() = "C++ kernels for the time-expanded contention estimator";
     m.def("max_min_rates", &max_min_rates, py::arg("resources_by_item"), py::arg("capacities_by_item"), py::arg("demand_rates"));
@@ -2990,6 +3150,18 @@ PYBIND11_MODULE(_te_accel, m) {
           py::arg("path_edges_by_pair"),
           py::arg("max_price_candidates"),
           py::arg("time_budget_seconds"));
+    m.def("aggregate_epoch_prices", &aggregate_epoch_prices,
+          py::arg("slot_prices"),
+          py::arg("epoch_active_slots"),
+          py::arg("global_max_epoch"));
+    m.def("coarse_pair_epoch_prices", &coarse_pair_epoch_prices,
+          py::arg("tenant"),
+          py::arg("servers"),
+          py::arg("epoch_prices"),
+          py::arg("pair_edges"),
+          py::arg("default_edge_price"),
+          py::arg("default_sender_price"),
+          py::arg("default_receiver_price"));
     py::class_<TimeExpandedScoreEngine>(m, "TimeExpandedScoreEngine")
         .def(py::init<
              std::vector<int>,

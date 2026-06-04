@@ -1506,6 +1506,268 @@ py::dict task_pair_price_lookup_dense(
     return result;
 }
 
+struct SwapTaskInfo {
+    int task_id = 0;
+    int src_rank = 0;
+    int dst_rank = 0;
+    double volume = 0.0;
+};
+
+struct SwapScore {
+    double delta = 0.0;
+    int left_rank = 0;
+    int right_rank = 0;
+};
+
+struct SwapTaskPairPriceKey {
+    int task_id;
+    int src_server;
+    int dst_server;
+
+    bool operator==(const SwapTaskPairPriceKey &other) const {
+        return task_id == other.task_id
+            && src_server == other.src_server
+            && dst_server == other.dst_server;
+    }
+};
+
+struct SwapTaskPairPriceKeyHash {
+    std::size_t operator()(const SwapTaskPairPriceKey &key) const {
+        std::size_t value = static_cast<std::size_t>(key.task_id);
+        value ^= static_cast<std::size_t>(key.src_server) + 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2);
+        value ^= static_cast<std::size_t>(key.dst_server) + 0x9e3779b97f4a7c15ULL + (value << 6) + (value >> 2);
+        return value;
+    }
+};
+
+py::list scored_swap_pairs_from_state(
+    const std::vector<int> &hot_ranks,
+    const std::vector<int> &partner_ranks,
+    const py::list &task_infos_py,
+    const py::dict &tenant_mapping,
+    const py::dict &task_active_slots,
+    const py::dict &task_ready_slots,
+    int tenant,
+    const py::list &slot_prices,
+    const std::vector<double> &base_sender,
+    const std::vector<double> &base_receiver,
+    const std::vector<double> &base_edge,
+    const py::dict &edge_to_idx,
+    const std::vector<std::vector<std::vector<int>>> &path_edges_by_pair
+) {
+    const int slot_count = std::max<int>(static_cast<int>(slot_prices.size()), 1);
+    const int server_count = static_cast<int>(base_sender.size());
+    if (base_receiver.size() != base_sender.size()) {
+        throw std::invalid_argument("base sender/receiver price vectors must have matching lengths");
+    }
+
+    std::vector<std::vector<double>> sender_prices(static_cast<size_t>(slot_count), base_sender);
+    std::vector<std::vector<double>> receiver_prices(static_cast<size_t>(slot_count), base_receiver);
+    std::vector<std::vector<double>> edge_prices(static_cast<size_t>(slot_count), base_edge);
+
+    for (int slot_idx = 0; slot_idx < static_cast<int>(slot_prices.size()); ++slot_idx) {
+        py::dict price_state = py::reinterpret_borrow<py::dict>(slot_prices[slot_idx]);
+        if (price_state.contains("sender")) {
+            py::dict sender = py::reinterpret_borrow<py::dict>(price_state["sender"]);
+            for (auto item : sender) {
+                const int server = py::cast<int>(item.first);
+                if (0 <= server && server < server_count) {
+                    sender_prices[static_cast<size_t>(slot_idx)][static_cast<size_t>(server)] =
+                        py::cast<double>(item.second);
+                }
+            }
+        }
+        if (price_state.contains("receiver")) {
+            py::dict receiver = py::reinterpret_borrow<py::dict>(price_state["receiver"]);
+            for (auto item : receiver) {
+                const int server = py::cast<int>(item.first);
+                if (0 <= server && server < server_count) {
+                    receiver_prices[static_cast<size_t>(slot_idx)][static_cast<size_t>(server)] =
+                        py::cast<double>(item.second);
+                }
+            }
+        }
+        if (price_state.contains("edge")) {
+            py::dict edge = py::reinterpret_borrow<py::dict>(price_state["edge"]);
+            for (auto item : edge) {
+                py::object edge_key = py::reinterpret_borrow<py::object>(item.first);
+                if (!edge_to_idx.contains(edge_key)) {
+                    continue;
+                }
+                const int edge_idx = py::cast<int>(edge_to_idx[edge_key]);
+                if (0 <= edge_idx && edge_idx < static_cast<int>(base_edge.size())) {
+                    edge_prices[static_cast<size_t>(slot_idx)][static_cast<size_t>(edge_idx)] =
+                        py::cast<double>(item.second);
+                }
+            }
+        }
+    }
+
+    std::unordered_map<int, int> server_by_rank;
+    server_by_rank.reserve(static_cast<size_t>(tenant_mapping.size()));
+    for (auto item : tenant_mapping) {
+        server_by_rank.emplace(py::cast<int>(item.first), py::cast<int>(item.second));
+    }
+
+    std::vector<SwapTaskInfo> tasks;
+    tasks.reserve(static_cast<size_t>(task_infos_py.size()));
+    std::unordered_map<int, std::vector<int>> incidence;
+    for (py::handle item_handle : task_infos_py) {
+        py::tuple item = py::reinterpret_borrow<py::tuple>(item_handle);
+        if (item.size() < 4) {
+            throw std::invalid_argument("task_infos entries must be (task_id, src_rank, dst_rank, volume)");
+        }
+        SwapTaskInfo info;
+        info.task_id = py::cast<int>(item[0]);
+        info.src_rank = py::cast<int>(item[1]);
+        info.dst_rank = py::cast<int>(item[2]);
+        info.volume = py::cast<double>(item[3]);
+        const int task_index = static_cast<int>(tasks.size());
+        tasks.push_back(info);
+        incidence[info.src_rank].push_back(task_index);
+        incidence[info.dst_rank].push_back(task_index);
+    }
+
+    std::vector<std::vector<int>> exposure_slots_by_task(tasks.size());
+    for (size_t task_index = 0; task_index < tasks.size(); ++task_index) {
+        const int task_id = tasks[task_index].task_id;
+        std::unordered_set<int> seen_slots;
+        auto append_slots = [&](const py::dict &slot_map) {
+            py::tuple key = py::make_tuple(tenant, task_id);
+            if (!slot_map.contains(key)) {
+                return;
+            }
+            py::object slot_object = py::reinterpret_borrow<py::object>(slot_map[key]);
+            for (py::handle slot_handle : slot_object) {
+                const int slot = py::cast<int>(slot_handle);
+                if (seen_slots.insert(slot).second) {
+                    exposure_slots_by_task[task_index].push_back(slot);
+                }
+            }
+        };
+        append_slots(task_active_slots);
+        append_slots(task_ready_slots);
+        if (exposure_slots_by_task[task_index].empty()) {
+            exposure_slots_by_task[task_index].push_back(0);
+        }
+    }
+
+    std::unordered_map<SwapTaskPairPriceKey, double, SwapTaskPairPriceKeyHash> price_cache;
+    auto price_for = [&](int task_index, int src_server, int dst_server) -> double {
+        if (src_server == dst_server) {
+            return 0.0;
+        }
+        const int task_id = tasks[static_cast<size_t>(task_index)].task_id;
+        SwapTaskPairPriceKey key{task_id, src_server, dst_server};
+        const auto cached = price_cache.find(key);
+        if (cached != price_cache.end()) {
+            return cached->second;
+        }
+        double price_sum = 0.0;
+        for (const int raw_slot : exposure_slots_by_task[static_cast<size_t>(task_index)]) {
+            const int slot = std::max(0, std::min(raw_slot, slot_count - 1));
+            double price = 0.0;
+            price = std::max(
+                price,
+                sender_prices[static_cast<size_t>(slot)][static_cast<size_t>(src_server)]
+            );
+            price = std::max(
+                price,
+                receiver_prices[static_cast<size_t>(slot)][static_cast<size_t>(dst_server)]
+            );
+            const auto &path = path_edges_by_pair[static_cast<size_t>(src_server)][static_cast<size_t>(dst_server)];
+            for (const int edge_idx : path) {
+                price = std::max(
+                    price,
+                    edge_prices[static_cast<size_t>(slot)][static_cast<size_t>(edge_idx)]
+                );
+            }
+            price_sum += price;
+        }
+        const double value = price_sum / std::max<size_t>(
+            exposure_slots_by_task[static_cast<size_t>(task_index)].size(),
+            1
+        );
+        price_cache.emplace(key, value);
+        return value;
+    };
+
+    std::vector<SwapScore> scored;
+    std::unordered_set<std::uint64_t> seen_pairs;
+    auto pair_key = [](int left, int right) -> std::uint64_t {
+        const std::uint32_t a = static_cast<std::uint32_t>(std::min(left, right));
+        const std::uint32_t b = static_cast<std::uint32_t>(std::max(left, right));
+        return (static_cast<std::uint64_t>(a) << 32) | static_cast<std::uint64_t>(b);
+    };
+
+    for (const int raw_left_rank : hot_ranks) {
+        for (const int raw_right_rank : partner_ranks) {
+            if (raw_left_rank == raw_right_rank) {
+                continue;
+            }
+            const int left_rank = std::min(raw_left_rank, raw_right_rank);
+            const int right_rank = std::max(raw_left_rank, raw_right_rank);
+            const std::uint64_t seen_key = pair_key(left_rank, right_rank);
+            if (!seen_pairs.insert(seen_key).second) {
+                continue;
+            }
+            const int left_server = server_by_rank.at(left_rank);
+            const int right_server = server_by_rank.at(right_rank);
+
+            std::unordered_set<int> affected;
+            if (incidence.count(left_rank) != 0U) {
+                for (const int task_index : incidence[left_rank]) {
+                    affected.insert(task_index);
+                }
+            }
+            if (incidence.count(right_rank) != 0U) {
+                for (const int task_index : incidence[right_rank]) {
+                    affected.insert(task_index);
+                }
+            }
+
+            auto swapped_server = [&](int rank) -> int {
+                if (rank == left_rank) {
+                    return right_server;
+                }
+                if (rank == right_rank) {
+                    return left_server;
+                }
+                return server_by_rank.at(rank);
+            };
+
+            double delta = 0.0;
+            for (const int task_index : affected) {
+                const SwapTaskInfo &task = tasks[static_cast<size_t>(task_index)];
+                const int old_src = server_by_rank.at(task.src_rank);
+                const int old_dst = server_by_rank.at(task.dst_rank);
+                const int new_src = swapped_server(task.src_rank);
+                const int new_dst = swapped_server(task.dst_rank);
+                const double old_cost = price_for(task_index, old_src, old_dst);
+                const double new_cost = price_for(task_index, new_src, new_dst);
+                delta += task.volume * (new_cost - old_cost);
+            }
+            scored.push_back(SwapScore{delta, left_rank, right_rank});
+        }
+    }
+
+    std::sort(scored.begin(), scored.end(), [](const SwapScore &lhs, const SwapScore &rhs) {
+        if (lhs.delta != rhs.delta) {
+            return lhs.delta < rhs.delta;
+        }
+        if (lhs.left_rank != rhs.left_rank) {
+            return lhs.left_rank < rhs.left_rank;
+        }
+        return lhs.right_rank < rhs.right_rank;
+    });
+
+    py::list result;
+    for (const SwapScore &item : scored) {
+        result.append(py::make_tuple(item.delta, py::make_tuple(item.left_rank, item.right_rank)));
+    }
+    return result;
+}
+
 struct RemapTaskInfo {
     int task_id = 0;
     int src_rank = 0;
@@ -3117,6 +3379,20 @@ PYBIND11_MODULE(_te_accel, m) {
           py::arg("sender_prices"),
           py::arg("receiver_prices"),
           py::arg("edge_prices"),
+          py::arg("path_edges_by_pair"));
+    m.def("scored_swap_pairs_from_state", &scored_swap_pairs_from_state,
+          py::arg("hot_ranks"),
+          py::arg("partner_ranks"),
+          py::arg("task_infos"),
+          py::arg("tenant_mapping"),
+          py::arg("task_active_slots"),
+          py::arg("task_ready_slots"),
+          py::arg("tenant"),
+          py::arg("slot_prices"),
+          py::arg("base_sender"),
+          py::arg("base_receiver"),
+          py::arg("base_edge"),
+          py::arg("edge_to_idx"),
           py::arg("path_edges_by_pair"));
     m.def("time_expanded_slot_prices_batch", &time_expanded_slot_prices_batch,
           py::arg("slot_resource_pressure"),

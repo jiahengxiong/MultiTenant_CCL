@@ -1341,48 +1341,58 @@ class MappingTimeExpandedEstimatorOptimizer:
             if rank not in partner_ranks:
                 partner_ranks.append(rank)
 
-        task_pair_price = self._task_pair_prices(base_mapping, tenant, analysis=analysis)
-        rank_incidence = self._rank_incidence(tenant)
+        if _te_accel is None or not hasattr(_te_accel, "scored_swap_pairs_from_state"):
+            raise RuntimeError("C++ scored swap-pair kernel is required")
 
-        def swap_delta(left_rank, right_rank):
-            affected = {}
-            for rank in (int(left_rank), int(right_rank)):
-                for task in rank_incidence.get(rank, []):
-                    affected[(task[0], task[1], task[2], task[3])] = task
-            left_server = int(base_mapping[int(tenant)][int(left_rank)])
-            right_server = int(base_mapping[int(tenant)][int(right_rank)])
-
-            def swapped_server(rank):
-                if int(rank) == int(left_rank):
-                    return right_server
-                if int(rank) == int(right_rank):
-                    return left_server
-                return int(base_mapping[int(tenant)][int(rank)])
-
-            delta = 0.0
-            for task_id, src_rank, dst_rank, volume in affected.values():
-                old_src = int(base_mapping[int(tenant)][src_rank])
-                old_dst = int(base_mapping[int(tenant)][dst_rank])
-                new_src = swapped_server(src_rank)
-                new_dst = swapped_server(dst_rank)
-                old_cost = task_pair_price.get((task_id, old_src, old_dst), 0.0)
-                new_cost = task_pair_price.get((task_id, new_src, new_dst), 0.0)
-                delta += float(volume) * (float(new_cost) - float(old_cost))
-            return float(delta)
-
-        scored = []
-        seen = set()
-        for left_rank in hot_ranks:
-            for right_rank in partner_ranks:
-                if int(left_rank) == int(right_rank):
-                    continue
-                pair = tuple(sorted((int(left_rank), int(right_rank))))
-                if pair in seen:
-                    continue
-                seen.add(pair)
-                scored.append((swap_delta(pair[0], pair[1]), pair))
-        scored.sort(key=lambda item: (item[0], item[1]))
-        return scored
+        tenant = int(tenant)
+        servers = tuple(int(base_mapping[tenant][rank]) for rank in self.rank_orders[tenant])
+        server_send_capacity = self.estimator._backbone.data["server_send_capacity"]
+        server_recv_capacity = self.estimator._backbone.data["server_recv_capacity"]
+        edge_capacity = self.estimator._backbone.data["edge_capacity"]
+        path_edges = self.estimator._backbone.data["path_edges"]
+        server_count = self.estimator._dense_server_count(
+            servers,
+            server_send_capacity,
+            server_recv_capacity,
+        )
+        edge_items, edge_to_idx, base_sender, base_receiver, base_edge = (
+            self.estimator._dense_static_price_vectors(
+                server_count,
+                edge_capacity,
+                server_send_capacity,
+                server_recv_capacity,
+            )
+        )
+        dense_entry_count = max(len(analysis.slot_prices), 1) * (server_count * 2 + len(edge_items))
+        if dense_entry_count > 2_000_000:
+            raise RuntimeError(
+                f"scored swap-pair dense state too large: {dense_entry_count} entries"
+            )
+        path_edges_by_pair = self.estimator._dense_path_edges_by_pair(
+            tenant,
+            server_count,
+            path_edges,
+            edge_to_idx,
+        )
+        scored = _te_accel.scored_swap_pairs_from_state(
+            [int(rank) for rank in hot_ranks],
+            [int(rank) for rank in partner_ranks],
+            list(self._task_infos(tenant)),
+            {int(rank): int(server) for rank, server in base_mapping[tenant].items()},
+            analysis.task_active_slots,
+            analysis.task_ready_slots,
+            tenant,
+            analysis.slot_prices,
+            list(base_sender),
+            list(base_receiver),
+            list(base_edge),
+            edge_to_idx,
+            path_edges_by_pair,
+        )
+        return [
+            (float(delta), (int(pair[0]), int(pair[1])))
+            for delta, pair in scored
+        ]
 
     def _rank_reassignment_price_delta(
         self,

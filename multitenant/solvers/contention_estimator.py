@@ -354,9 +354,7 @@ class TimeExpandedContentionEstimator:
         )
 
         slot_count = max(len(analysis.slot_prices), 1)
-        dense_entry_count = int(slot_count) * (
-            int(server_count) * 2 + len(edge_items)
-        )
+        dense_entry_count = int(slot_count) * (int(server_count) * 2 + len(edge_items))
         if dense_entry_count > 2_000_000:
             raise RuntimeError(
                 f"task-pair price dense state too large: {dense_entry_count} entries"

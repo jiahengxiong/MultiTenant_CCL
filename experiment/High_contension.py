@@ -36,9 +36,9 @@ METHOD_NAMES = (
     "mapping_plus_harmonics",
 )
 WORKLOAD_TRACES = {
-    "GPT13B": Path("/Users/xiongjiaheng/COCA/MultiTenant/workload/gpt13B_trace_dp32_ws32.csv"),
-    "LLaMA65B": Path("/Users/xiongjiaheng/COCA/MultiTenant/workload/llama65B_trace_dp32_ws32.csv"),
-    "DeepSeek16B": Path("/Users/xiongjiaheng/COCA/MultiTenant/workload/DeepSeek16B_trace_dp32_ws32.csv"),
+    "GPT13B": REPO_ROOT / "workload" / "gpt13B_trace_dp32_ws32.csv",
+    "LLaMA65B": REPO_ROOT / "workload" / "llama65B_trace_dp32_ws32.csv",
+    "DeepSeek16B": REPO_ROOT / "workload" / "DeepSeek16B_trace_dp32_ws32.csv",
 }
 TASK_SIZE_MULTIPLIER = 4
 MAPPING_TIME_LIMIT_SECONDS = 300.0
@@ -486,7 +486,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/High_contension.json"),
+        default=REPO_ROOT / "experiment" / "High_contension.json",
     )
     return parser.parse_args()
 

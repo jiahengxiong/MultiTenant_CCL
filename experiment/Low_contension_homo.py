@@ -83,7 +83,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/Low_contension_homo.json"),
+        default=Path(__file__).resolve().parent / "Low_contension_homo.json",
     )
     return parser.parse_args()
 

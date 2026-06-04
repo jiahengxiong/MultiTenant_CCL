@@ -226,7 +226,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--output",
         type=Path,
-        default=Path("/Users/xiongjiaheng/COCA/MultiTenant/experiment/mapping_vs_ilp_single.json"),
+        default=Path(__file__).resolve().parent / "mapping_vs_ilp_single.json",
     )
     return parser.parse_args()
 

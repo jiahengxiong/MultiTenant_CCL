@@ -41,7 +41,7 @@ WORKLOAD_TRACES = {
     "DeepSeek16B": Path("/Users/xiongjiaheng/COCA/MultiTenant/workload/DeepSeek16B_trace_dp32_ws32.csv"),
 }
 TASK_SIZE_MULTIPLIER = 4
-MAPPING_TIME_LIMIT_SECONDS = 150.0
+MAPPING_TIME_LIMIT_SECONDS = 300.0
 
 
 def derive_seed(base_seed: int, *components: object) -> int:

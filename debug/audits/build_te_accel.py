@@ -3,6 +3,7 @@ from __future__ import annotations
 import subprocess
 import sys
 import sysconfig
+import shlex
 from pathlib import Path
 
 import pybind11
@@ -23,14 +24,16 @@ def main() -> None:
         [sys.executable, "-m", "pybind11", "--includes"],
         text=True,
     ).strip().split()
+    cxx = sysconfig.get_config_var("CXX") or "c++"
+    linker_flags = ["-undefined", "dynamic_lookup"] if sys.platform == "darwin" else []
     command = [
-        sysconfig.get_config_var("CXX") or "c++",
+        *shlex.split(cxx),
         "-O3",
         "-Wall",
         "-shared",
         "-std=c++17",
-        "-undefined",
-        "dynamic_lookup",
+        "-fPIC",
+        *linker_flags,
         *include_flags,
         str(SOURCE),
         "-o",

@@ -9,13 +9,13 @@ from pathlib import Path
 
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 DEFAULT_SCRIPTS = [
-    "Low_contension.py",
+    # "Low_contension.py",
     "High_contension.py",
     "Low_contension_homo.py",
     "High_contension_homo.py",
-    "dominant vs full.py",
-    "mapping_vs_ilp_single.py",
-    "mapping_vs_ilp_multi.py",
+    # "dominant vs full.py",
+    # "mapping_vs_ilp_single.py",
+    # "mapping_vs_ilp_multi.py",
 ]
 
 

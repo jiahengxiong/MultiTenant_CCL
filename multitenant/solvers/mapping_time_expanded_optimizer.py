@@ -2792,7 +2792,7 @@ class MappingTimeExpandedEstimatorOptimizer:
     def _solve_precision_portfolio(self, time_limit):
         start_time = time.time()
         original_tolerance = float(self.score_sort_tolerance)
-        attempt_budget = max(1.0, float(time_limit) / 2.0)
+        attempt_budget = None if time_limit is None else max(1.0, float(time_limit) / 2.0)
         snapshots = []
         for tolerance in (1e-5, 1e-8):
             self.score_sort_tolerance = float(tolerance)
@@ -2818,7 +2818,7 @@ class MappingTimeExpandedEstimatorOptimizer:
     def solve(self, time_limit=None):
         if self.search_skeleton in {"hybrid", "legacy-hybrid", "collapsed-hybrid"}:
             return self._solve_hybrid_skeleton(time_limit=time_limit)
-        if time_limit is not None and float(time_limit) >= 2.0:
+        if time_limit is None or float(time_limit) >= 2.0:
             return self._solve_precision_portfolio(time_limit=time_limit)
         return self._solve_diverse_beam(time_limit=time_limit)
 

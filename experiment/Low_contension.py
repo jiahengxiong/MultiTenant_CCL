@@ -41,7 +41,7 @@ WORKLOAD_TRACES = {
     "DeepSeek16B": REPO_ROOT / "workload" / "DeepSeek16B_trace_dp32_ws32.csv",
 }
 TASK_SIZE_MULTIPLIER = 8
-MAPPING_TIME_LIMIT_SECONDS = 300.0
+MAPPING_TIME_LIMIT_SECONDS = None
 
 
 def derive_seed(base_seed: int, *components: object) -> int:

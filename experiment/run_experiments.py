@@ -9,7 +9,7 @@ from pathlib import Path
 
 EXPERIMENT_DIR = Path(__file__).resolve().parent
 DEFAULT_SCRIPTS = [
-    # "Low_contension.py",
+    "Low_contension.py",
     "High_contension.py",
     "Low_contension_homo.py",
     "High_contension_homo.py",

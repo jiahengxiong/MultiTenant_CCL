@@ -40,7 +40,7 @@ class MappingTimeExpandedEstimatorOptimizer:
         extra_seed_mappings=None,
         verbose=True,
         name="time_expanded_mapping_optimizer",
-        bnb_candidate_time_limit=5.0,
+        bnb_candidate_time_limit=1.5,
         max_bnb_tenants_per_round=2,
         beam_width=3,
         search_skeleton="diverse",

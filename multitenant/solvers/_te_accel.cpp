@@ -871,7 +871,60 @@ public:
         return py::make_tuple(makespan + tiebreak, avg_jct + tiebreak, makespan, avg_jct, contention_potential, slot_duration);
     }
 
+    std::pair<double, double> cached_evaluate_score(
+        const std::vector<std::vector<int>> &server_by_tenant_rank
+    ) const {
+        const std::string key = mapping_cache_key(server_by_tenant_rank);
+        const auto cached = evaluate_score_cache_.find(key);
+        if (cached != evaluate_score_cache_.end()) {
+            return cached->second;
+        }
+        py::tuple score_tuple = evaluate(server_by_tenant_rank);
+        std::pair<double, double> score{
+            py::cast<double>(score_tuple[0]),
+            py::cast<double>(score_tuple[1])
+        };
+        evaluate_score_cache_.emplace(key, score);
+        return score;
+    }
+
+    std::pair<double, double> cached_pipeline_score(
+        const std::vector<std::vector<int>> &server_by_tenant_rank
+    ) const {
+        const std::string key = mapping_cache_key(server_by_tenant_rank);
+        const auto cached = pipeline_score_cache_.find(key);
+        if (cached != pipeline_score_cache_.end()) {
+            return cached->second;
+        }
+        py::tuple score_tuple = evaluate_pipeline(server_by_tenant_rank);
+        std::pair<double, double> score{
+            py::cast<double>(score_tuple[0]),
+            py::cast<double>(score_tuple[1])
+        };
+        pipeline_score_cache_.emplace(key, score);
+        return score;
+    }
+
 private:
+    static std::string mapping_cache_key(
+        const std::vector<std::vector<int>> &server_by_tenant_rank
+    ) {
+        std::string key;
+        size_t value_count = 0;
+        for (const auto &tenant_mapping : server_by_tenant_rank) {
+            value_count += tenant_mapping.size();
+        }
+        key.reserve(value_count * 4 + server_by_tenant_rank.size());
+        for (const auto &tenant_mapping : server_by_tenant_rank) {
+            for (const int server : tenant_mapping) {
+                key.append(std::to_string(server));
+                key.push_back(',');
+            }
+            key.push_back('|');
+        }
+        return key;
+    }
+
     static double slot_aligned_time(double value, double slot_duration) {
         const double safe_slot = std::max(slot_duration, 1e-12);
         return std::ceil(std::max(value, 0.0) / safe_slot - 1e-9) * safe_slot;
@@ -1005,7 +1058,237 @@ private:
     int horizon_slots_override_;
     int server_count_ = 0;
     int edge_count_ = 0;
+    mutable std::unordered_map<std::string, std::pair<double, double>> evaluate_score_cache_;
+    mutable std::unordered_map<std::string, std::pair<double, double>> pipeline_score_cache_;
 };
+
+struct TabuSwapCandidate {
+    int index = 0;
+    int tenant = 0;
+    int left_rank = 0;
+    int right_rank = 0;
+    double makespan = 0.0;
+    double avg_jct = 0.0;
+    bool has_pipeline = false;
+    double pipeline_makespan = 0.0;
+    double pipeline_avg_jct = 0.0;
+};
+
+long long python_round_bucket(double value, double tolerance) {
+    return static_cast<long long>(std::nearbyint(value / std::max(tolerance, 1e-30)));
+}
+
+std::pair<double, double> primary_score_from_tuple(const py::tuple &score_tuple) {
+    return {
+        py::cast<double>(score_tuple[0]),
+        py::cast<double>(score_tuple[1])
+    };
+}
+
+std::pair<double, double> pipeline_score_from_tuple(const py::tuple &score_tuple) {
+    return {
+        py::cast<double>(score_tuple[0]),
+        py::cast<double>(score_tuple[1])
+    };
+}
+
+bool is_better_with_pipeline(
+    TimeExpandedScoreEngine &engine,
+    TabuSwapCandidate &candidate,
+    const std::vector<std::vector<int>> &candidate_mapping,
+    const std::vector<std::vector<int>> &incumbent_mapping,
+    double incumbent_makespan,
+    double incumbent_avg_jct,
+    bool &has_incumbent_pipeline,
+    double &incumbent_pipeline_makespan,
+    double &incumbent_pipeline_avg_jct,
+    double tolerance
+) {
+    if (candidate.avg_jct < incumbent_avg_jct - tolerance) {
+        return true;
+    }
+    if (std::abs(candidate.avg_jct - incumbent_avg_jct) <= tolerance) {
+        if (!candidate.has_pipeline) {
+            auto values = engine.cached_pipeline_score(candidate_mapping);
+            candidate.pipeline_makespan = values.first;
+            candidate.pipeline_avg_jct = values.second;
+            candidate.has_pipeline = true;
+        }
+        if (!has_incumbent_pipeline) {
+            auto values = engine.cached_pipeline_score(incumbent_mapping);
+            incumbent_pipeline_makespan = values.first;
+            incumbent_pipeline_avg_jct = values.second;
+            has_incumbent_pipeline = true;
+        }
+        if (candidate.pipeline_avg_jct < incumbent_pipeline_avg_jct - 1e-9) {
+            return true;
+        }
+        if (std::abs(candidate.pipeline_avg_jct - incumbent_pipeline_avg_jct) <= 1e-9) {
+            if (candidate.makespan < incumbent_makespan - tolerance) {
+                return true;
+            }
+            if (std::abs(candidate.makespan - incumbent_makespan) <= tolerance) {
+                return candidate.pipeline_makespan < incumbent_pipeline_makespan - 1e-9;
+            }
+        }
+    }
+    return false;
+}
+
+py::dict select_tabu_swap(
+    TimeExpandedScoreEngine &engine,
+    const std::vector<std::vector<int>> &current_mapping,
+    const std::vector<std::vector<int>> &best_mapping,
+    const py::list &swap_moves,
+    const py::dict &tabu_until,
+    int iteration,
+    double score_sort_tolerance,
+    double best_makespan,
+    double best_avg_jct
+) {
+    std::vector<TabuSwapCandidate> eligible;
+    eligible.reserve(static_cast<size_t>(swap_moves.size()));
+    bool has_best_pipeline = false;
+    double best_pipeline_makespan = 0.0;
+    double best_pipeline_avg_jct = 0.0;
+
+    for (int move_idx = 0; move_idx < static_cast<int>(swap_moves.size()); ++move_idx) {
+        py::tuple move = py::reinterpret_borrow<py::tuple>(swap_moves[move_idx]);
+        if (move.size() != 3) {
+            throw std::invalid_argument("swap move must be (tenant, left_rank, right_rank)");
+        }
+        const int tenant = py::cast<int>(move[0]);
+        const int left_rank = py::cast<int>(move[1]);
+        const int right_rank = py::cast<int>(move[2]);
+        std::vector<std::vector<int>> candidate_mapping = current_mapping;
+        std::swap(
+            candidate_mapping[static_cast<size_t>(tenant)][static_cast<size_t>(left_rank)],
+            candidate_mapping[static_cast<size_t>(tenant)][static_cast<size_t>(right_rank)]
+        );
+
+        auto primary_values = engine.cached_evaluate_score(candidate_mapping);
+        TabuSwapCandidate candidate;
+        candidate.index = move_idx;
+        candidate.tenant = tenant;
+        candidate.left_rank = left_rank;
+        candidate.right_rank = right_rank;
+        candidate.makespan = primary_values.first;
+        candidate.avg_jct = primary_values.second;
+
+        const int key_left = std::min(left_rank, right_rank);
+        const int key_right = std::max(left_rank, right_rank);
+        py::tuple move_key = py::make_tuple(tenant, key_left, key_right);
+        const bool is_tabu = tabu_until.contains(move_key)
+            && py::cast<int>(tabu_until[move_key]) > iteration;
+        if (is_tabu) {
+            const bool aspiration = is_better_with_pipeline(
+                engine,
+                candidate,
+                candidate_mapping,
+                best_mapping,
+                best_makespan,
+                best_avg_jct,
+                has_best_pipeline,
+                best_pipeline_makespan,
+                best_pipeline_avg_jct,
+                score_sort_tolerance
+            );
+            if (!aspiration) {
+                continue;
+            }
+        }
+        eligible.push_back(candidate);
+    }
+
+    if (eligible.empty()) {
+        return py::dict();
+    }
+
+    long long best_bucket = std::numeric_limits<long long>::max();
+    for (const auto &candidate : eligible) {
+        best_bucket = std::min(
+            best_bucket,
+            python_round_bucket(candidate.avg_jct, score_sort_tolerance)
+        );
+    }
+
+    std::vector<int> bucket_indices;
+    for (int idx = 0; idx < static_cast<int>(eligible.size()); ++idx) {
+        if (python_round_bucket(eligible[static_cast<size_t>(idx)].avg_jct, score_sort_tolerance) == best_bucket) {
+            bucket_indices.push_back(idx);
+        }
+    }
+
+    int selected_idx = bucket_indices.front();
+    if (bucket_indices.size() > 1) {
+        for (const int idx : bucket_indices) {
+            TabuSwapCandidate &candidate = eligible[static_cast<size_t>(idx)];
+            if (!candidate.has_pipeline) {
+                std::vector<std::vector<int>> candidate_mapping = current_mapping;
+                std::swap(
+                    candidate_mapping[static_cast<size_t>(candidate.tenant)][static_cast<size_t>(candidate.left_rank)],
+                    candidate_mapping[static_cast<size_t>(candidate.tenant)][static_cast<size_t>(candidate.right_rank)]
+                );
+                auto pipeline_values = engine.cached_pipeline_score(candidate_mapping);
+                candidate.pipeline_makespan = pipeline_values.first;
+                candidate.pipeline_avg_jct = pipeline_values.second;
+                candidate.has_pipeline = true;
+            }
+        }
+        selected_idx = *std::min_element(
+            bucket_indices.begin(),
+            bucket_indices.end(),
+            [&](int lhs_idx, int rhs_idx) {
+                const TabuSwapCandidate &lhs = eligible[static_cast<size_t>(lhs_idx)];
+                const TabuSwapCandidate &rhs = eligible[static_cast<size_t>(rhs_idx)];
+                if (lhs.pipeline_avg_jct != rhs.pipeline_avg_jct) {
+                    return lhs.pipeline_avg_jct < rhs.pipeline_avg_jct;
+                }
+                const long long lhs_makespan_bucket = python_round_bucket(lhs.makespan, score_sort_tolerance);
+                const long long rhs_makespan_bucket = python_round_bucket(rhs.makespan, score_sort_tolerance);
+                if (lhs_makespan_bucket != rhs_makespan_bucket) {
+                    return lhs_makespan_bucket < rhs_makespan_bucket;
+                }
+                if (lhs.pipeline_makespan != rhs.pipeline_makespan) {
+                    return lhs.pipeline_makespan < rhs.pipeline_makespan;
+                }
+                return lhs.index < rhs.index;
+            }
+        );
+    }
+
+    TabuSwapCandidate &selected = eligible[static_cast<size_t>(selected_idx)];
+    std::vector<std::vector<int>> selected_mapping = current_mapping;
+    std::swap(
+        selected_mapping[static_cast<size_t>(selected.tenant)][static_cast<size_t>(selected.left_rank)],
+        selected_mapping[static_cast<size_t>(selected.tenant)][static_cast<size_t>(selected.right_rank)]
+    );
+    const bool improves_best = is_better_with_pipeline(
+        engine,
+        selected,
+        selected_mapping,
+        best_mapping,
+        best_makespan,
+        best_avg_jct,
+        has_best_pipeline,
+        best_pipeline_makespan,
+        best_pipeline_avg_jct,
+        score_sort_tolerance
+    );
+
+    py::dict result;
+    result["tenant"] = selected.tenant;
+    result["left_rank"] = selected.left_rank;
+    result["right_rank"] = selected.right_rank;
+    result["score"] = py::make_tuple(selected.makespan, selected.avg_jct);
+    if (selected.has_pipeline) {
+        result["pipeline_score"] = py::make_tuple(selected.pipeline_makespan, selected.pipeline_avg_jct);
+    } else {
+        result["pipeline_score"] = py::none();
+    }
+    result["improves_best"] = improves_best;
+    return result;
+}
 
 py::object best_rank_swap_delta(
     const py::list &flows,
@@ -3438,6 +3721,16 @@ PYBIND11_MODULE(_te_accel, m) {
           py::arg("default_edge_price"),
           py::arg("default_sender_price"),
           py::arg("default_receiver_price"));
+    m.def("select_tabu_swap", &select_tabu_swap,
+          py::arg("engine"),
+          py::arg("current_mapping"),
+          py::arg("best_mapping"),
+          py::arg("swap_moves"),
+          py::arg("tabu_until"),
+          py::arg("iteration"),
+          py::arg("score_sort_tolerance"),
+          py::arg("best_makespan"),
+          py::arg("best_avg_jct"));
     py::class_<TimeExpandedScoreEngine>(m, "TimeExpandedScoreEngine")
         .def(py::init<
              std::vector<int>,

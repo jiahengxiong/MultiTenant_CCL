@@ -370,6 +370,25 @@ class MappingTimeExpandedEstimatorOptimizer:
         )
         return analysis
 
+    def _dense_mapping(self, mapping):
+        return [
+            [
+                int(mapping[int(tenant)][int(rank)])
+                for rank in self.rank_orders[int(tenant)]
+            ]
+            for tenant in self.tenants
+        ]
+
+    def _cpp_time_expanded_engine(self):
+        backbone = getattr(self.estimator, "_backbone", None)
+        if backbone is None or not hasattr(backbone, "_get_cpp_time_expanded_engine"):
+            raise RuntimeError("time-expanded C++ score engine is required for tabu refinement")
+        engine = backbone._get_cpp_time_expanded_engine()
+        if engine is None:
+            error = getattr(backbone, "_cpp_time_expanded_engine_error", None)
+            raise RuntimeError(f"time-expanded C++ score engine is unavailable: {error}")
+        return engine
+
     def _search_state(self, mapping):
         normalized = self._normalize_mapping(mapping)
         signature = self._mapping_signature(normalized)
@@ -2398,13 +2417,14 @@ class MappingTimeExpandedEstimatorOptimizer:
         iteration = 0
         stale_iterations = 0
         max_stale = 12
+        max_tabu_iterations = 120
         tenure = max(4, min(12, 2 * len(self.tenants)))
 
-        while time.time() < deadline and stale_iterations < max_stale:
+        while time.time() < deadline and stale_iterations < max_stale and iteration < max_tabu_iterations:
             iteration += 1
             analysis = self._analyze_mapping(current_mapping)
             tenant_order = self._tenant_order(analysis)
-            neighbor_pool = []
+            swap_moves = []
             for tenant in tenant_order:
                 if time.time() >= deadline:
                     break
@@ -2415,33 +2435,43 @@ class MappingTimeExpandedEstimatorOptimizer:
                     hot_limit=8,
                     partner_limit=24,
                 )[:8]:
-                    candidate = self._copy_mapping(current_mapping)
-                    candidate[int(tenant)][int(left_rank)], candidate[int(tenant)][int(right_rank)] = (
-                        candidate[int(tenant)][int(right_rank)],
-                        candidate[int(tenant)][int(left_rank)],
-                    )
-                    candidate = self._normalize_mapping(candidate)
-                    signature = self._mapping_signature(candidate)
-                    move_key = (int(tenant), min(int(left_rank), int(right_rank)), max(int(left_rank), int(right_rank)))
-                    score = self._evaluate_mapping(candidate)
-                    is_aspiration = self._is_better_mapping(score, candidate, best_score, best_mapping)
-                    if tabu_until.get(move_key, -1) > iteration and not is_aspiration:
-                        continue
-                    neighbor_pool.append((score, candidate, move_key))
+                    swap_moves.append((int(tenant), int(left_rank), int(right_rank)))
 
-            if not neighbor_pool:
+            if not swap_moves:
                 break
 
-            neighbor_pool = self._rank_entries_by_estimator([
-                (score, mapping, move_key)
-                for score, mapping, move_key in neighbor_pool
-            ])
-            next_score, next_mapping, move_key = neighbor_pool[0]
+            if _te_accel is None or not hasattr(_te_accel, "select_tabu_swap"):
+                raise RuntimeError("C++ tabu swap selector is required")
+            selected = _te_accel.select_tabu_swap(
+                self._cpp_time_expanded_engine(),
+                self._dense_mapping(current_mapping),
+                self._dense_mapping(best_mapping),
+                swap_moves,
+                tabu_until,
+                iteration,
+                float(self.score_sort_tolerance),
+                float(best_score[0]),
+                float(best_score[1]),
+            )
+            if not selected:
+                break
+
+            tenant = int(selected["tenant"])
+            left_rank = int(selected["left_rank"])
+            right_rank = int(selected["right_rank"])
+            next_mapping = self._copy_mapping(current_mapping)
+            next_mapping[tenant][left_rank], next_mapping[tenant][right_rank] = (
+                next_mapping[tenant][right_rank],
+                next_mapping[tenant][left_rank],
+            )
+            next_mapping = self._normalize_mapping(next_mapping)
+            next_score = tuple(float(value) for value in selected["score"])
+            move_key = (tenant, min(left_rank, right_rank), max(left_rank, right_rank))
             current_mapping = next_mapping
             current_score = next_score
             tabu_until[move_key] = iteration + tenure
 
-            if self._is_better_mapping(current_score, current_mapping, best_score, best_mapping):
+            if bool(selected["improves_best"]):
                 best_mapping = self._copy_mapping(current_mapping)
                 best_score = current_score
                 stale_iterations = 0

@@ -442,7 +442,7 @@ def main() -> None:
     tenant_counts = parse_tenant_counts(args.tenant_counts)
     profiles = load_dominant_profiles(TASK_SIZE_MULTIPLIER)
     cpu_count = os.cpu_count() or 1
-    pool_size = max(1, cpu_count // 2)
+    pool_size = min(7, cpu_count)
 
     all_work_items: list[dict[str, object]] = []
     assignment_by_tenant_count: dict[int, dict[int, dict[str, object]]] = {}

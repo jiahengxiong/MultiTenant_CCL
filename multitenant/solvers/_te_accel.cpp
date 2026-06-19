@@ -169,6 +169,7 @@ struct TaskDef {
     int dst_rank = 0;
     double volume_bits = 0.0;
     int order_pos = 0;
+    int epoch = 0;
     std::vector<int> predecessors;
     std::vector<int> release_prev;
     double release_gap = 0.0;
@@ -313,8 +314,8 @@ public:
 
         for (py::handle entry_handle : task_entries) {
             py::sequence entry = py::reinterpret_borrow<py::sequence>(entry_handle);
-            if (entry.size() != 9) {
-                throw std::invalid_argument("task entry must have 9 fields");
+            if (entry.size() != 9 && entry.size() != 10) {
+                throw std::invalid_argument("task entry must have 9 or 10 fields");
             }
             TaskDef task;
             task.tenant = py::cast<int>(entry[0]);
@@ -323,9 +324,17 @@ public:
             task.dst_rank = py::cast<int>(entry[3]);
             task.volume_bits = py::cast<double>(entry[4]);
             task.order_pos = py::cast<int>(entry[5]);
-            task.predecessors = py::cast<std::vector<int>>(entry[6]);
-            task.release_prev = py::cast<std::vector<int>>(entry[7]);
-            task.release_gap = py::cast<double>(entry[8]);
+            if (entry.size() == 10) {
+                task.epoch = py::cast<int>(entry[6]);
+                task.predecessors = py::cast<std::vector<int>>(entry[7]);
+                task.release_prev = py::cast<std::vector<int>>(entry[8]);
+                task.release_gap = py::cast<double>(entry[9]);
+            } else {
+                task.epoch = task.order_pos;
+                task.predecessors = py::cast<std::vector<int>>(entry[6]);
+                task.release_prev = py::cast<std::vector<int>>(entry[7]);
+                task.release_gap = py::cast<double>(entry[8]);
+            }
             const int task_idx = static_cast<int>(tasks_.size());
             tasks_.push_back(std::move(task));
             tasks_by_tenant_[static_cast<size_t>(tasks_.back().tenant)].push_back(task_idx);
@@ -548,6 +557,464 @@ public:
         const double avg_jct = sum_finish / std::max<size_t>(tenant_finish.size(), 1);
         const double tiebreak = 1e-9 * contention_potential;
         return py::make_tuple(makespan + tiebreak, avg_jct + tiebreak, makespan, avg_jct, contention_potential, slot_duration);
+    }
+
+    py::dict analyze_lightweight(
+        const std::vector<std::vector<int>> &server_by_tenant_rank,
+        double link_price_beta,
+        double link_price_gamma,
+        double critical_path_price_beta
+    ) const {
+        const double slot_duration = estimate_slot_duration(server_by_tenant_rank);
+        const int max_slots = max_slot_count();
+        const int task_count = static_cast<int>(tasks_.size());
+        const int resource_count = 2 * server_count_ + edge_count_;
+
+        std::vector<double> resource_capacity(static_cast<size_t>(resource_count), 0.0);
+        for (int server = 0; server < server_count_; ++server) {
+            resource_capacity[static_cast<size_t>(server)] = server_send_capacity_[static_cast<size_t>(server)];
+            resource_capacity[static_cast<size_t>(server_count_ + server)] = server_recv_capacity_[static_cast<size_t>(server)];
+        }
+        for (int edge_idx = 0; edge_idx < edge_count_; ++edge_idx) {
+            resource_capacity[static_cast<size_t>(2 * server_count_ + edge_idx)] = edge_capacity_[static_cast<size_t>(edge_idx)];
+        }
+
+        std::vector<TaskRuntime> runtime(static_cast<size_t>(task_count));
+        std::vector<int> remaining_preds(static_cast<size_t>(task_count), 0);
+        std::vector<char> pending(static_cast<size_t>(task_count), 1);
+        std::vector<char> active(static_cast<size_t>(task_count), 0);
+        int pending_count = task_count;
+        int active_count = 0;
+
+        for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+            const TaskDef &task = tasks_[static_cast<size_t>(task_idx)];
+            TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+            state.src_server = server_by_tenant_rank[static_cast<size_t>(task.tenant)][static_cast<size_t>(task.src_rank)];
+            state.dst_server = server_by_tenant_rank[static_cast<size_t>(task.tenant)][static_cast<size_t>(task.dst_rank)];
+            state.path_edges = path_edges_[static_cast<size_t>(task.tenant)]
+                [static_cast<size_t>(state.src_server)]
+                [static_cast<size_t>(state.dst_server)];
+            state.remaining_bits = task.volume_bits;
+            state.resources.clear();
+            state.resources.push_back(state.src_server);
+            state.resources.push_back(server_count_ + state.dst_server);
+            for (const int edge_idx : state.path_edges) {
+                state.resources.push_back(2 * server_count_ + edge_idx);
+            }
+            const int port_id = state.path_edges.empty() ? (edge_count_ + state.src_server) : state.path_edges.front();
+            state.queue_key = static_cast<long long>(task.tenant) * static_cast<long long>(edge_count_ + server_count_ + 1) + port_id;
+            remaining_preds[static_cast<size_t>(task_idx)] = static_cast<int>(task.predecessors.size());
+        }
+
+        std::vector<std::vector<int>> slot_active_tasks;
+        std::vector<std::vector<int>> slot_ready_tasks;
+        std::vector<std::vector<double>> slot_service_rates;
+        std::vector<std::vector<double>> slot_resource_pressure;
+        std::vector<double> slot_maxima;
+        std::vector<std::vector<int>> task_active_slots(static_cast<size_t>(task_count));
+        std::vector<std::vector<int>> task_ready_slots(static_cast<size_t>(task_count));
+        std::vector<std::vector<int>> epoch_active_slots;
+        int max_epoch = 0;
+        for (const TaskDef &task : tasks_) {
+            max_epoch = std::max(max_epoch, task.epoch);
+        }
+        epoch_active_slots.assign(static_cast<size_t>(std::max(max_epoch + 1, 1)), {});
+
+        double current_time = 0.0;
+        int slot_idx = 0;
+        double contention_potential = 0.0;
+
+        while ((pending_count > 0 || active_count > 0) && slot_idx < max_slots) {
+            std::vector<int> newly_ready;
+            for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+                if (!pending[static_cast<size_t>(task_idx)] || remaining_preds[static_cast<size_t>(task_idx)] != 0) {
+                    continue;
+                }
+                if (release_time(task_idx, runtime, slot_duration) <= current_time + 1e-12) {
+                    newly_ready.push_back(task_idx);
+                }
+            }
+            for (const int task_idx : newly_ready) {
+                pending[static_cast<size_t>(task_idx)] = 0;
+                --pending_count;
+                active[static_cast<size_t>(task_idx)] = 1;
+                ++active_count;
+                if (runtime[static_cast<size_t>(task_idx)].start_time < 0.0) {
+                    runtime[static_cast<size_t>(task_idx)].start_time = current_time;
+                }
+            }
+
+            if (active_count == 0) {
+                double next_release = current_time + slot_duration;
+                bool found_release = false;
+                for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+                    if (!pending[static_cast<size_t>(task_idx)] || remaining_preds[static_cast<size_t>(task_idx)] != 0) {
+                        continue;
+                    }
+                    const double candidate = release_time(task_idx, runtime, slot_duration);
+                    if (std::isfinite(candidate) && (!found_release || candidate < next_release)) {
+                        next_release = candidate;
+                        found_release = true;
+                    }
+                }
+                slot_active_tasks.emplace_back();
+                slot_ready_tasks.emplace_back();
+                slot_service_rates.emplace_back();
+                slot_resource_pressure.emplace_back(static_cast<size_t>(resource_count), 0.0);
+                slot_maxima.push_back(0.0);
+                current_time = std::max(current_time + slot_duration, next_release);
+                ++slot_idx;
+                continue;
+            }
+
+            std::vector<int> ready_active;
+            ready_active.reserve(static_cast<size_t>(active_count));
+            for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+                if (active[static_cast<size_t>(task_idx)]) {
+                    ready_active.push_back(task_idx);
+                    task_ready_slots[static_cast<size_t>(task_idx)].push_back(slot_idx);
+                }
+            }
+
+            std::vector<int> service_active = service_frontier(active, runtime);
+            std::vector<double> normalized_load(static_cast<size_t>(resource_count), 0.0);
+            std::vector<int> loaded_resources;
+            loaded_resources.reserve(static_cast<size_t>(resource_count));
+            auto add_normalized_load = [&](int resource, double value) {
+                if (resource < 0 || resource >= resource_count) {
+                    return;
+                }
+                double &slot_load = normalized_load[static_cast<size_t>(resource)];
+                if (slot_load == 0.0) {
+                    loaded_resources.push_back(resource);
+                }
+                slot_load += value;
+            };
+
+            for (const int task_idx : service_active) {
+                const TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                const double remaining = state.remaining_bits;
+                const double send_cap = server_send_capacity_[static_cast<size_t>(state.src_server)];
+                const double recv_cap = server_recv_capacity_[static_cast<size_t>(state.dst_server)];
+                add_normalized_load(
+                    state.src_server,
+                    std::min(remaining, send_cap * slot_duration) / std::max(send_cap * slot_duration, 1e-12)
+                );
+                add_normalized_load(
+                    server_count_ + state.dst_server,
+                    std::min(remaining, recv_cap * slot_duration) / std::max(recv_cap * slot_duration, 1e-12)
+                );
+                for (const int edge_idx : state.path_edges) {
+                    const double cap = edge_capacity_[static_cast<size_t>(edge_idx)];
+                    add_normalized_load(
+                        2 * server_count_ + edge_idx,
+                        std::min(remaining, cap * slot_duration) / std::max(cap * slot_duration, 1e-12)
+                    );
+                }
+            }
+            double slot_max = 0.0;
+            for (const int resource : loaded_resources) {
+                const double load = normalized_load[static_cast<size_t>(resource)];
+                slot_max = std::max(slot_max, load);
+                const double excess = std::max(0.0, load - 1.0);
+                contention_potential += excess * excess;
+            }
+
+            std::vector<std::vector<int>> resources_by_item;
+            std::vector<double> demand_rates;
+            resources_by_item.reserve(service_active.size());
+            demand_rates.reserve(service_active.size());
+            for (const int task_idx : service_active) {
+                const TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                resources_by_item.push_back(state.resources);
+                demand_rates.push_back(state.remaining_bits / std::max(slot_duration, 1e-12));
+            }
+            std::vector<double> rates = max_min_rates_native_dense(
+                resources_by_item,
+                demand_rates,
+                resource_capacity,
+                resource_count
+            );
+
+            std::vector<int> completed;
+            for (size_t local_idx = 0; local_idx < service_active.size(); ++local_idx) {
+                const int task_idx = service_active[local_idx];
+                const double rate = rates[local_idx];
+                if (rate <= 0.0) {
+                    continue;
+                }
+                TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                const double service_bits = std::min(state.remaining_bits, rate * slot_duration);
+                state.remaining_bits -= service_bits;
+                task_active_slots[static_cast<size_t>(task_idx)].push_back(slot_idx);
+                const int epoch = std::max(0, std::min(static_cast<int>(epoch_active_slots.size()) - 1, tasks_[static_cast<size_t>(task_idx)].epoch));
+                epoch_active_slots[static_cast<size_t>(epoch)].push_back(slot_idx);
+                if (state.remaining_bits <= 1e-9) {
+                    const double finish_time = current_time + service_bits / std::max(rate, 1e-12);
+                    state.finish_time = finish_time;
+                    completed.push_back(task_idx);
+                }
+            }
+
+            slot_active_tasks.push_back(service_active);
+            slot_ready_tasks.push_back(ready_active);
+            slot_service_rates.push_back(rates);
+            slot_resource_pressure.push_back(std::move(normalized_load));
+            slot_maxima.push_back(slot_max);
+
+            for (const int task_idx : completed) {
+                if (!active[static_cast<size_t>(task_idx)]) {
+                    continue;
+                }
+                active[static_cast<size_t>(task_idx)] = 0;
+                --active_count;
+                for (const int succ_idx : successors_[static_cast<size_t>(task_idx)]) {
+                    remaining_preds[static_cast<size_t>(succ_idx)] -= 1;
+                }
+            }
+
+            current_time += slot_duration;
+            ++slot_idx;
+        }
+
+        if (pending_count > 0 || active_count > 0) {
+            double penalty_start = current_time;
+            for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+                TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                if (state.finish_time >= 0.0) {
+                    continue;
+                }
+                double bottleneck = std::min(
+                    server_send_capacity_[static_cast<size_t>(state.src_server)],
+                    server_recv_capacity_[static_cast<size_t>(state.dst_server)]
+                );
+                for (const int edge_idx : state.path_edges) {
+                    bottleneck = std::min(bottleneck, edge_capacity_[static_cast<size_t>(edge_idx)]);
+                }
+                penalty_start += state.remaining_bits / std::max(bottleneck, 1e-12);
+                state.finish_time = penalty_start;
+            }
+        }
+
+        std::vector<char> critical(static_cast<size_t>(task_count), 0);
+        for (int tenant_pos = 0; tenant_pos < static_cast<int>(tasks_by_tenant_.size()); ++tenant_pos) {
+            double terminal_finish = 0.0;
+            for (const int task_idx : tasks_by_tenant_[static_cast<size_t>(tenant_pos)]) {
+                terminal_finish = std::max(terminal_finish, runtime[static_cast<size_t>(task_idx)].finish_time);
+            }
+            std::vector<int> stack;
+            for (const int task_idx : tasks_by_tenant_[static_cast<size_t>(tenant_pos)]) {
+                if (std::abs(runtime[static_cast<size_t>(task_idx)].finish_time - terminal_finish) <= 1e-9) {
+                    stack.push_back(task_idx);
+                }
+            }
+            while (!stack.empty()) {
+                const int task_idx = stack.back();
+                stack.pop_back();
+                if (critical[static_cast<size_t>(task_idx)]) {
+                    continue;
+                }
+                critical[static_cast<size_t>(task_idx)] = 1;
+                double max_pred_finish = -1.0;
+                for (const int pred_idx : tasks_[static_cast<size_t>(task_idx)].predecessors) {
+                    max_pred_finish = std::max(max_pred_finish, runtime[static_cast<size_t>(pred_idx)].finish_time);
+                }
+                if (max_pred_finish < 0.0) {
+                    continue;
+                }
+                for (const int pred_idx : tasks_[static_cast<size_t>(task_idx)].predecessors) {
+                    if (std::abs(runtime[static_cast<size_t>(pred_idx)].finish_time - max_pred_finish) <= 1e-9) {
+                        stack.push_back(pred_idx);
+                    }
+                }
+            }
+        }
+
+        std::vector<double> tenant_pressure(static_cast<size_t>(tenant_ids_.size()), 0.0);
+        std::vector<double> tenant_peak_load(static_cast<size_t>(tenant_ids_.size()), 0.0);
+        std::unordered_map<long long, double> rank_pressure;
+        std::vector<double> tenant_finish(static_cast<size_t>(tenant_ids_.size()), 0.0);
+        for (int tenant_pos = 0; tenant_pos < static_cast<int>(tasks_by_tenant_.size()); ++tenant_pos) {
+            double finish = 0.0;
+            for (const int task_idx : tasks_by_tenant_[static_cast<size_t>(tenant_pos)]) {
+                finish = std::max(finish, runtime[static_cast<size_t>(task_idx)].finish_time);
+            }
+            tenant_finish[static_cast<size_t>(tenant_pos)] = finish;
+        }
+
+        for (size_t slot = 0; slot < slot_ready_tasks.size(); ++slot) {
+            const auto &load = slot_resource_pressure[slot];
+            for (const int task_idx : slot_ready_tasks[slot]) {
+                const TaskDef &task = tasks_[static_cast<size_t>(task_idx)];
+                const TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                double realized_load = 0.0;
+                if (state.src_server >= 0 && state.src_server < server_count_) {
+                    realized_load = std::max(realized_load, load[static_cast<size_t>(state.src_server)]);
+                }
+                if (state.dst_server >= 0 && state.dst_server < server_count_) {
+                    realized_load = std::max(realized_load, load[static_cast<size_t>(server_count_ + state.dst_server)]);
+                }
+                for (const int edge_idx : state.path_edges) {
+                    if (edge_idx >= 0 && edge_idx < edge_count_) {
+                        realized_load = std::max(realized_load, load[static_cast<size_t>(2 * server_count_ + edge_idx)]);
+                    }
+                }
+                if (realized_load <= 0.0) {
+                    continue;
+                }
+                const double weight = realized_load * (1.0 + (critical[static_cast<size_t>(task_idx)] ? critical_path_price_beta : 0.0));
+                tenant_pressure[static_cast<size_t>(task.tenant)] += weight;
+                tenant_peak_load[static_cast<size_t>(task.tenant)] = std::max(tenant_peak_load[static_cast<size_t>(task.tenant)], realized_load);
+                const long long src_key = (static_cast<long long>(task.tenant) << 32) ^ static_cast<unsigned int>(task.src_rank);
+                const long long dst_key = (static_cast<long long>(task.tenant) << 32) ^ static_cast<unsigned int>(task.dst_rank);
+                rank_pressure[src_key] += 0.5 * weight;
+                rank_pressure[dst_key] += 0.5 * weight;
+            }
+        }
+
+        py::list slot_prices_py;
+        for (size_t slot = 0; slot < slot_active_tasks.size(); ++slot) {
+            std::vector<double> service_by_resource(static_cast<size_t>(resource_count), 0.0);
+            std::vector<int> touched;
+            for (size_t local_idx = 0; local_idx < slot_active_tasks[slot].size(); ++local_idx) {
+                const int task_idx = slot_active_tasks[slot][local_idx];
+                const double rate = local_idx < slot_service_rates[slot].size() ? slot_service_rates[slot][local_idx] : 0.0;
+                if (rate <= 0.0) {
+                    continue;
+                }
+                const TaskRuntime &state = runtime[static_cast<size_t>(task_idx)];
+                for (const int resource : state.resources) {
+                    if (resource < 0 || resource >= resource_count) {
+                        continue;
+                    }
+                    if (service_by_resource[static_cast<size_t>(resource)] == 0.0) {
+                        touched.push_back(resource);
+                    }
+                    service_by_resource[static_cast<size_t>(resource)] += rate;
+                }
+            }
+
+            std::vector<char> critical_resource(static_cast<size_t>(resource_count), 0);
+            for (const int task_idx : slot_active_tasks[slot]) {
+                if (!critical[static_cast<size_t>(task_idx)]) {
+                    continue;
+                }
+                for (const int resource : runtime[static_cast<size_t>(task_idx)].resources) {
+                    if (resource >= 0 && resource < resource_count) {
+                        critical_resource[static_cast<size_t>(resource)] = 1;
+                    }
+                }
+            }
+
+            py::dict sender_prices;
+            py::dict receiver_prices;
+            py::dict edge_prices;
+            const auto &load = slot_resource_pressure[slot];
+            for (const int resource : touched) {
+                const double capacity = resource_capacity[static_cast<size_t>(resource)];
+                const double utilization = std::max(0.0, std::min(1.0, service_by_resource[static_cast<size_t>(resource)] / std::max(capacity, 1e-12)));
+                const double pressure = load[static_cast<size_t>(resource)];
+                const double base_cost = 1.0 / std::max(capacity, 1e-12);
+                const double price = (critical_resource[static_cast<size_t>(resource)] ? 1.0 + critical_path_price_beta : 1.0)
+                    * utilization
+                    * base_cost
+                    * (1.0 + link_price_beta * std::pow(pressure, link_price_gamma));
+                if (resource < server_count_) {
+                    sender_prices[py::int_(resource)] = py::float_(price);
+                } else if (resource < 2 * server_count_) {
+                    receiver_prices[py::int_(resource - server_count_)] = py::float_(price);
+                } else {
+                    edge_prices[py::int_(resource - 2 * server_count_)] = py::float_(price);
+                }
+            }
+            py::dict slot_prices;
+            slot_prices["sender"] = sender_prices;
+            slot_prices["receiver"] = receiver_prices;
+            slot_prices["edge"] = edge_prices;
+            slot_prices_py.append(slot_prices);
+        }
+
+        py::dict task_active_slots_py;
+        py::dict task_ready_slots_py;
+        py::set critical_tasks_py;
+        for (int task_idx = 0; task_idx < task_count; ++task_idx) {
+            const TaskDef &task = tasks_[static_cast<size_t>(task_idx)];
+            py::tuple key = py::make_tuple(tenant_ids_[static_cast<size_t>(task.tenant)], task.task_id);
+            py::set active_set;
+            for (const int slot : task_active_slots[static_cast<size_t>(task_idx)]) {
+                active_set.add(py::int_(slot));
+            }
+            py::set ready_set;
+            for (const int slot : task_ready_slots[static_cast<size_t>(task_idx)]) {
+                ready_set.add(py::int_(slot));
+            }
+            task_active_slots_py[key] = active_set;
+            task_ready_slots_py[key] = ready_set;
+            if (critical[static_cast<size_t>(task_idx)]) {
+                critical_tasks_py.add(key);
+            }
+        }
+
+        py::list epoch_active_slots_py;
+        for (const auto &slots : epoch_active_slots) {
+            py::set slot_set;
+            for (const int slot : slots) {
+                slot_set.add(py::int_(slot));
+            }
+            epoch_active_slots_py.append(slot_set);
+        }
+
+        py::dict tenant_pressure_py;
+        py::dict tenant_peak_load_py;
+        py::dict tenant_finish_py;
+        double makespan = 0.0;
+        double sum_finish = 0.0;
+        for (int tenant_pos = 0; tenant_pos < static_cast<int>(tenant_ids_.size()); ++tenant_pos) {
+            const int tenant_id = tenant_ids_[static_cast<size_t>(tenant_pos)];
+            tenant_pressure_py[py::int_(tenant_id)] = py::float_(tenant_pressure[static_cast<size_t>(tenant_pos)]);
+            tenant_peak_load_py[py::int_(tenant_id)] = py::float_(tenant_peak_load[static_cast<size_t>(tenant_pos)]);
+            tenant_finish_py[py::int_(tenant_id)] = py::float_(tenant_finish[static_cast<size_t>(tenant_pos)]);
+            makespan = std::max(makespan, tenant_finish[static_cast<size_t>(tenant_pos)]);
+            sum_finish += tenant_finish[static_cast<size_t>(tenant_pos)];
+        }
+
+        py::dict rank_pressure_py;
+        for (const auto &entry : rank_pressure) {
+            const int tenant_pos = static_cast<int>(entry.first >> 32);
+            const int rank = static_cast<int>(entry.first & 0xffffffff);
+            if (tenant_pos < 0 || tenant_pos >= static_cast<int>(tenant_ids_.size())) {
+                continue;
+            }
+            rank_pressure_py[py::make_tuple(tenant_ids_[static_cast<size_t>(tenant_pos)], rank)] = py::float_(entry.second);
+        }
+
+        py::list slot_maxima_py;
+        for (const double value : slot_maxima) {
+            slot_maxima_py.append(py::float_(value));
+        }
+
+        py::dict result;
+        const double avg_jct = sum_finish / std::max<size_t>(tenant_finish.size(), 1);
+        const double tiebreak = 1e-9 * contention_potential;
+        result["score"] = py::make_tuple(makespan + tiebreak, avg_jct + tiebreak);
+        result["raw_score"] = py::make_tuple(makespan, avg_jct);
+        result["contention_potential"] = py::float_(contention_potential);
+        result["tenant_finish"] = tenant_finish_py;
+        result["tenant_pressure"] = tenant_pressure_py;
+        result["tenant_peak_load"] = tenant_peak_load_py;
+        result["rank_pressure"] = rank_pressure_py;
+        result["tenant_pair_interaction"] = py::dict();
+        result["slot_prices"] = slot_prices_py;
+        result["slot_maxima"] = slot_maxima_py;
+        result["task_active_slots"] = task_active_slots_py;
+        result["task_ready_slots"] = task_ready_slots_py;
+        result["epoch_active_slots"] = epoch_active_slots_py;
+        result["critical_tasks"] = critical_tasks_py;
+        result["task_pressure"] = py::dict();
+        result["hotspots"] = py::list();
+        result["contention_clusters"] = py::list();
+        result["slot_duration"] = py::float_(slot_duration);
+        return result;
     }
 
     py::tuple evaluate_pipeline(const std::vector<std::vector<int>> &server_by_tenant_rank) const {
@@ -3744,5 +4211,6 @@ PYBIND11_MODULE(_te_accel, m) {
              py::object
         >())
         .def("evaluate", &TimeExpandedScoreEngine::evaluate)
-        .def("evaluate_pipeline", &TimeExpandedScoreEngine::evaluate_pipeline);
+        .def("evaluate_pipeline", &TimeExpandedScoreEngine::evaluate_pipeline)
+        .def("analyze_lightweight", &TimeExpandedScoreEngine::analyze_lightweight);
 }

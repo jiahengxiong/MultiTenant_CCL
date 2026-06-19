@@ -371,6 +371,8 @@ class TimeExpandedContentionEstimator:
                     receiver_prices[slot_idx][int(server)] = float(price)
             for edge, price in price_state.get("edge", {}).items():
                 edge_idx = edge_to_idx.get(edge)
+                if edge_idx is None and isinstance(edge, int) and 0 <= int(edge) < len(edge_items):
+                    edge_idx = int(edge)
                 if edge_idx is not None:
                     edge_prices[slot_idx][edge_idx] = float(price)
 
@@ -471,6 +473,8 @@ class TimeExpandedContentionEstimator:
                     receiver_prices[slot_idx][int(server)] = float(price)
             for edge, price in price_state.get("edge", {}).items():
                 edge_idx = edge_to_idx.get(edge)
+                if edge_idx is None and isinstance(edge, int) and 0 <= int(edge) < len(edge_items):
+                    edge_idx = int(edge)
                 if edge_idx is not None:
                     edge_prices[slot_idx][edge_idx] = float(price)
 

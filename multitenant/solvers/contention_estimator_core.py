@@ -223,6 +223,11 @@ class TimeExpandedEstimatorCore:
                     int(rank_pos[int(dst_rank)]),
                     float(self._volume_to_bits(volume)),
                     int(task_order_position.get(task_id, task_id)),
+                    int(
+                        self.data["compiled_schedule"]["per_tenant"][int(tenant)]
+                        .get("task_levels", {})
+                        .get(int(task_id), tenant_meta.get("task_levels", {}).get(int(task_id), 0))
+                    ),
                     [],
                     [],
                     0.0,
@@ -250,9 +255,9 @@ class TimeExpandedEstimatorCore:
                             pred_idx = task_index[pred_key]
                             release_prev_indices.append(pred_idx)
                             predecessors.append(pred_idx)
-                task_entries[entry_idx][6] = sorted(set(predecessors))
-                task_entries[entry_idx][7] = sorted(set(release_prev_indices))
-                task_entries[entry_idx][8] = float(release_gap)
+                task_entries[entry_idx][7] = sorted(set(predecessors))
+                task_entries[entry_idx][8] = sorted(set(release_prev_indices))
+                task_entries[entry_idx][9] = float(release_gap)
 
         try:
             self._cpp_time_expanded_engine = _te_accel.TimeExpandedScoreEngine(
@@ -319,6 +324,40 @@ class TimeExpandedEstimatorCore:
             "tenant_finish": {int(tenant): float("nan") for tenant in self.tenants},
             "slot_duration": slot_duration,
         }
+
+    def _cpp_time_expanded_lightweight_state(self, mapping):
+        engine = self._get_cpp_time_expanded_engine()
+        if engine is None or not hasattr(engine, "analyze_lightweight"):
+            return None
+        server_by_tenant_rank = [
+            [
+                int(mapping[int(tenant)][int(rank)])
+                for rank in self.rank_orders[int(tenant)]
+            ]
+            for tenant in self.tenants
+        ]
+        state = engine.analyze_lightweight(
+            server_by_tenant_rank,
+            float(self.link_price_beta),
+            float(self.link_price_gamma),
+            float(self.critical_path_price_beta),
+        )
+        edge_items = sorted(self.data.get("edge_capacity", {}))
+        for price_state in state.get("slot_prices", []):
+            edge_prices = price_state.get("edge", {})
+            if not edge_prices:
+                continue
+            translated = {}
+            changed = False
+            for edge, price in edge_prices.items():
+                if isinstance(edge, int) and 0 <= int(edge) < len(edge_items):
+                    translated[edge_items[int(edge)]] = float(price)
+                    changed = True
+                else:
+                    translated[edge] = float(price)
+            if changed:
+                price_state["edge"] = translated
+        return state
 
     def _collective_mode(self) -> bool:
         return has_collective_workload(
@@ -1646,6 +1685,10 @@ class TimeExpandedEstimatorCore:
     def _compute_time_expanded_surrogate_state(self, mapping, *, collect_signals=True, include_hotspots=True):
         if not collect_signals:
             cpp_state = self._cpp_time_expanded_score(mapping)
+            if cpp_state is not None:
+                return cpp_state
+        if collect_signals and not include_hotspots:
+            cpp_state = self._cpp_time_expanded_lightweight_state(mapping)
             if cpp_state is not None:
                 return cpp_state
 

@@ -61,7 +61,11 @@ def audit() -> dict[str, Any]:
 
     task_dag = estimator.task_dag
     release_gates = estimator.audit_release_gates()
-    state = estimator.search_state(mapping)
+    state = estimator._backbone._compute_time_expanded_surrogate_state(
+        estimator.normalize_mapping(mapping),
+        collect_signals=True,
+        include_hotspots=True,
+    )
     task_state = state["task_state"]
     predecessors = state.get("predecessors", {})
 

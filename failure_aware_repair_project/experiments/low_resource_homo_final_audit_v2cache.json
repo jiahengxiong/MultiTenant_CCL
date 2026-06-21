@@ -1,0 +1,83 @@
+{
+  "audit_by_tenant": {
+    "3": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 3
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    },
+    "4": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 1
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    },
+    "5": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 1
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    },
+    "6": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    },
+    "7": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 3
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    },
+    "8": {
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 4,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 4
+      },
+      "ok": true,
+      "protection_pool_size_expected": 4,
+      "violations": []
+    }
+  },
+  "audit_summary": {
+    "checked_strategy_mappings_total": 180,
+    "checked_trials_total": 60,
+    "ok": true,
+    "protection_pool_size_expected": 4,
+    "violations": []
+  }
+}

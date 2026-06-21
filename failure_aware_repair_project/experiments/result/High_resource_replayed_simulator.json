@@ -1,0 +1,2665 @@
+{
+  "algorithm_version": "heuristic_contention_guided_candidate_set_search_v48",
+  "all_ok": true,
+  "max_abs_metric_diff": 0.0,
+  "metric_source": "simulator_replay_from_stored_mappings",
+  "replayed_trials_by_tenant": {
+    "3": [
+      {
+        "failure": {
+          "failed_rank": 2,
+          "failed_server": 40,
+          "tenant": 2
+        },
+        "mapping_seed": 3012,
+        "methods": {
+          "baseline": {
+            "avg_jct": 147.9950142636513,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 172.63706391242246,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 90.45646523532751,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 98.72207380706904,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 138.10031899484147,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 172.6370639124225,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 115.10178407055196,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 147.87191301127783,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 3,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 29,
+          "tenant": 0
+        },
+        "mapping_seed": 3015,
+        "methods": {
+          "baseline": {
+            "avg_jct": 30.852591561296094,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 33.69431438497824,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 16.834573251418963,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 16.853732789765647,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 27.750913146253794,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 33.69431438497824,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 26.452167771532814,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 33.696193127058244,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 3,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 15,
+          "failed_server": 17,
+          "tenant": 0
+        },
+        "mapping_seed": 3016,
+        "methods": {
+          "baseline": {
+            "avg_jct": 103.10773163394727,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 148.31718754004174,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 67.06121206849572,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 90.95684020498337,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 101.75863765064018,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 148.32523377444176,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 67.06657625921572,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 90.95684020498337,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 3,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 12,
+          "failed_server": 50,
+          "tenant": 2
+        },
+        "mapping_seed": 3021,
+        "methods": {
+          "baseline": {
+            "avg_jct": 77.7440934029893,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 115.24287114306091,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 63.15788591008033,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 98.41926004544891,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 77.7440934029893,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 115.24287114306091,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 77.7440934029893,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 115.24287114306091,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 3,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 7,
+          "failed_server": 32,
+          "tenant": 0
+        },
+        "mapping_seed": 3027,
+        "methods": {
+          "baseline": {
+            "avg_jct": 103.1101141128806,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 148.31718754004174,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 55.0499481448652,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 74.17066312161798,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 79.77052084140645,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 148.32523377444173,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 67.0056298635357,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 90.97293267378338,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 3,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 15,
+          "failed_server": 50,
+          "tenant": 0
+        },
+        "mapping_seed": 3062,
+        "methods": {
+          "baseline": {
+            "avg_jct": 48.420738583209754,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 91.00883470866339,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 35.94428431051243,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 74.17066312161798,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 47.03797198736931,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 90.97293267378338,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 47.032607831102645,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 90.95684020498337,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 3,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 31,
+          "tenant": 0
+        },
+        "mapping_seed": 3074,
+        "methods": {
+          "baseline": {
+            "avg_jct": 76.13756682391113,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 115.49488029732568,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 63.236264766731324,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 98.72207380706904,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 76.13756682391113,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 115.49488029732568,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.3104159648184,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 115.5055887110857,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 3,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 10,
+          "failed_server": 38,
+          "tenant": 0
+        },
+        "mapping_seed": 3074,
+        "methods": {
+          "baseline": {
+            "avg_jct": 116.1044677698152,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 172.86593604618272,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 74.30684649356506,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 115.49488029732568,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 96.13247350767068,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 197.4013139591671,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.41393194636503,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 115.49488029732568,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 3,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 9,
+          "failed_server": 37,
+          "tenant": 1
+        },
+        "mapping_seed": 3084,
+        "methods": {
+          "baseline": {
+            "avg_jct": 142.5051004008192,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 172.6263554986625,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 90.45973442178085,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 98.71136539330902,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 142.5051004008192,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 172.6263554986625,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 142.5051004008192,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 172.6263554986625,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 3,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 9,
+          "failed_server": 43,
+          "tenant": 1
+        },
+        "mapping_seed": 3097,
+        "methods": {
+          "baseline": {
+            "avg_jct": 162.7652203249614,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 197.08660188743917,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 98.61816164864904,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 98.71196076928909,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 144.19858681113487,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 197.39090323335952,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 98.61816164864904,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 98.71196076928909,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 3,
+        "trial": 9
+      }
+    ],
+    "4": [
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 34,
+          "tenant": 2
+        },
+        "mapping_seed": 4018,
+        "methods": {
+          "baseline": {
+            "avg_jct": 132.2478263368172,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 169.4295974339429,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 78.72215379264904,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 96.76088059393179,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 130.43946539677694,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 169.45866336162285,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 120.17888950429536,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 169.44413039778286,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 12,
+          "failed_server": 58,
+          "tenant": 0
+        },
+        "mapping_seed": 4028,
+        "methods": {
+          "baseline": {
+            "avg_jct": 43.02410512967587,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 89.20613715693882,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 34.70062483435687,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 72.70508958270582,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 43.02410512967587,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 89.20613715693882,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 40.29882205767451,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 89.21604513693882,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 38,
+          "tenant": 2
+        },
+        "mapping_seed": 4028,
+        "methods": {
+          "baseline": {
+            "avg_jct": 49.45616133411469,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 89.21705704637884,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 34.703354806716874,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 38.835441657517634,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 34.703354806716874,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 4,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 8,
+          "failed_server": 34,
+          "tenant": 2
+        },
+        "mapping_seed": 4028,
+        "methods": {
+          "baseline": {
+            "avg_jct": 41.21381593383817,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 34.703354806716874,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 41.21381593383817,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 34.703354806716874,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 72.71600947214581,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 4,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 61,
+          "tenant": 1
+        },
+        "mapping_seed": 4029,
+        "methods": {
+          "baseline": {
+            "avg_jct": 105.66401107069315,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 169.42959743394286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 91.65589650573102,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 145.37949713521925,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 105.66401107069315,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 169.42959743394286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 91.65589650573102,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 145.37949713521925,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 4,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 2,
+          "tenant": 2
+        },
+        "mapping_seed": 4053,
+        "methods": {
+          "baseline": {
+            "avg_jct": 111.36342970945398,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 193.50722822402648,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 71.10313105728787,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 113.2583150937743,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 87.1841092838503,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 193.49269526018648,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 71.10313105728787,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 113.2583150937743,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 11,
+          "failed_server": 9,
+          "tenant": 1
+        },
+        "mapping_seed": 4064,
+        "methods": {
+          "baseline": {
+            "avg_jct": 157.40779666646105,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 169.44413039778286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 78.71890441076903,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 96.76088059393179,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 149.0245172248198,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 169.44413039778286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 121.07267052829549,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 169.44413039778286,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 1,
+          "failed_server": 1,
+          "tenant": 0
+        },
+        "mapping_seed": 4076,
+        "methods": {
+          "baseline": {
+            "avg_jct": 88.06202423845906,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 145.377419497075,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 59.3532450485104,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 89.21705704637884,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 70.6624223569867,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 105.71810462061185,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 60.930267262950764,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 89.21705704637884,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 11,
+          "failed_server": 47,
+          "tenant": 1
+        },
+        "mapping_seed": 4088,
+        "methods": {
+          "baseline": {
+            "avg_jct": 50.162256685444675,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 113.30191398529433,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 44.856958366083866,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 113.27284805761433,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 48.15688527360437,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 113.27284805761433,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 44.87512464768387,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 113.27284805761433,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 4,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 53,
+          "tenant": 3
+        },
+        "mapping_seed": 4103,
+        "methods": {
+          "baseline": {
+            "avg_jct": 135.95525588741776,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 169.42959743394286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 102.90625903645274,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 145.39249466273924,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 135.95525588741776,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 169.42959743394286,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 102.90625903645274,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 145.39249466273924,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 4,
+        "trial": 9
+      }
+    ],
+    "5": [
+      {
+        "failure": {
+          "failed_rank": 8,
+          "failed_server": 33,
+          "tenant": 3
+        },
+        "mapping_seed": 5016,
+        "methods": {
+          "baseline": {
+            "avg_jct": 111.15655844490713,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 189.42344822051112,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 85.68091030312645,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 116.63610820093635,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 105.0685119643239,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 189.4789374963511,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 99.76518787718007,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 165.87939870368774,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 7,
+          "failed_server": 46,
+          "tenant": 4
+        },
+        "mapping_seed": 5019,
+        "methods": {
+          "baseline": {
+            "avg_jct": 107.1934388216905,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.9348879795278,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 86.59409242879406,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 142.3664798535844,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 105.97248370706636,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 158.65021306624052,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 91.41379990556064,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 142.3664798535844,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 5,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 19,
+          "tenant": 4
+        },
+        "mapping_seed": 5031,
+        "methods": {
+          "baseline": {
+            "avg_jct": 70.78988486030559,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 106.75046005117036,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 48.60991867490682,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 71.80237269822516,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 65.79350709089951,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 103.50344951421174,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 48.60991867490682,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 71.80237269822516,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 7,
+          "failed_server": 57,
+          "tenant": 1
+        },
+        "mapping_seed": 5042,
+        "methods": {
+          "baseline": {
+            "avg_jct": 107.2560366427796,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.91639155424775,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 81.11050352437675,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 114.27285683549762,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 102.41120482831953,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 189.4419446457911,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 102.41120482831953,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 189.4419446457911,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 5,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 9,
+          "tenant": 4
+        },
+        "mapping_seed": 5042,
+        "methods": {
+          "baseline": {
+            "avg_jct": 99.14996727433096,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.87939870368774,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 70.68849456242616,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 111.07673717533939,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 92.2597707093336,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 114.04042364381775,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 91.69150236706191,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 112.55858040957855,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 10,
+          "tenant": 4
+        },
+        "mapping_seed": 5053,
+        "methods": {
+          "baseline": {
+            "avg_jct": 124.1684257492931,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 206.37665670388793,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 82.85646136373393,
+            "extra_switch_ranks_vs_failover": 4,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 111.70809091917906,
+            "switch_ranks": 5,
+            "switch_servers": 5
+          },
+          "failover": {
+            "avg_jct": 113.35764438685403,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 189.4234482205111,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 99.06225621103953,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 189.4419446457911,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 14,
+          "tenant": 3
+        },
+        "mapping_seed": 5077,
+        "methods": {
+          "baseline": {
+            "avg_jct": 105.86180273645928,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 166.66704470144273,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 75.66914819981426,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 111.69113599874835,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 98.33213649588922,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 142.36301157666614,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 75.66914819981426,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 111.69113599874835,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 3,
+          "tenant": 4
+        },
+        "mapping_seed": 5103,
+        "methods": {
+          "baseline": {
+            "avg_jct": 94.61043897609578,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.87939870368774,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 61.20809077974142,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 94.73946874814825,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 88.23466810098134,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 142.3333951255844,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 84.63939370738838,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 143.994954328466,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 5,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 3,
+          "failed_server": 49,
+          "tenant": 4
+        },
+        "mapping_seed": 5103,
+        "methods": {
+          "baseline": {
+            "avg_jct": 104.32882622527507,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.8774446424077,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 61.20769996748542,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 94.72097232286825,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 88.24206673214934,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 142.3333951255844,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 61.20769996748542,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 94.72097232286825,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 3,
+          "failed_server": 35,
+          "tenant": 4
+        },
+        "mapping_seed": 5113,
+        "methods": {
+          "baseline": {
+            "avg_jct": 144.59931102351683,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 165.87939870368774,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 108.1329035478283,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 143.5370076579055,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 143.8411415750361,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 165.89594106768774,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 132.29122066943148,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 166.52501337440836,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 5,
+        "trial": 9
+      }
+    ],
+    "6": [
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 24,
+          "tenant": 0
+        },
+        "mapping_seed": 6012,
+        "methods": {
+          "baseline": {
+            "avg_jct": 169.9983694318759,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 232.93005337044295,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 100.9792580298549,
+            "extra_switch_ranks_vs_failover": 6,
+            "extra_switch_servers_vs_failover": 6,
+            "makespan": 140.044188471497,
+            "switch_ranks": 7,
+            "switch_servers": 7
+          },
+          "failover": {
+            "avg_jct": 135.01260086758626,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 164.22218527599418,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 134.67582376593288,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 164.6199157299144,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 25,
+          "tenant": 0
+        },
+        "mapping_seed": 6017,
+        "methods": {
+          "baseline": {
+            "avg_jct": 101.23466405873444,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 140.043862157577,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 74.00417127924929,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 92.68840398078774,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 96.06090599964024,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 140.06440680637704,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 93.243737027589,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 140.043862157577,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 3,
+          "failed_server": 37,
+          "tenant": 3
+        },
+        "mapping_seed": 6041,
+        "methods": {
+          "baseline": {
+            "avg_jct": 113.68848228893542,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 163.3723969427071,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 74.1498248104009,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 93.83683560288638,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 110.98197881213652,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 163.35248804846708,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 94.63137057008394,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 140.04387903088957,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 46,
+          "tenant": 4
+        },
+        "mapping_seed": 6054,
+        "methods": {
+          "baseline": {
+            "avg_jct": 87.55128910250443,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 163.3529252708671,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 70.93729096365624,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 101.22960146848953,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 79.72748396189712,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 155.04021944383513,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 70.93729096365624,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 101.22960146848953,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 6,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 2,
+          "failed_server": 38,
+          "tenant": 2
+        },
+        "mapping_seed": 6055,
+        "methods": {
+          "baseline": {
+            "avg_jct": 103.31840660188402,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 162.19771133759272,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 78.47474110313985,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 139.17447437069637,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 90.26963581801483,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 139.19469270557636,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 78.47474110313985,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 139.17447437069637,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 8,
+          "failed_server": 62,
+          "tenant": 5
+        },
+        "mapping_seed": 6055,
+        "methods": {
+          "baseline": {
+            "avg_jct": 106.84738278711866,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 178.20161826624408,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 74.32444625924768,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 109.50616044029854,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 99.40222335473737,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 165.21095895744034,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 76.53780556572688,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 108.64709713533901,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 9,
+          "tenant": 4
+        },
+        "mapping_seed": 6065,
+        "methods": {
+          "baseline": {
+            "avg_jct": 74.74499367031562,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 140.07492994719675,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 65.56046901940782,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 88.20832801502905,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 71.96396944338272,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 139.18822924287548,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 65.56046901940782,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 88.20832801502905,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 6,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 7,
+          "failed_server": 35,
+          "tenant": 5
+        },
+        "mapping_seed": 6089,
+        "methods": {
+          "baseline": {
+            "avg_jct": 90.85467308567861,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 163.37327138750712,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 65.53582792205367,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 93.79614336960636,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 82.67140766221799,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 139.19407382433033,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 82.67140766221799,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 139.19407382433033,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 6,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 37,
+          "tenant": 4
+        },
+        "mapping_seed": 6100,
+        "methods": {
+          "baseline": {
+            "avg_jct": 94.225655311788,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 185.21855975232907,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 77.02184671460581,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 113.19141638685655,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 92.34800472848094,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 185.21855975232904,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 77.02184671460581,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 113.19141638685655,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 6,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 1,
+          "failed_server": 11,
+          "tenant": 4
+        },
+        "mapping_seed": 6101,
+        "methods": {
+          "baseline": {
+            "avg_jct": 138.2221248442361,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 202.18010159826105,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 93.89179594729374,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 114.05140573757605,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 132.79734291576102,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 186.38276201008983,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 117.36623074066415,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 186.38276201008983,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 6,
+        "trial": 9
+      }
+    ],
+    "7": [
+      {
+        "failure": {
+          "failed_rank": 2,
+          "failed_server": 36,
+          "tenant": 3
+        },
+        "mapping_seed": 7025,
+        "methods": {
+          "baseline": {
+            "avg_jct": 97.13929856806911,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 159.66655113022227,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 83.34447739543455,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 113.42964693633056,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 97.13929856806911,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 159.66655113022227,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 83.34447739543455,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 113.42964693633056,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 7,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 20,
+          "tenant": 0
+        },
+        "mapping_seed": 7028,
+        "methods": {
+          "baseline": {
+            "avg_jct": 83.27143142051209,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 197.91248543354544,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 57.51284836009389,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 106.83765044288953,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 74.13658258945894,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 182.35313147516044,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.13658258945894,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 182.35313147516044,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 7,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 4,
+          "failed_server": 36,
+          "tenant": 2
+        },
+        "mapping_seed": 7048,
+        "methods": {
+          "baseline": {
+            "avg_jct": 95.5395574010699,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 182.32769878844047,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 77.73004734642825,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 111.18144939841022,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 89.43131814539626,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 159.71741650366226,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 77.73004734642825,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 111.18144939841022,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 7,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 45,
+          "tenant": 3
+        },
+        "mapping_seed": 7073,
+        "methods": {
+          "baseline": {
+            "avg_jct": 110.71991474002589,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 152.56207041678914,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 83.32419013840597,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 106.76135238272956,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 105.78623547974955,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 159.68660978974228,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 100.78126417353863,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 137.0027164584041,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 7,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 52,
+          "tenant": 1
+        },
+        "mapping_seed": 7081,
+        "methods": {
+          "baseline": {
+            "avg_jct": 174.93747282441717,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 228.1765951823163,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 135.70101085370783,
+            "extra_switch_ranks_vs_failover": 6,
+            "extra_switch_servers_vs_failover": 6,
+            "makespan": 195.3747219109879,
+            "switch_ranks": 7,
+            "switch_servers": 7
+          },
+          "failover": {
+            "avg_jct": 163.24351872956714,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 228.19468560663626,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 146.20107296071396,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 195.20533212410805,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          }
+        },
+        "tenant_count": 7,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 2,
+          "failed_server": 14,
+          "tenant": 4
+        },
+        "mapping_seed": 7083,
+        "methods": {
+          "baseline": {
+            "avg_jct": 108.61868741125865,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 182.32769878844044,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 81.28822488402852,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 106.76135238272956,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 103.41693283597384,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 182.32769878844044,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 81.28822488402852,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 106.76135238272956,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 7,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 4,
+          "tenant": 2
+        },
+        "mapping_seed": 7096,
+        "methods": {
+          "baseline": {
+            "avg_jct": 69.07191005535617,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 159.66655113022227,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 50.977711761555376,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 91.27829648448719,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 59.695322304368084,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 99.72242167504847,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 50.977711761555376,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 4,
+            "makespan": 91.27829648448719,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          }
+        },
+        "tenant_count": 7,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 1,
+          "failed_server": 26,
+          "tenant": 2
+        },
+        "mapping_seed": 7106,
+        "methods": {
+          "baseline": {
+            "avg_jct": 90.30391275027942,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 182.32769878844044,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 65.17958535634607,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 106.76135238272956,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 83.68639314310182,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 175.2259050886073,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 65.17958535634607,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 106.76135238272956,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 7,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 8,
+          "tenant": 3
+        },
+        "mapping_seed": 7107,
+        "methods": {
+          "baseline": {
+            "avg_jct": 86.74592546797263,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 175.26405417244726,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 63.60042859904314,
+            "extra_switch_ranks_vs_failover": 3,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 106.76135238272954,
+            "switch_ranks": 4,
+            "switch_servers": 4
+          },
+          "failover": {
+            "avg_jct": 79.23744923343465,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 197.88705274682545,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 79.23744923343465,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 197.88705274682545,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          }
+        },
+        "tenant_count": 7,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 3,
+          "failed_server": 61,
+          "tenant": 6
+        },
+        "mapping_seed": 7119,
+        "methods": {
+          "baseline": {
+            "avg_jct": 184.63396370770027,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 250.8176841810144,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 108.67573043003765,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 159.70209556926227,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 152.69847134967708,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 175.2259050886073,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 147.17237277806544,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 159.70209556926227,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 7,
+        "trial": 9
+      }
+    ],
+    "8": [
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 2,
+          "tenant": 2
+        },
+        "mapping_seed": 8022,
+        "methods": {
+          "baseline": {
+            "avg_jct": 95.33062219130797,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 149.4481170774099,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 66.62982714840031,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 87.45833164223617,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 78.21788085771452,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.22814073405638,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 76.03677192119424,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 134.22814073405638,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 0
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 31,
+          "tenant": 7
+        },
+        "mapping_seed": 8022,
+        "methods": {
+          "baseline": {
+            "avg_jct": 94.63225079670877,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 149.4699568562899,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 59.75141753916046,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 84.93986873407722,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 81.71323265771194,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.22814073405638,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 78.91777013391464,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 134.22814073405638,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 1
+      },
+      {
+        "failure": {
+          "failed_rank": 6,
+          "failed_server": 14,
+          "tenant": 1
+        },
+        "mapping_seed": 8024,
+        "methods": {
+          "baseline": {
+            "avg_jct": 78.29991986564647,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 171.68308441154022,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 57.25271438440326,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 104.64898567873,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 66.08358779252465,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 104.64898567873,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 57.25271438440326,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 104.64898567873,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 2
+      },
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 28,
+          "tenant": 0
+        },
+        "mapping_seed": 8036,
+        "methods": {
+          "baseline": {
+            "avg_jct": 91.67931338224801,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 171.65401848386023,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 61.23271380930363,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 104.59085382336998,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 81.34718358194644,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 156.4122023616179,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.31749741342537,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 119.8326699456123,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 3
+      },
+      {
+        "failure": {
+          "failed_rank": 5,
+          "failed_server": 30,
+          "tenant": 7
+        },
+        "mapping_seed": 8049,
+        "methods": {
+          "baseline": {
+            "avg_jct": 154.55620629891763,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 245.7321741350716,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 110.47271465343088,
+            "extra_switch_ranks_vs_failover": 5,
+            "extra_switch_servers_vs_failover": 5,
+            "makespan": 156.4351265440179,
+            "switch_ranks": 6,
+            "switch_servers": 6
+          },
+          "failover": {
+            "avg_jct": 144.36730134851604,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 186.20490357122245,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 135.97504155619478,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 178.69357842178133,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 4
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 11,
+          "tenant": 0
+        },
+        "mapping_seed": 8058,
+        "methods": {
+          "baseline": {
+            "avg_jct": 85.64077615833368,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 149.4481170774099,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 64.8066055455213,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 82.4214058259183,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 78.81418934377608,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.20630095517637,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 64.8066055455213,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 82.4214058259183,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 8,
+        "trial": 5
+      },
+      {
+        "failure": {
+          "failed_rank": 1,
+          "failed_server": 21,
+          "tenant": 0
+        },
+        "mapping_seed": 8058,
+        "methods": {
+          "baseline": {
+            "avg_jct": 77.80601114217639,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 134.20630095517637,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 64.8066055455213,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 82.4214058259183,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 76.26907978875596,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.20630095517637,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 64.8066055455213,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 82.4214058259183,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          }
+        },
+        "tenant_count": 8,
+        "trial": 6
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 1,
+          "tenant": 4
+        },
+        "mapping_seed": 8073,
+        "methods": {
+          "baseline": {
+            "avg_jct": 91.78912230540807,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 171.68308441154022,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 63.47528904706372,
+            "extra_switch_ranks_vs_failover": 2,
+            "extra_switch_servers_vs_failover": 3,
+            "makespan": 105.01696542481005,
+            "switch_ranks": 3,
+            "switch_servers": 3
+          },
+          "failover": {
+            "avg_jct": 79.64931465720623,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.2364512864145,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.1604803027654,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 134.26244634145453,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 7
+      },
+      {
+        "failure": {
+          "failed_rank": 0,
+          "failed_server": 12,
+          "tenant": 7
+        },
+        "mapping_seed": 8094,
+        "methods": {
+          "baseline": {
+            "avg_jct": 88.1352345017075,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 193.85269374146364,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 59.19266039968307,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 104.67805160641,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 68.68599771122452,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 119.8617358732923,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 59.19266039968307,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 104.67805160641,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 8
+      },
+      {
+        "failure": {
+          "failed_rank": 2,
+          "failed_server": 52,
+          "tenant": 4
+        },
+        "mapping_seed": 8097,
+        "methods": {
+          "baseline": {
+            "avg_jct": 95.42531044116859,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 1,
+            "makespan": 149.45227235361685,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "coordinate": {
+            "avg_jct": 74.30856855488537,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 89.37810362880766,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          },
+          "failover": {
+            "avg_jct": 89.17867746046764,
+            "extra_switch_ranks_vs_failover": 0,
+            "extra_switch_servers_vs_failover": 0,
+            "makespan": 134.2364512864145,
+            "switch_ranks": 1,
+            "switch_servers": 1
+          },
+          "local": {
+            "avg_jct": 74.30856855488537,
+            "extra_switch_ranks_vs_failover": 1,
+            "extra_switch_servers_vs_failover": 2,
+            "makespan": 89.37810362880766,
+            "switch_ranks": 2,
+            "switch_servers": 2
+          }
+        },
+        "tenant_count": 8,
+        "trial": 9
+      }
+    ]
+  },
+  "source_result_json": "/Users/xiongjiaheng/server_protection/MultiTenant_CCL/failure_aware_repair_project/experiments/result/High_resource.json",
+  "source_result_json_modified": false,
+  "source_result_json_sha256": "865aa0999d143790b263914c5e41a1221bedb45f962d9721194b701c8e87c143",
+  "trials": 60,
+  "workload_mode": "low_contention_dominant"
+}

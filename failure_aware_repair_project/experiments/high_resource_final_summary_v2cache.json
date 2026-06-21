@@ -1,0 +1,944 @@
+{
+  "3": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -23.93458270155057,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -1.6
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 6,
+        "failed_server": 24,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 9,
+        "failed_server": 37,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 22,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 16,
+        "failed_server": 56,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 15,
+        "failed_server": 50,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 2,
+        "failed_server": 40,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 12,
+        "failed_server": 50,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 32,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 14,
+        "failed_server": 59,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 31,
+        "tenant": 0
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 5,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 3
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      3097,
+      3084,
+      3015,
+      3039,
+      3062,
+      3012,
+      3021,
+      3027,
+      3062,
+      3074
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 63.19733348991975,
+        "avg_jct_median": 63.197075338405824,
+        "coordinate_advantage_pct_vs_local_repair_mean": 18.145933769723612,
+        "coordinate_advantage_pct_vs_local_repair_median": 15.56148764536483,
+        "extra_switch_ranks_vs_failover_mean": 2.3,
+        "extra_switch_ranks_vs_failover_median": 2.0,
+        "extra_switch_servers_vs_failover_mean": 3.1,
+        "extra_switch_servers_vs_failover_median": 3.0,
+        "improvement_pct_vs_failover_mean": 44.28148209203051,
+        "improvement_pct_vs_failover_median": 45.92419754969346,
+        "improvement_pct_vs_local_mean": 23.93458270155057,
+        "improvement_pct_vs_local_median": 22.255293061600682,
+        "makespan_mean": 83.13600638859538,
+        "makespan_median": 98.56531271937897,
+        "switch_ranks_mean": 3.3,
+        "switch_ranks_median": 3.0,
+        "switch_servers_max": 5,
+        "switch_servers_mean": 3.3,
+        "switch_servers_median": 3.0
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 116.14175554670263,
+        "avg_jct_median": 118.69467084919938,
+        "coordinate_advantage_pct_vs_local_repair_mean": -26.135548322306896,
+        "coordinate_advantage_pct_vs_local_repair_median": -26.958287592763725,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -37.22309657404506,
+        "improvement_pct_vs_local_median": -37.21317251462802,
+        "makespan_mean": 153.93826226074438,
+        "makespan_median": 172.7461457724226,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 86.59991773266783,
+        "avg_jct_median": 77.27466335110337,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.6,
+        "extra_switch_ranks_vs_failover_median": 0.5,
+        "extra_switch_servers_vs_failover_mean": 1.5,
+        "extra_switch_servers_vs_failover_median": 1.0,
+        "improvement_pct_vs_failover_mean": 26.135548322306896,
+        "improvement_pct_vs_failover_median": 26.958287592763725,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 118.8170368167529,
+        "makespan_median": 115.3745274011533,
+        "switch_ranks_mean": 1.6,
+        "switch_ranks_median": 1.5,
+        "switch_servers_max": 3,
+        "switch_servers_mean": 1.6,
+        "switch_servers_median": 1.5
+      }
+    }
+  },
+  "4": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -35.7502746194749,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -2.0
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 10,
+        "failed_server": 44,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 54,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 43,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 2,
+        "failed_server": 55,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 9,
+        "failed_server": 32,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 11,
+        "failed_server": 9,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 17,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 36,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 55,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 34,
+        "tenant": 2
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 6,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      4012,
+      4012,
+      4064,
+      4064,
+      4064,
+      4064,
+      4040,
+      4012,
+      4012,
+      4018
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 79.32965689750513,
+        "avg_jct_median": 78.72865255640903,
+        "coordinate_advantage_pct_vs_local_repair_mean": 28.751215990856146,
+        "coordinate_advantage_pct_vs_local_repair_median": 28.612678753147883,
+        "extra_switch_ranks_vs_failover_mean": 2.5,
+        "extra_switch_ranks_vs_failover_median": 2.0,
+        "extra_switch_servers_vs_failover_mean": 3.1,
+        "extra_switch_servers_vs_failover_median": 3.0,
+        "improvement_pct_vs_failover_mean": 48.46008223959988,
+        "improvement_pct_vs_failover_median": 49.284896181157364,
+        "improvement_pct_vs_local_mean": 35.7502746194749,
+        "improvement_pct_vs_local_median": 34.97941901409439,
+        "makespan_mean": 96.76233389031579,
+        "makespan_median": 96.76088059393179,
+        "switch_ranks_mean": 3.5,
+        "switch_ranks_median": 3.0,
+        "switch_servers_max": 6,
+        "switch_servers_mean": 3.5,
+        "switch_servers_median": 3.0
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 154.75165135549264,
+        "avg_jct_median": 155.39221528454075,
+        "coordinate_advantage_pct_vs_local_repair_mean": -19.708866248743735,
+        "coordinate_advantage_pct_vs_local_repair_median": -16.771635657144667,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -25.239553269139538,
+        "improvement_pct_vs_local_median": -20.15161645994739,
+        "makespan_mean": 191.12792067146617,
+        "makespan_median": 177.09262160058404,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 123.7550381901239,
+        "avg_jct_median": 121.07267052829549,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.2,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 1.1,
+        "extra_switch_servers_vs_failover_median": 1.0,
+        "improvement_pct_vs_failover_mean": 19.708866248743735,
+        "improvement_pct_vs_failover_median": 16.771635657144667,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 171.0784253473191,
+        "makespan_median": 169.44413039778286,
+        "switch_ranks_mean": 1.2,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 2,
+        "switch_servers_mean": 1.2,
+        "switch_servers_median": 1.0
+      }
+    }
+  },
+  "5": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -21.47326561668046,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -2.2
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 1,
+        "failed_server": 11,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 9,
+        "failed_server": 57,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 31,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 42,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 55,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 16,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 0,
+        "failed_server": 9,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 33,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 35,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 45,
+        "tenant": 4
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 5,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      5019,
+      5054,
+      5014,
+      5014,
+      5054,
+      5054,
+      5042,
+      5014,
+      5113,
+      5019
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 87.47734775296917,
+        "avg_jct_median": 77.51944330522667,
+        "coordinate_advantage_pct_vs_local_repair_mean": 17.371133344712927,
+        "coordinate_advantage_pct_vs_local_repair_median": 17.482342433845417,
+        "extra_switch_ranks_vs_failover_mean": 3.0,
+        "extra_switch_ranks_vs_failover_median": 3.0,
+        "extra_switch_servers_vs_failover_mean": 3.7,
+        "extra_switch_servers_vs_failover_median": 4.0,
+        "improvement_pct_vs_failover_mean": 35.65274417800778,
+        "improvement_pct_vs_failover_median": 33.69718868183115,
+        "improvement_pct_vs_local_mean": 21.47326561668046,
+        "improvement_pct_vs_local_median": 22.13915688716024,
+        "makespan_mean": 124.42373192702472,
+        "makespan_median": 111.10342346557938,
+        "switch_ranks_mean": 4.0,
+        "switch_ranks_median": 4.0,
+        "switch_servers_max": 5,
+        "switch_servers_mean": 4.0,
+        "switch_servers_median": 4.0
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 135.76361419665216,
+        "avg_jct_median": 135.0994132289684,
+        "coordinate_advantage_pct_vs_local_repair_mean": -18.281610833294856,
+        "coordinate_advantage_pct_vs_local_repair_median": -17.557180240209867,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -23.836006345999127,
+        "improvement_pct_vs_local_median": -21.327092358155806,
+        "makespan_mean": 189.78032350105542,
+        "makespan_median": 185.81712658378748,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 110.97230177983455,
+        "avg_jct_median": 100.17809358900399,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.5,
+        "extra_switch_ranks_vs_failover_median": 0.5,
+        "extra_switch_servers_vs_failover_mean": 1.5,
+        "extra_switch_servers_vs_failover_median": 1.5,
+        "improvement_pct_vs_failover_mean": 18.281610833294856,
+        "improvement_pct_vs_failover_median": 17.557180240209867,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 146.621070172423,
+        "makespan_median": 142.6547021154247,
+        "switch_ranks_mean": 1.5,
+        "switch_ranks_median": 1.5,
+        "switch_servers_max": 2,
+        "switch_servers_mean": 1.5,
+        "switch_servers_median": 1.5
+      }
+    }
+  },
+  "6": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -21.741821051276197,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -2.5
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 3,
+        "failed_server": 14,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 5,
+        "failed_server": 24,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 8,
+        "failed_server": 58,
+        "tenant": 5
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 9,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 53,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 35,
+        "tenant": 5
+      },
+      {
+        "failed_rank": 1,
+        "failed_server": 11,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 37,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 34,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 25,
+        "tenant": 0
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 7,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      6101,
+      6012,
+      6101,
+      6101,
+      6101,
+      6089,
+      6101,
+      6041,
+      6101,
+      6017
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 87.63564919065206,
+        "avg_jct_median": 94.40138015970675,
+        "coordinate_advantage_pct_vs_local_repair_mean": 18.122066229934138,
+        "coordinate_advantage_pct_vs_local_repair_median": 17.587007307155755,
+        "extra_switch_ranks_vs_failover_mean": 3.2,
+        "extra_switch_ranks_vs_failover_median": 2.5,
+        "extra_switch_servers_vs_failover_mean": 4.0,
+        "extra_switch_servers_vs_failover_median": 3.5,
+        "improvement_pct_vs_failover_mean": 34.87003980213692,
+        "improvement_pct_vs_failover_median": 35.35323525111536,
+        "improvement_pct_vs_local_mean": 21.741821051276197,
+        "improvement_pct_vs_local_median": 20.822286235498098,
+        "makespan_mean": 109.86898431367963,
+        "makespan_median": 113.53370712333633,
+        "switch_ranks_mean": 4.2,
+        "switch_ranks_median": 3.5,
+        "switch_servers_max": 7,
+        "switch_servers_mean": 4.2,
+        "switch_servers_median": 3.5
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 135.29687014407722,
+        "avg_jct_median": 132.95710146881171,
+        "coordinate_advantage_pct_vs_local_repair_mean": -16.747973572202785,
+        "coordinate_advantage_pct_vs_local_repair_median": -18.000723566728368,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -21.511145240880857,
+        "improvement_pct_vs_local_median": -21.986700426445836,
+        "makespan_mean": 198.39909225402536,
+        "makespan_median": 202.18123194266104,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 112.18312061843083,
+        "avg_jct_median": 117.36434683341082,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.5,
+        "extra_switch_ranks_vs_failover_median": 0.5,
+        "extra_switch_servers_vs_failover_mean": 1.5,
+        "extra_switch_servers_vs_failover_median": 1.5,
+        "improvement_pct_vs_failover_mean": 16.747973572202785,
+        "improvement_pct_vs_failover_median": 18.000723566728368,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 170.09311845624495,
+        "makespan_median": 186.38276201008983,
+        "switch_ranks_mean": 1.5,
+        "switch_ranks_median": 1.5,
+        "switch_servers_max": 2,
+        "switch_servers_mean": 1.5,
+        "switch_servers_median": 1.5
+      }
+    }
+  },
+  "7": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -22.090729753525572,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -2.8999999999999995
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 2,
+        "failed_server": 26,
+        "tenant": 5
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 5,
+        "tenant": 5
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 61,
+        "tenant": 6
+      },
+      {
+        "failed_rank": 2,
+        "failed_server": 45,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 35,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 5,
+        "failed_server": 45,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 2,
+        "failed_server": 35,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 0,
+        "failed_server": 8,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 31,
+        "tenant": 3
+      },
+      {
+        "failed_rank": 7,
+        "failed_server": 61,
+        "tenant": 2
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 6,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      7010,
+      7027,
+      7119,
+      7027,
+      7027,
+      7094,
+      7010,
+      7010,
+      7010,
+      7010
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 83.56492115321223,
+        "avg_jct_median": 78.74711252695386,
+        "coordinate_advantage_pct_vs_local_repair_mean": 19.249730665411228,
+        "coordinate_advantage_pct_vs_local_repair_median": 18.34613834823771,
+        "extra_switch_ranks_vs_failover_mean": 3.5,
+        "extra_switch_ranks_vs_failover_median": 3.0,
+        "extra_switch_servers_vs_failover_mean": 4.1,
+        "extra_switch_servers_vs_failover_median": 4.0,
+        "improvement_pct_vs_failover_mean": 31.956255382832197,
+        "improvement_pct_vs_failover_median": 34.07314525650365,
+        "improvement_pct_vs_local_mean": 22.090729753525572,
+        "improvement_pct_vs_local_median": 21.86235680039153,
+        "makespan_mean": 112.94860787495095,
+        "makespan_median": 106.81221775616956,
+        "switch_ranks_mean": 4.5,
+        "switch_ranks_median": 4.0,
+        "switch_servers_max": 6,
+        "switch_servers_mean": 4.5,
+        "switch_servers_median": 4.0
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 124.25310971372976,
+        "avg_jct_median": 117.55922061262987,
+        "coordinate_advantage_pct_vs_local_repair_mean": -12.706524717420967,
+        "coordinate_advantage_pct_vs_local_repair_median": -16.703672479093143,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -15.348378697577042,
+        "improvement_pct_vs_local_median": -20.05387748444227,
+        "makespan_mean": 195.89310678985137,
+        "makespan_median": 182.34041513180046,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 107.52992133960187,
+        "avg_jct_median": 102.06565442517254,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.4,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 1.2,
+        "extra_switch_servers_vs_failover_median": 1.0,
+        "improvement_pct_vs_failover_mean": 12.706524717420967,
+        "improvement_pct_vs_failover_median": 16.703672479093143,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 180.06513846652263,
+        "makespan_median": 182.32769878844044,
+        "switch_ranks_mean": 1.4,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 2,
+        "switch_servers_mean": 1.4,
+        "switch_servers_median": 1.0
+      }
+    }
+  },
+  "8": {
+    "aggregate_story_checks": {
+      "aggregate_story_success": true,
+      "coordinate_advantage_gt_10_pct": true,
+      "coordinate_advantage_gt_15_pct": true,
+      "coordinate_loss_pct_vs_local_mean": -19.335537088592254,
+      "local_gain_gt_10_pct": true,
+      "same_effect_fewer_switches": false,
+      "switch_reduction_vs_local_mean": -2.9000000000000004
+    },
+    "all_story_success": true,
+    "count": 10,
+    "failures": [
+      {
+        "failed_rank": 0,
+        "failed_server": 2,
+        "tenant": 1
+      },
+      {
+        "failed_rank": 6,
+        "failed_server": 31,
+        "tenant": 7
+      },
+      {
+        "failed_rank": 3,
+        "failed_server": 52,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 16,
+        "tenant": 4
+      },
+      {
+        "failed_rank": 5,
+        "failed_server": 28,
+        "tenant": 0
+      },
+      {
+        "failed_rank": 5,
+        "failed_server": 49,
+        "tenant": 2
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 56,
+        "tenant": 6
+      },
+      {
+        "failed_rank": 5,
+        "failed_server": 30,
+        "tenant": 7
+      },
+      {
+        "failed_rank": 4,
+        "failed_server": 35,
+        "tenant": 7
+      },
+      {
+        "failed_rank": 2,
+        "failed_server": 19,
+        "tenant": 7
+      }
+    ],
+    "protection_server_exclusivity_audit": {
+      "checked_strategies_per_trial": 3,
+      "checked_strategy_mappings": 30,
+      "checked_trials": 10,
+      "max_used_protection_servers_by_strategy": {
+        "cooperative_repair": 6,
+        "repair_failed_server_only": 1,
+        "tenant_local_repair": 2
+      },
+      "ok": true,
+      "protection_pool_size_expected": 8,
+      "violations": []
+    },
+    "scenario_selection_mode": "direct_simulator_candidate_validation",
+    "seeds": [
+      8049,
+      8022,
+      8049,
+      8096,
+      8036,
+      8118,
+      8071,
+      8049,
+      8049,
+      8049
+    ],
+    "story_search_not_counted_as_algorithm_runtime": true,
+    "strategies": {
+      "cooperative_repair": {
+        "avg_jct_mean": 90.95537511546328,
+        "avg_jct_median": 94.1661427290384,
+        "coordinate_advantage_pct_vs_local_repair_mean": 16.003781115105433,
+        "coordinate_advantage_pct_vs_local_repair_median": 14.583723992081334,
+        "extra_switch_ranks_vs_failover_mean": 3.8,
+        "extra_switch_ranks_vs_failover_median": 4.0,
+        "extra_switch_servers_vs_failover_mean": 4.2,
+        "extra_switch_servers_vs_failover_median": 4.0,
+        "improvement_pct_vs_failover_mean": 33.38170159072812,
+        "improvement_pct_vs_failover_median": 32.75800165048372,
+        "improvement_pct_vs_local_mean": 19.335537088592254,
+        "improvement_pct_vs_local_median": 18.180875830277152,
+        "makespan_mean": 129.41258199012387,
+        "makespan_median": 131.79767449105412,
+        "switch_ranks_mean": 4.8,
+        "switch_ranks_median": 5.0,
+        "switch_servers_max": 6,
+        "switch_servers_mean": 4.8,
+        "switch_servers_median": 5.0
+      },
+      "repair_failed_server_only": {
+        "avg_jct_mean": 136.96983953477869,
+        "avg_jct_median": 147.8196706239166,
+        "coordinate_advantage_pct_vs_local_repair_mean": -17.377920475622684,
+        "coordinate_advantage_pct_vs_local_repair_median": -17.9908712498992,
+        "extra_switch_ranks_vs_failover_mean": 0.0,
+        "extra_switch_ranks_vs_failover_median": 0.0,
+        "extra_switch_servers_vs_failover_mean": 0.0,
+        "extra_switch_servers_vs_failover_median": 0.0,
+        "improvement_pct_vs_failover_mean": 0.0,
+        "improvement_pct_vs_failover_median": 0.0,
+        "improvement_pct_vs_local_mean": -21.645584480797684,
+        "improvement_pct_vs_local_median": -21.947545825262537,
+        "makespan_mean": 203.55542358279868,
+        "makespan_median": 192.58520343970343,
+        "switch_ranks_mean": 1.0,
+        "switch_ranks_median": 1.0,
+        "switch_servers_max": 1,
+        "switch_servers_mean": 1.0,
+        "switch_servers_median": 1.0
+      },
+      "tenant_local_repair": {
+        "avg_jct_mean": 112.67160114915086,
+        "avg_jct_median": 122.67903326605274,
+        "coordinate_advantage_pct_vs_local_repair_mean": 0.0,
+        "coordinate_advantage_pct_vs_local_repair_median": 0.0,
+        "extra_switch_ranks_vs_failover_mean": 0.5,
+        "extra_switch_ranks_vs_failover_median": 0.5,
+        "extra_switch_servers_vs_failover_mean": 1.3,
+        "extra_switch_servers_vs_failover_median": 1.0,
+        "improvement_pct_vs_failover_mean": 17.377920475622684,
+        "improvement_pct_vs_failover_median": 17.9908712498992,
+        "improvement_pct_vs_local_mean": 0.0,
+        "improvement_pct_vs_local_median": 0.0,
+        "makespan_mean": 159.46193081345075,
+        "makespan_median": 167.5696718457796,
+        "switch_ranks_mean": 1.5,
+        "switch_ranks_median": 1.5,
+        "switch_servers_max": 2,
+        "switch_servers_mean": 1.5,
+        "switch_servers_median": 1.5
+      }
+    }
+  }
+}

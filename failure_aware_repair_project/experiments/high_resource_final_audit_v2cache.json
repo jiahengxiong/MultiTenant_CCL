@@ -1,0 +1,7440 @@
+{
+  "audit_by_tenant": {
+    "3": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 5,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 3
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 24,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 3097,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                10,
+                22,
+                31,
+                37,
+                42,
+                53,
+                58
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "22": null,
+                "31": [
+                  2,
+                  6
+                ],
+                "37": [
+                  0,
+                  10
+                ],
+                "42": [
+                  2,
+                  5
+                ],
+                "53": null,
+                "58": null,
+                "6": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                31,
+                37,
+                42
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                10,
+                22,
+                31,
+                37,
+                42,
+                53,
+                58
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "22": null,
+                "31": null,
+                "37": null,
+                "42": null,
+                "53": null,
+                "58": null,
+                "6": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                10,
+                22,
+                31,
+                37,
+                42,
+                53,
+                58
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "22": null,
+                "31": [
+                  2,
+                  6
+                ],
+                "37": null,
+                "42": null,
+                "53": null,
+                "58": null,
+                "6": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                31
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 9,
+            "failed_server": 37,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 3084,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                17,
+                27,
+                38,
+                45,
+                49,
+                63
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "17": null,
+                "2": null,
+                "27": [
+                  2,
+                  8
+                ],
+                "38": [
+                  2,
+                  11
+                ],
+                "45": [
+                  1,
+                  9
+                ],
+                "49": [
+                  0,
+                  2
+                ],
+                "63": [
+                  0,
+                  1
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                27,
+                38,
+                45,
+                49,
+                63
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                17,
+                27,
+                38,
+                45,
+                49,
+                63
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "17": null,
+                "2": [
+                  1,
+                  9
+                ],
+                "27": null,
+                "38": null,
+                "45": null,
+                "49": null,
+                "63": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                17,
+                27,
+                38,
+                45,
+                49,
+                63
+              ],
+              "protection_server_owners": {
+                "10": [
+                  1,
+                  9
+                ],
+                "17": null,
+                "2": null,
+                "27": null,
+                "38": null,
+                "45": null,
+                "49": null,
+                "63": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                10
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 22,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 3015,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                4,
+                8,
+                16,
+                31,
+                38,
+                47,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "16": null,
+                "31": null,
+                "38": [
+                  0,
+                  8
+                ],
+                "4": [
+                  0,
+                  0
+                ],
+                "47": null,
+                "55": null,
+                "63": [
+                  0,
+                  7
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                4,
+                38,
+                63
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                4,
+                8,
+                16,
+                31,
+                38,
+                47,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "16": null,
+                "31": null,
+                "38": null,
+                "4": [
+                  0,
+                  7
+                ],
+                "47": null,
+                "55": null,
+                "63": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                4
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                4,
+                8,
+                16,
+                31,
+                38,
+                47,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "16": null,
+                "31": null,
+                "38": [
+                  0,
+                  8
+                ],
+                "4": null,
+                "47": null,
+                "55": null,
+                "63": [
+                  0,
+                  7
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                38,
+                63
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 16,
+            "failed_server": 56,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 3039,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                0,
+                11,
+                21,
+                27,
+                37,
+                47,
+                48,
+                59
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "11": null,
+                "21": null,
+                "27": null,
+                "37": null,
+                "47": [
+                  1,
+                  16
+                ],
+                "48": [
+                  0,
+                  17
+                ],
+                "59": [
+                  2,
+                  14
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                47,
+                48,
+                59
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                11,
+                21,
+                27,
+                37,
+                47,
+                48,
+                59
+              ],
+              "protection_server_owners": {
+                "0": [
+                  1,
+                  16
+                ],
+                "11": null,
+                "21": null,
+                "27": null,
+                "37": null,
+                "47": null,
+                "48": null,
+                "59": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                0,
+                11,
+                21,
+                27,
+                37,
+                47,
+                48,
+                59
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "11": [
+                  1,
+                  15
+                ],
+                "21": null,
+                "27": [
+                  1,
+                  16
+                ],
+                "37": null,
+                "47": null,
+                "48": null,
+                "59": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                11,
+                27
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 15,
+            "failed_server": 50,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 3062,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "24": [
+                  2,
+                  9
+                ],
+                "33": [
+                  0,
+                  14
+                ],
+                "41": null,
+                "54": [
+                  0,
+                  15
+                ],
+                "6": null,
+                "62": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                24,
+                33,
+                54
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "6": [
+                  0,
+                  15
+                ],
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "24": [
+                  0,
+                  15
+                ],
+                "33": null,
+                "41": null,
+                "54": null,
+                "6": null,
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                24
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 40,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 3012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                36,
+                41,
+                52,
+                60
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "23": null,
+                "27": [
+                  1,
+                  6
+                ],
+                "36": null,
+                "4": null,
+                "41": [
+                  2,
+                  2
+                ],
+                "52": null,
+                "60": [
+                  1,
+                  12
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                27,
+                41,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                36,
+                41,
+                52,
+                60
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "23": null,
+                "27": null,
+                "36": null,
+                "4": [
+                  2,
+                  2
+                ],
+                "41": null,
+                "52": null,
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                4
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                36,
+                41,
+                52,
+                60
+              ],
+              "protection_server_owners": {
+                "11": [
+                  2,
+                  3
+                ],
+                "23": null,
+                "27": null,
+                "36": null,
+                "4": null,
+                "41": [
+                  2,
+                  1
+                ],
+                "52": [
+                  2,
+                  2
+                ],
+                "60": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                11,
+                41,
+                52
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 12,
+            "failed_server": 50,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 3021,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                1,
+                8,
+                16,
+                28,
+                36,
+                40,
+                52,
+                61
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "16": [
+                  1,
+                  3
+                ],
+                "28": [
+                  1,
+                  8
+                ],
+                "36": null,
+                "40": [
+                  2,
+                  12
+                ],
+                "52": null,
+                "61": null,
+                "8": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                16,
+                28,
+                40
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                8,
+                16,
+                28,
+                36,
+                40,
+                52,
+                61
+              ],
+              "protection_server_owners": {
+                "1": [
+                  2,
+                  12
+                ],
+                "16": null,
+                "28": null,
+                "36": null,
+                "40": null,
+                "52": null,
+                "61": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                8,
+                16,
+                28,
+                36,
+                40,
+                52,
+                61
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "16": [
+                  2,
+                  12
+                ],
+                "28": null,
+                "36": null,
+                "40": null,
+                "52": null,
+                "61": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                16
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 32,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 3027,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                2,
+                14,
+                16,
+                25,
+                34,
+                47,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "14": [
+                  1,
+                  3
+                ],
+                "16": null,
+                "2": [
+                  0,
+                  7
+                ],
+                "25": null,
+                "34": [
+                  2,
+                  0
+                ],
+                "47": null,
+                "55": null,
+                "62": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                2,
+                14,
+                34
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                14,
+                16,
+                25,
+                34,
+                47,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "14": null,
+                "16": null,
+                "2": [
+                  0,
+                  7
+                ],
+                "25": null,
+                "34": null,
+                "47": null,
+                "55": null,
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                2,
+                14,
+                16,
+                25,
+                34,
+                47,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "14": null,
+                "16": null,
+                "2": [
+                  0,
+                  7
+                ],
+                "25": null,
+                "34": null,
+                "47": null,
+                "55": [
+                  0,
+                  6
+                ],
+                "62": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                2,
+                55
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 14,
+            "failed_server": 59,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 3062,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": [
+                  2,
+                  14
+                ],
+                "19": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "6": null,
+                "62": [
+                  0,
+                  0
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                12,
+                62
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "6": [
+                  2,
+                  14
+                ],
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                12,
+                19,
+                24,
+                33,
+                41,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": [
+                  2,
+                  14
+                ],
+                "24": null,
+                "33": [
+                  2,
+                  15
+                ],
+                "41": null,
+                "54": null,
+                "6": null,
+                "62": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                19,
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 31,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 3074,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                17,
+                28,
+                32,
+                46,
+                49,
+                56
+              ],
+              "protection_server_owners": {
+                "11": [
+                  1,
+                  16
+                ],
+                "17": [
+                  0,
+                  6
+                ],
+                "28": [
+                  2,
+                  13
+                ],
+                "32": null,
+                "4": null,
+                "46": [
+                  0,
+                  7
+                ],
+                "49": null,
+                "56": [
+                  2,
+                  16
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                11,
+                17,
+                28,
+                46,
+                56
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                17,
+                28,
+                32,
+                46,
+                49,
+                56
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "17": null,
+                "28": null,
+                "32": null,
+                "4": [
+                  0,
+                  6
+                ],
+                "46": null,
+                "49": null,
+                "56": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                4
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                17,
+                28,
+                32,
+                46,
+                49,
+                56
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "17": null,
+                "28": [
+                  0,
+                  6
+                ],
+                "32": null,
+                "4": null,
+                "46": null,
+                "49": null,
+                "56": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                28
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    },
+    "4": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 6,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 2
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 10,
+            "failed_server": 44,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 4012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": [
+                  2,
+                  0
+                ],
+                "24": null,
+                "33": [
+                  0,
+                  5
+                ],
+                "41": [
+                  3,
+                  10
+                ],
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                2,
+                33,
+                41
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": [
+                  3,
+                  10
+                ],
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": [
+                  3,
+                  10
+                ],
+                "2": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                19
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 54,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 4012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": [
+                  3,
+                  3
+                ],
+                "2": [
+                  2,
+                  0
+                ],
+                "24": null,
+                "33": [
+                  0,
+                  5
+                ],
+                "41": null,
+                "48": [
+                  1,
+                  4
+                ],
+                "58": null
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                2,
+                19,
+                33,
+                48
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": [
+                  1,
+                  4
+                ],
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": [
+                  1,
+                  4
+                ],
+                "2": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                19
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 43,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 4064,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": [
+                  0,
+                  11
+                ],
+                "23": [
+                  2,
+                  5
+                ],
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": [
+                  1,
+                  6
+                ],
+                "58": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                12,
+                23,
+                48
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  1,
+                  6
+                ],
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": [
+                  1,
+                  6
+                ],
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                48
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 55,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 4064,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": [
+                  0,
+                  11
+                ],
+                "23": [
+                  2,
+                  5
+                ],
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": [
+                  0,
+                  2
+                ],
+                "58": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                12,
+                23,
+                48
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  0,
+                  2
+                ],
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": [
+                  0,
+                  2
+                ],
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                48
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 9,
+            "failed_server": 32,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 4064,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": [
+                  0,
+                  11
+                ],
+                "23": [
+                  2,
+                  5
+                ],
+                "27": null,
+                "33": [
+                  0,
+                  9
+                ],
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                12,
+                23,
+                33
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  0,
+                  9
+                ],
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": [
+                  0,
+                  9
+                ],
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 11,
+            "failed_server": 9,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 4064,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  1,
+                  12
+                ],
+                "12": [
+                  3,
+                  10
+                ],
+                "23": [
+                  1,
+                  11
+                ],
+                "27": [
+                  3,
+                  9
+                ],
+                "33": [
+                  2,
+                  5
+                ],
+                "42": null,
+                "48": null,
+                "58": [
+                  0,
+                  11
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                58
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  1,
+                  11
+                ],
+                "12": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                0,
+                12,
+                23,
+                27,
+                33,
+                42,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "0": [
+                  1,
+                  12
+                ],
+                "12": null,
+                "23": [
+                  1,
+                  11
+                ],
+                "27": null,
+                "33": null,
+                "42": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                0,
+                23
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 17,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 4040,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                21,
+                30,
+                38,
+                40,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  3,
+                  4
+                ],
+                "21": null,
+                "30": null,
+                "38": null,
+                "40": [
+                  0,
+                  3
+                ],
+                "48": null,
+                "61": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                13,
+                40
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                21,
+                30,
+                38,
+                40,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "1": [
+                  3,
+                  4
+                ],
+                "13": null,
+                "21": null,
+                "30": null,
+                "38": null,
+                "40": null,
+                "48": null,
+                "61": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                21,
+                30,
+                38,
+                40,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  3,
+                  4
+                ],
+                "21": null,
+                "30": null,
+                "38": null,
+                "40": null,
+                "48": null,
+                "61": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 36,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 4012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": [
+                  2,
+                  1
+                ],
+                "19": null,
+                "2": null,
+                "24": [
+                  1,
+                  7
+                ],
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": [
+                  0,
+                  5
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                12,
+                24,
+                58
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": [
+                  1,
+                  7
+                ],
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": null,
+                "24": [
+                  1,
+                  7
+                ],
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                24
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 55,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 4012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": [
+                  2,
+                  1
+                ],
+                "19": [
+                  3,
+                  3
+                ],
+                "2": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": [
+                  0,
+                  5
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                12,
+                19,
+                58
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": null,
+                "2": [
+                  3,
+                  3
+                ],
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                12,
+                19,
+                24,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "19": [
+                  3,
+                  3
+                ],
+                "2": null,
+                "24": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                19
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 34,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 4018,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                31,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "22": [
+                  2,
+                  6
+                ],
+                "31": null,
+                "33": null,
+                "41": [
+                  2,
+                  7
+                ],
+                "48": [
+                  3,
+                  12
+                ],
+                "58": null,
+                "6": [
+                  3,
+                  2
+                ],
+                "9": [
+                  0,
+                  0
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                9,
+                22,
+                41,
+                48
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                31,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "31": null,
+                "33": null,
+                "41": null,
+                "48": null,
+                "58": null,
+                "6": [
+                  2,
+                  6
+                ],
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                31,
+                33,
+                41,
+                48,
+                58
+              ],
+              "protection_server_owners": {
+                "22": [
+                  2,
+                  6
+                ],
+                "31": null,
+                "33": null,
+                "41": [
+                  2,
+                  7
+                ],
+                "48": null,
+                "58": null,
+                "6": null,
+                "9": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                22,
+                41
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    },
+    "5": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 5,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 2
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 1,
+            "failed_server": 11,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 5019,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": [
+                  1,
+                  1
+                ],
+                "30": null,
+                "32": null,
+                "40": null,
+                "51": [
+                  3,
+                  0
+                ],
+                "56": null,
+                "8": [
+                  4,
+                  2
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                3,
+                8,
+                51
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": [
+                  1,
+                  1
+                ],
+                "30": null,
+                "32": null,
+                "40": null,
+                "51": null,
+                "56": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                3
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": null,
+                "30": [
+                  1,
+                  1
+                ],
+                "32": null,
+                "40": [
+                  1,
+                  7
+                ],
+                "51": null,
+                "56": null,
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                30,
+                40
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 9,
+            "failed_server": 57,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 5054,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": [
+                  1,
+                  1
+                ],
+                "21": null,
+                "26": null,
+                "33": [
+                  1,
+                  4
+                ],
+                "40": null,
+                "53": [
+                  2,
+                  9
+                ],
+                "60": [
+                  0,
+                  10
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                2,
+                33,
+                53,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": [
+                  2,
+                  9
+                ],
+                "21": null,
+                "26": null,
+                "33": null,
+                "40": null,
+                "53": null,
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": null,
+                "21": null,
+                "26": null,
+                "33": null,
+                "40": null,
+                "53": [
+                  2,
+                  9
+                ],
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                53
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 31,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5014,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": [
+                  1,
+                  0
+                ],
+                "2": null,
+                "22": [
+                  0,
+                  4
+                ],
+                "28": null,
+                "35": [
+                  4,
+                  4
+                ],
+                "47": null,
+                "52": null,
+                "57": [
+                  3,
+                  3
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                11,
+                22,
+                35,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": [
+                  4,
+                  4
+                ],
+                "22": null,
+                "28": null,
+                "35": null,
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": null,
+                "22": null,
+                "28": null,
+                "35": [
+                  4,
+                  4
+                ],
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                35
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 42,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5014,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": [
+                  1,
+                  0
+                ],
+                "2": null,
+                "22": [
+                  0,
+                  4
+                ],
+                "28": null,
+                "35": [
+                  4,
+                  7
+                ],
+                "47": null,
+                "52": null,
+                "57": [
+                  3,
+                  3
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                11,
+                22,
+                35,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": [
+                  4,
+                  7
+                ],
+                "22": null,
+                "28": null,
+                "35": null,
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": null,
+                "22": null,
+                "28": null,
+                "35": [
+                  4,
+                  7
+                ],
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                35
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 55,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 5054,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": null,
+                "21": null,
+                "26": [
+                  0,
+                  7
+                ],
+                "33": [
+                  0,
+                  6
+                ],
+                "40": [
+                  1,
+                  6
+                ],
+                "53": null,
+                "60": [
+                  1,
+                  2
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                26,
+                33,
+                40,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": [
+                  0,
+                  6
+                ],
+                "21": null,
+                "26": null,
+                "33": null,
+                "40": null,
+                "53": null,
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": null,
+                "21": null,
+                "26": [
+                  0,
+                  7
+                ],
+                "33": [
+                  0,
+                  6
+                ],
+                "40": null,
+                "53": null,
+                "60": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                26,
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 16,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 5054,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": [
+                  1,
+                  1
+                ],
+                "21": null,
+                "26": null,
+                "33": [
+                  1,
+                  4
+                ],
+                "40": [
+                  2,
+                  8
+                ],
+                "53": [
+                  3,
+                  3
+                ],
+                "60": [
+                  0,
+                  10
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                2,
+                33,
+                40,
+                53,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": [
+                  3,
+                  3
+                ],
+                "21": null,
+                "26": null,
+                "33": null,
+                "40": null,
+                "53": null,
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                15,
+                21,
+                26,
+                33,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "2": null,
+                "21": null,
+                "26": null,
+                "33": null,
+                "40": null,
+                "53": [
+                  3,
+                  3
+                ],
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                53
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 0,
+            "failed_server": 9,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5042,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                18,
+                25,
+                39,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "18": null,
+                "25": null,
+                "3": null,
+                "39": [
+                  3,
+                  4
+                ],
+                "40": [
+                  4,
+                  0
+                ],
+                "53": [
+                  0,
+                  4
+                ],
+                "60": [
+                  4,
+                  4
+                ],
+                "8": [
+                  3,
+                  6
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                8,
+                39,
+                40,
+                53,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                18,
+                25,
+                39,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "18": null,
+                "25": null,
+                "3": [
+                  4,
+                  0
+                ],
+                "39": null,
+                "40": null,
+                "53": null,
+                "60": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                3
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                18,
+                25,
+                39,
+                40,
+                53,
+                60
+              ],
+              "protection_server_owners": {
+                "18": null,
+                "25": null,
+                "3": null,
+                "39": null,
+                "40": [
+                  4,
+                  0
+                ],
+                "53": null,
+                "60": [
+                  4,
+                  4
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                40,
+                60
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 33,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5014,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": [
+                  1,
+                  0
+                ],
+                "2": null,
+                "22": [
+                  0,
+                  4
+                ],
+                "28": null,
+                "35": [
+                  4,
+                  6
+                ],
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                11,
+                22,
+                35
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": [
+                  4,
+                  6
+                ],
+                "22": null,
+                "28": null,
+                "35": null,
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                11,
+                22,
+                28,
+                35,
+                47,
+                52,
+                57
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "2": null,
+                "22": [
+                  4,
+                  6
+                ],
+                "28": null,
+                "35": null,
+                "47": null,
+                "52": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                22
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 35,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5113,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                6,
+                15,
+                19,
+                29,
+                33,
+                41,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "19": [
+                  0,
+                  8
+                ],
+                "29": [
+                  4,
+                  2
+                ],
+                "33": [
+                  0,
+                  4
+                ],
+                "41": [
+                  4,
+                  3
+                ],
+                "55": null,
+                "6": null,
+                "63": null
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                19,
+                29,
+                33,
+                41
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                15,
+                19,
+                29,
+                33,
+                41,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "19": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "55": null,
+                "6": [
+                  4,
+                  3
+                ],
+                "63": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                15,
+                19,
+                29,
+                33,
+                41,
+                55,
+                63
+              ],
+              "protection_server_owners": {
+                "15": null,
+                "19": null,
+                "29": [
+                  4,
+                  2
+                ],
+                "33": null,
+                "41": [
+                  4,
+                  3
+                ],
+                "55": null,
+                "6": null,
+                "63": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                29,
+                41
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 45,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 5019,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": null,
+                "30": null,
+                "32": [
+                  4,
+                  5
+                ],
+                "40": [
+                  4,
+                  6
+                ],
+                "51": [
+                  3,
+                  0
+                ],
+                "56": null,
+                "8": [
+                  4,
+                  4
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                8,
+                32,
+                40,
+                51
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": [
+                  4,
+                  6
+                ],
+                "30": null,
+                "32": null,
+                "40": null,
+                "51": null,
+                "56": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                3
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                30,
+                32,
+                40,
+                51,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "3": null,
+                "30": null,
+                "32": [
+                  4,
+                  5
+                ],
+                "40": [
+                  4,
+                  6
+                ],
+                "51": null,
+                "56": null,
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                32,
+                40
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    },
+    "6": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 7,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 2
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 14,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  5,
+                  3
+                ],
+                "28": null,
+                "33": null,
+                "43": [
+                  3,
+                  3
+                ],
+                "50": [
+                  0,
+                  0
+                ],
+                "57": [
+                  0,
+                  1
+                ],
+                "6": null,
+                "8": [
+                  3,
+                  4
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                8,
+                17,
+                43,
+                50,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  3,
+                  3
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": null,
+                "8": [
+                  3,
+                  3
+                ]
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                8
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 5,
+            "failed_server": 24,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 6012,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 7,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                27,
+                39,
+                40,
+                52,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "27": [
+                  4,
+                  4
+                ],
+                "3": [
+                  1,
+                  9
+                ],
+                "39": [
+                  0,
+                  6
+                ],
+                "40": [
+                  4,
+                  5
+                ],
+                "52": [
+                  3,
+                  0
+                ],
+                "56": [
+                  1,
+                  2
+                ],
+                "8": [
+                  0,
+                  5
+                ]
+              },
+              "used_protection_server_count": 7,
+              "used_protection_servers": [
+                3,
+                8,
+                27,
+                39,
+                40,
+                52,
+                56
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                27,
+                39,
+                40,
+                52,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "27": null,
+                "3": [
+                  0,
+                  5
+                ],
+                "39": null,
+                "40": null,
+                "52": null,
+                "56": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                3
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                3,
+                8,
+                23,
+                27,
+                39,
+                40,
+                52,
+                56
+              ],
+              "protection_server_owners": {
+                "23": null,
+                "27": null,
+                "3": null,
+                "39": [
+                  0,
+                  6
+                ],
+                "40": null,
+                "52": null,
+                "56": null,
+                "8": [
+                  0,
+                  5
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                8,
+                39
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 8,
+            "failed_server": 58,
+            "tenant": 5
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": [
+                  5,
+                  8
+                ],
+                "43": null,
+                "50": null,
+                "57": [
+                  0,
+                  1
+                ],
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                33,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  5,
+                  8
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": [
+                  5,
+                  8
+                ],
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 9,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  2,
+                  6
+                ],
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": [
+                  1,
+                  0
+                ],
+                "57": null,
+                "6": null,
+                "8": [
+                  0,
+                  6
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                8,
+                17,
+                50
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  0,
+                  6
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": [
+                  0,
+                  7
+                ],
+                "6": null,
+                "8": [
+                  0,
+                  6
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                8,
+                57
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 53,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  4,
+                  4
+                ],
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": [
+                  0,
+                  1
+                ],
+                "6": null,
+                "8": [
+                  3,
+                  4
+                ]
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                8,
+                17,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  4,
+                  4
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  4,
+                  4
+                ],
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                17
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 35,
+            "tenant": 5
+          },
+          "ok": true,
+          "seed": 6089,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                23,
+                25,
+                34,
+                40,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "2": null,
+                "23": [
+                  2,
+                  5
+                ],
+                "25": [
+                  5,
+                  2
+                ],
+                "34": null,
+                "40": null,
+                "53": [
+                  2,
+                  0
+                ],
+                "57": [
+                  5,
+                  7
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                23,
+                25,
+                53,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                23,
+                25,
+                34,
+                40,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "2": [
+                  5,
+                  7
+                ],
+                "23": null,
+                "25": null,
+                "34": null,
+                "40": null,
+                "53": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                10,
+                23,
+                25,
+                34,
+                40,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "10": null,
+                "2": null,
+                "23": null,
+                "25": [
+                  5,
+                  7
+                ],
+                "34": null,
+                "40": null,
+                "53": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                25
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 1,
+            "failed_server": 11,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  4,
+                  7
+                ],
+                "28": null,
+                "33": [
+                  4,
+                  1
+                ],
+                "43": null,
+                "50": null,
+                "57": [
+                  0,
+                  1
+                ],
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                17,
+                33,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  4,
+                  1
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  4,
+                  7
+                ],
+                "28": null,
+                "33": [
+                  4,
+                  1
+                ],
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                17,
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 37,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 6041,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                0,
+                14,
+                21,
+                31,
+                32,
+                46,
+                49,
+                60
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "14": null,
+                "21": [
+                  0,
+                  4
+                ],
+                "31": [
+                  3,
+                  3
+                ],
+                "32": [
+                  3,
+                  2
+                ],
+                "46": [
+                  2,
+                  4
+                ],
+                "49": [
+                  2,
+                  6
+                ],
+                "60": [
+                  0,
+                  2
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                21,
+                31,
+                32,
+                46,
+                49,
+                60
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                14,
+                21,
+                31,
+                32,
+                46,
+                49,
+                60
+              ],
+              "protection_server_owners": {
+                "0": [
+                  3,
+                  3
+                ],
+                "14": null,
+                "21": null,
+                "31": null,
+                "32": null,
+                "46": null,
+                "49": null,
+                "60": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                0,
+                14,
+                21,
+                31,
+                32,
+                46,
+                49,
+                60
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "14": null,
+                "21": null,
+                "31": [
+                  3,
+                  3
+                ],
+                "32": [
+                  3,
+                  2
+                ],
+                "46": null,
+                "49": null,
+                "60": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                31,
+                32
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 34,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 6101,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": [
+                  2,
+                  6
+                ],
+                "28": [
+                  1,
+                  4
+                ],
+                "33": null,
+                "43": null,
+                "50": [
+                  1,
+                  0
+                ],
+                "57": null,
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                17,
+                28,
+                50
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": [
+                  1,
+                  4
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                17,
+                28,
+                33,
+                43,
+                50,
+                57
+              ],
+              "protection_server_owners": {
+                "17": null,
+                "28": [
+                  1,
+                  4
+                ],
+                "33": null,
+                "43": null,
+                "50": null,
+                "57": null,
+                "6": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                28
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 25,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 6017,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                7,
+                13,
+                21,
+                27,
+                33,
+                47,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "13": [
+                  0,
+                  4
+                ],
+                "21": [
+                  0,
+                  3
+                ],
+                "27": [
+                  4,
+                  5
+                ],
+                "33": [
+                  1,
+                  4
+                ],
+                "47": [
+                  2,
+                  0
+                ],
+                "48": null,
+                "61": null,
+                "7": [
+                  4,
+                  8
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                7,
+                13,
+                21,
+                27,
+                33,
+                47
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                7,
+                13,
+                21,
+                27,
+                33,
+                47,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "21": null,
+                "27": null,
+                "33": null,
+                "47": null,
+                "48": null,
+                "61": null,
+                "7": [
+                  0,
+                  4
+                ]
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                7
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                7,
+                13,
+                21,
+                27,
+                33,
+                47,
+                48,
+                61
+              ],
+              "protection_server_owners": {
+                "13": [
+                  0,
+                  4
+                ],
+                "21": [
+                  0,
+                  3
+                ],
+                "27": null,
+                "33": null,
+                "47": null,
+                "48": null,
+                "61": null,
+                "7": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                13,
+                21
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    },
+    "7": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 6,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 2
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 26,
+            "tenant": 5
+          },
+          "ok": true,
+          "seed": 7010,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": [
+                  5,
+                  2
+                ],
+                "41": [
+                  6,
+                  7
+                ],
+                "54": [
+                  0,
+                  5
+                ],
+                "57": [
+                  1,
+                  5
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                33,
+                41,
+                54,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": [
+                  5,
+                  2
+                ],
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  5,
+                  2
+                ],
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 5,
+            "tenant": 5
+          },
+          "ok": true,
+          "seed": 7027,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": [
+                  5,
+                  1
+                ],
+                "27": null,
+                "34": null,
+                "42": [
+                  5,
+                  7
+                ],
+                "49": [
+                  1,
+                  1
+                ],
+                "6": [
+                  1,
+                  0
+                ],
+                "62": [
+                  0,
+                  6
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                22,
+                42,
+                49,
+                62
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": null,
+                "34": null,
+                "42": null,
+                "49": null,
+                "6": [
+                  5,
+                  7
+                ],
+                "62": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": null,
+                "34": null,
+                "42": [
+                  5,
+                  7
+                ],
+                "49": null,
+                "6": null,
+                "62": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                42
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 61,
+            "tenant": 6
+          },
+          "ok": true,
+          "seed": 7119,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                5,
+                13,
+                17,
+                25,
+                32,
+                44,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "13": [
+                  6,
+                  2
+                ],
+                "17": [
+                  0,
+                  2
+                ],
+                "25": null,
+                "32": [
+                  4,
+                  2
+                ],
+                "44": [
+                  4,
+                  1
+                ],
+                "5": [
+                  6,
+                  3
+                ],
+                "54": [
+                  2,
+                  1
+                ],
+                "62": null
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                5,
+                13,
+                17,
+                32,
+                44,
+                54
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                5,
+                13,
+                17,
+                25,
+                32,
+                44,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "17": null,
+                "25": null,
+                "32": null,
+                "44": null,
+                "5": [
+                  6,
+                  3
+                ],
+                "54": null,
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                5
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                5,
+                13,
+                17,
+                25,
+                32,
+                44,
+                54,
+                62
+              ],
+              "protection_server_owners": {
+                "13": [
+                  6,
+                  2
+                ],
+                "17": null,
+                "25": null,
+                "32": null,
+                "44": null,
+                "5": [
+                  6,
+                  3
+                ],
+                "54": null,
+                "62": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                5,
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 45,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 7027,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": [
+                  5,
+                  6
+                ],
+                "27": null,
+                "34": null,
+                "42": [
+                  3,
+                  2
+                ],
+                "49": null,
+                "6": [
+                  1,
+                  1
+                ],
+                "62": [
+                  0,
+                  6
+                ],
+                "8": [
+                  3,
+                  1
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                8,
+                22,
+                42,
+                62
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": null,
+                "34": null,
+                "42": null,
+                "49": null,
+                "6": [
+                  3,
+                  2
+                ],
+                "62": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": null,
+                "34": null,
+                "42": [
+                  3,
+                  2
+                ],
+                "49": null,
+                "6": null,
+                "62": null,
+                "8": [
+                  3,
+                  1
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                8,
+                42
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 35,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 7027,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": [
+                  1,
+                  6
+                ],
+                "27": [
+                  3,
+                  7
+                ],
+                "34": [
+                  3,
+                  0
+                ],
+                "42": null,
+                "49": null,
+                "6": [
+                  1,
+                  7
+                ],
+                "62": [
+                  0,
+                  6
+                ],
+                "8": null
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                22,
+                27,
+                34,
+                62
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": null,
+                "34": null,
+                "42": null,
+                "49": null,
+                "6": [
+                  1,
+                  6
+                ],
+                "62": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                8,
+                22,
+                27,
+                34,
+                42,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "27": [
+                  1,
+                  7
+                ],
+                "34": null,
+                "42": null,
+                "49": null,
+                "6": [
+                  1,
+                  6
+                ],
+                "62": null,
+                "8": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                6,
+                27
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 5,
+            "failed_server": 45,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 7094,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                13,
+                18,
+                29,
+                33,
+                47,
+                53,
+                63
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "18": null,
+                "2": null,
+                "29": [
+                  4,
+                  5
+                ],
+                "33": [
+                  1,
+                  4
+                ],
+                "47": [
+                  2,
+                  3
+                ],
+                "53": [
+                  0,
+                  1
+                ],
+                "63": null
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                29,
+                33,
+                47,
+                53
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                13,
+                18,
+                29,
+                33,
+                47,
+                53,
+                63
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "18": null,
+                "2": [
+                  4,
+                  5
+                ],
+                "29": null,
+                "33": null,
+                "47": null,
+                "53": null,
+                "63": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                13,
+                18,
+                29,
+                33,
+                47,
+                53,
+                63
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "18": null,
+                "2": null,
+                "29": [
+                  4,
+                  5
+                ],
+                "33": null,
+                "47": null,
+                "53": null,
+                "63": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                29
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 35,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 7010,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  4,
+                  3
+                ],
+                "23": null,
+                "29": [
+                  4,
+                  2
+                ],
+                "33": null,
+                "41": null,
+                "54": [
+                  0,
+                  5
+                ],
+                "57": [
+                  1,
+                  5
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                13,
+                29,
+                54,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": [
+                  4,
+                  2
+                ],
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  4,
+                  3
+                ],
+                "23": null,
+                "29": [
+                  4,
+                  2
+                ],
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                13,
+                29
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 0,
+            "failed_server": 8,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 7010,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  2,
+                  0
+                ],
+                "23": null,
+                "29": null,
+                "33": [
+                  6,
+                  7
+                ],
+                "41": null,
+                "54": [
+                  0,
+                  5
+                ],
+                "57": [
+                  1,
+                  5
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                13,
+                33,
+                54,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": [
+                  2,
+                  0
+                ],
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  2,
+                  0
+                ],
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 31,
+            "tenant": 3
+          },
+          "ok": true,
+          "seed": 7010,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": null,
+                "23": [
+                  3,
+                  4
+                ],
+                "29": null,
+                "33": [
+                  6,
+                  7
+                ],
+                "41": null,
+                "54": [
+                  0,
+                  5
+                ],
+                "57": [
+                  1,
+                  5
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                23,
+                33,
+                54,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": [
+                  3,
+                  4
+                ],
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": null,
+                "23": [
+                  3,
+                  4
+                ],
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                23
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 7,
+            "failed_server": 61,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 7010,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  2,
+                  7
+                ],
+                "23": null,
+                "29": null,
+                "33": [
+                  6,
+                  7
+                ],
+                "41": null,
+                "54": [
+                  0,
+                  5
+                ],
+                "57": [
+                  1,
+                  5
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                13,
+                33,
+                54,
+                57
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": [
+                  2,
+                  7
+                ],
+                "13": null,
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                1
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                1,
+                13,
+                23,
+                29,
+                33,
+                41,
+                54,
+                57
+              ],
+              "protection_server_owners": {
+                "1": null,
+                "13": [
+                  2,
+                  7
+                ],
+                "23": null,
+                "29": null,
+                "33": null,
+                "41": null,
+                "54": null,
+                "57": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    },
+    "8": {
+      "summary": {
+        "checked_strategies_per_trial": 3,
+        "checked_strategy_mappings": 30,
+        "checked_trials": 10,
+        "max_used_protection_servers_by_strategy": {
+          "cooperative_repair": 6,
+          "repair_failed_server_only": 1,
+          "tenant_local_repair": 2
+        },
+        "ok": true,
+        "protection_pool_size_expected": 8,
+        "violations": []
+      },
+      "trials": [
+        {
+          "failure": {
+            "failed_rank": 0,
+            "failed_server": 2,
+            "tenant": 1
+          },
+          "ok": true,
+          "seed": 8049,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": [
+                  5,
+                  3
+                ],
+                "43": null,
+                "54": [
+                  1,
+                  0
+                ],
+                "6": [
+                  3,
+                  6
+                ],
+                "61": [
+                  0,
+                  3
+                ],
+                "9": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                9,
+                37,
+                54,
+                61
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": [
+                  1,
+                  0
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": [
+                  1,
+                  0
+                ],
+                "6": null,
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                54
+              ],
+              "violations": []
+            }
+          },
+          "trial": 0
+        },
+        {
+          "failure": {
+            "failed_rank": 6,
+            "failed_server": 31,
+            "tenant": 7
+          },
+          "ok": true,
+          "seed": 8022,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                0,
+                13,
+                19,
+                30,
+                39,
+                45,
+                52,
+                59
+              ],
+              "protection_server_owners": {
+                "0": [
+                  0,
+                  2
+                ],
+                "13": [
+                  7,
+                  0
+                ],
+                "19": [
+                  4,
+                  1
+                ],
+                "30": null,
+                "39": null,
+                "45": [
+                  1,
+                  1
+                ],
+                "52": [
+                  0,
+                  6
+                ],
+                "59": [
+                  7,
+                  6
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                0,
+                13,
+                19,
+                45,
+                52,
+                59
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                0,
+                13,
+                19,
+                30,
+                39,
+                45,
+                52,
+                59
+              ],
+              "protection_server_owners": {
+                "0": [
+                  7,
+                  6
+                ],
+                "13": null,
+                "19": null,
+                "30": null,
+                "39": null,
+                "45": null,
+                "52": null,
+                "59": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                0
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                0,
+                13,
+                19,
+                30,
+                39,
+                45,
+                52,
+                59
+              ],
+              "protection_server_owners": {
+                "0": null,
+                "13": [
+                  7,
+                  0
+                ],
+                "19": null,
+                "30": null,
+                "39": null,
+                "45": null,
+                "52": null,
+                "59": [
+                  7,
+                  6
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                13,
+                59
+              ],
+              "violations": []
+            }
+          },
+          "trial": 1
+        },
+        {
+          "failure": {
+            "failed_rank": 3,
+            "failed_server": 52,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 8049,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": [
+                  5,
+                  3
+                ],
+                "43": null,
+                "54": null,
+                "6": [
+                  3,
+                  6
+                ],
+                "61": [
+                  4,
+                  3
+                ],
+                "9": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                6,
+                9,
+                37,
+                61
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": [
+                  4,
+                  3
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": null,
+                "61": [
+                  4,
+                  3
+                ],
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                61
+              ],
+              "violations": []
+            }
+          },
+          "trial": 2
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 16,
+            "tenant": 4
+          },
+          "ok": true,
+          "seed": 8096,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                2,
+                8,
+                19,
+                24,
+                39,
+                43,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "19": [
+                  5,
+                  2
+                ],
+                "2": null,
+                "24": [
+                  2,
+                  6
+                ],
+                "39": null,
+                "43": [
+                  4,
+                  4
+                ],
+                "53": [
+                  3,
+                  6
+                ],
+                "57": null,
+                "8": null
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                19,
+                24,
+                43,
+                53
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                8,
+                19,
+                24,
+                39,
+                43,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "19": null,
+                "2": [
+                  4,
+                  4
+                ],
+                "24": null,
+                "39": null,
+                "43": null,
+                "53": null,
+                "57": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                2
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                2,
+                8,
+                19,
+                24,
+                39,
+                43,
+                53,
+                57
+              ],
+              "protection_server_owners": {
+                "19": null,
+                "2": null,
+                "24": null,
+                "39": null,
+                "43": [
+                  4,
+                  4
+                ],
+                "53": null,
+                "57": null,
+                "8": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                43
+              ],
+              "violations": []
+            }
+          },
+          "trial": 3
+        },
+        {
+          "failure": {
+            "failed_rank": 5,
+            "failed_server": 28,
+            "tenant": 0
+          },
+          "ok": true,
+          "seed": 8036,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                33,
+                47,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "11": [
+                  0,
+                  5
+                ],
+                "23": null,
+                "27": [
+                  6,
+                  2
+                ],
+                "33": [
+                  0,
+                  4
+                ],
+                "4": null,
+                "47": [
+                  5,
+                  3
+                ],
+                "49": [
+                  6,
+                  3
+                ],
+                "62": [
+                  1,
+                  0
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                11,
+                27,
+                33,
+                47,
+                49,
+                62
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                33,
+                47,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "11": null,
+                "23": null,
+                "27": null,
+                "33": null,
+                "4": [
+                  0,
+                  5
+                ],
+                "47": null,
+                "49": null,
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                4
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                4,
+                11,
+                23,
+                27,
+                33,
+                47,
+                49,
+                62
+              ],
+              "protection_server_owners": {
+                "11": [
+                  0,
+                  5
+                ],
+                "23": null,
+                "27": null,
+                "33": [
+                  0,
+                  4
+                ],
+                "4": null,
+                "47": null,
+                "49": null,
+                "62": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                11,
+                33
+              ],
+              "violations": []
+            }
+          },
+          "trial": 4
+        },
+        {
+          "failure": {
+            "failed_rank": 5,
+            "failed_server": 49,
+            "tenant": 2
+          },
+          "ok": true,
+          "seed": 8118,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 4,
+              "ok": true,
+              "protection_pool": [
+                7,
+                12,
+                17,
+                27,
+                33,
+                43,
+                50,
+                59
+              ],
+              "protection_server_owners": {
+                "12": [
+                  0,
+                  2
+                ],
+                "17": null,
+                "27": [
+                  2,
+                  5
+                ],
+                "33": null,
+                "43": null,
+                "50": [
+                  2,
+                  6
+                ],
+                "59": null,
+                "7": [
+                  0,
+                  1
+                ]
+              },
+              "used_protection_server_count": 4,
+              "used_protection_servers": [
+                7,
+                12,
+                27,
+                50
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                7,
+                12,
+                17,
+                27,
+                33,
+                43,
+                50,
+                59
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "17": null,
+                "27": null,
+                "33": null,
+                "43": null,
+                "50": null,
+                "59": null,
+                "7": [
+                  2,
+                  5
+                ]
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                7
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                7,
+                12,
+                17,
+                27,
+                33,
+                43,
+                50,
+                59
+              ],
+              "protection_server_owners": {
+                "12": null,
+                "17": null,
+                "27": [
+                  2,
+                  5
+                ],
+                "33": null,
+                "43": null,
+                "50": null,
+                "59": null,
+                "7": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                7,
+                27
+              ],
+              "violations": []
+            }
+          },
+          "trial": 5
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 56,
+            "tenant": 6
+          },
+          "ok": true,
+          "seed": 8071,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 3,
+              "ok": true,
+              "protection_pool": [
+                6,
+                13,
+                21,
+                28,
+                32,
+                43,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "13": [
+                  6,
+                  4
+                ],
+                "21": [
+                  1,
+                  3
+                ],
+                "28": [
+                  3,
+                  6
+                ],
+                "32": null,
+                "43": null,
+                "55": null,
+                "6": null,
+                "62": null
+              },
+              "used_protection_server_count": 3,
+              "used_protection_servers": [
+                13,
+                21,
+                28
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                13,
+                21,
+                28,
+                32,
+                43,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "13": null,
+                "21": null,
+                "28": null,
+                "32": null,
+                "43": null,
+                "55": null,
+                "6": [
+                  6,
+                  4
+                ],
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                13,
+                21,
+                28,
+                32,
+                43,
+                55,
+                62
+              ],
+              "protection_server_owners": {
+                "13": [
+                  6,
+                  4
+                ],
+                "21": null,
+                "28": null,
+                "32": null,
+                "43": null,
+                "55": null,
+                "6": null,
+                "62": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                13
+              ],
+              "violations": []
+            }
+          },
+          "trial": 6
+        },
+        {
+          "failure": {
+            "failed_rank": 5,
+            "failed_server": 30,
+            "tenant": 7
+          },
+          "ok": true,
+          "seed": 8049,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 6,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": [
+                  3,
+                  0
+                ],
+                "24": null,
+                "37": [
+                  7,
+                  5
+                ],
+                "43": null,
+                "54": [
+                  0,
+                  4
+                ],
+                "6": [
+                  7,
+                  6
+                ],
+                "61": [
+                  3,
+                  6
+                ],
+                "9": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 6,
+              "used_protection_servers": [
+                6,
+                9,
+                22,
+                37,
+                54,
+                61
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": [
+                  7,
+                  5
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": [
+                  7,
+                  5
+                ],
+                "43": null,
+                "54": null,
+                "6": [
+                  7,
+                  6
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                6,
+                37
+              ],
+              "violations": []
+            }
+          },
+          "trial": 7
+        },
+        {
+          "failure": {
+            "failed_rank": 4,
+            "failed_server": 35,
+            "tenant": 7
+          },
+          "ok": true,
+          "seed": 8049,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": [
+                  7,
+                  3
+                ],
+                "24": null,
+                "37": [
+                  7,
+                  4
+                ],
+                "43": null,
+                "54": [
+                  4,
+                  4
+                ],
+                "6": null,
+                "61": [
+                  0,
+                  3
+                ],
+                "9": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                9,
+                22,
+                37,
+                54,
+                61
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": [
+                  7,
+                  4
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 2,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": [
+                  7,
+                  3
+                ],
+                "24": null,
+                "37": [
+                  7,
+                  4
+                ],
+                "43": null,
+                "54": null,
+                "6": null,
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 2,
+              "used_protection_servers": [
+                22,
+                37
+              ],
+              "violations": []
+            }
+          },
+          "trial": 8
+        },
+        {
+          "failure": {
+            "failed_rank": 2,
+            "failed_server": 19,
+            "tenant": 7
+          },
+          "ok": true,
+          "seed": 8049,
+          "strategies": {
+            "cooperative_repair": {
+              "metric_switch_servers": 5,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": [
+                  7,
+                  2
+                ],
+                "24": null,
+                "37": [
+                  5,
+                  3
+                ],
+                "43": null,
+                "54": null,
+                "6": [
+                  3,
+                  6
+                ],
+                "61": [
+                  0,
+                  3
+                ],
+                "9": [
+                  2,
+                  6
+                ]
+              },
+              "used_protection_server_count": 5,
+              "used_protection_servers": [
+                6,
+                9,
+                22,
+                37,
+                61
+              ],
+              "violations": []
+            },
+            "repair_failed_server_only": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": null,
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": [
+                  7,
+                  2
+                ],
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                6
+              ],
+              "violations": []
+            },
+            "tenant_local_repair": {
+              "metric_switch_servers": 1,
+              "ok": true,
+              "protection_pool": [
+                6,
+                9,
+                22,
+                24,
+                37,
+                43,
+                54,
+                61
+              ],
+              "protection_server_owners": {
+                "22": [
+                  7,
+                  2
+                ],
+                "24": null,
+                "37": null,
+                "43": null,
+                "54": null,
+                "6": null,
+                "61": null,
+                "9": null
+              },
+              "used_protection_server_count": 1,
+              "used_protection_servers": [
+                22
+              ],
+              "violations": []
+            }
+          },
+          "trial": 9
+        }
+      ]
+    }
+  },
+  "audit_summary": {
+    "checked_strategy_mappings_total": 180,
+    "checked_trials_total": 60,
+    "ok": true,
+    "protection_pool_size_expected": 8,
+    "tenant_counts_checked": [
+      "3",
+      "4",
+      "5",
+      "6",
+      "7",
+      "8"
+    ]
+  }
+}

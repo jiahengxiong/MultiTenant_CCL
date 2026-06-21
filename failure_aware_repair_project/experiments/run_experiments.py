@@ -98,6 +98,15 @@ def parse_args() -> argparse.Namespace:
         help="Stop the global rerun barrier after this candidate pool target.",
     )
     parser.add_argument(
+        "max_story_candidate_pool_target_positional",
+        nargs="?",
+        type=int,
+        help=(
+            "Optional shorthand for --max-story-candidate-pool-target, so "
+            "`--rerun 2000` is accepted."
+        ),
+    )
+    parser.add_argument(
         "--overwrite-high-resource",
         action="store_true",
         help=(
@@ -113,7 +122,12 @@ def parse_args() -> argparse.Namespace:
             "exists. By default existing valid JSON files are reused."
         ),
     )
-    return parser.parse_args()
+    args = parser.parse_args()
+    if args.max_story_candidate_pool_target_positional is not None:
+        args.max_story_candidate_pool_target = int(
+            args.max_story_candidate_pool_target_positional
+        )
+    return args
 
 
 def _env() -> dict[str, str]:

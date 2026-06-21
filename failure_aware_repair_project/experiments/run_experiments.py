@@ -215,6 +215,10 @@ def _run_script_checked(
         str(max(1, int(story_candidate_pool_target))),
         "--story-selection-method",
         str(story_selection_method),
+        "--mapping-seed-attempts",
+        str(max(30, int(story_candidate_pool_target))),
+        "--story-search-workers",
+        str(max(1, int(result_workers))),
     ]
     generate = subprocess.run(
         generate_cmd,

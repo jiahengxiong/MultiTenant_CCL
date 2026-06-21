@@ -355,6 +355,9 @@ class ProxyRepairMILPSolver:
         model.Params.Heuristics = 0.8
         if time_limit is not None:
             model.Params.TimeLimit = float(time_limit)
+            if float(time_limit) <= 30.0:
+                model.Params.Presolve = 0
+                model.Params.NoRelHeurTime = min(2.0, max(0.0, float(time_limit) * 0.25))
 
         participants = set(participating_tenants(self.scenario))
         failed_rank = self.scenario.failure.failed_rank
@@ -409,9 +412,16 @@ class ProxyRepairMILPSolver:
                     model.addConstr(mv == 1 - x[(tenant, rank, failover_server)], name=f"move_def_{tenant}_{rank}")
                     switch_terms.append(mv)
 
-            for server in self.candidate_sets[tenant]:
+            for server in sorted(
+                {server for rank in ranks for server in rank_candidates[(tenant, rank)]}
+            ):
                 model.addConstr(
-                    gp.quicksum(x[(tenant, rank, int(server))] for rank in ranks) <= 1,
+                    gp.quicksum(
+                        x[(tenant, rank, int(server))]
+                        for rank in ranks
+                        if (tenant, rank, int(server)) in x
+                    )
+                    <= 1,
                     name=f"server_at_most_one_{tenant}_{int(server)}",
                 )
 
@@ -427,14 +437,14 @@ class ProxyRepairMILPSolver:
             name="failed_rank_exactly_one_protection",
         )
         all_candidate_servers = sorted(
-            {int(server) for tenant in tenants for server in self.candidate_sets[int(tenant)]}
+            {int(server) for candidates in rank_candidates.values() for server in candidates}
         )
         for server in all_candidate_servers:
             occupants = [
                 x[(int(tenant), int(rank), server)]
                 for tenant in tenants
                 for rank in sorted(self.scenario.pre_failure_mapping[int(tenant)])
-                if server in set(int(candidate) for candidate in self.candidate_sets[int(tenant)])
+                if server in rank_candidates[(int(tenant), int(rank))]
             ]
             if len(occupants) > 1:
                 model.addConstr(
@@ -498,13 +508,32 @@ class CollapsedRepairMILPSolver:
 
     name = "collapsed_repair_milp"
 
-    def __init__(self, scenario: RepairScenario, evaluator: RepairEvaluator):
+    def __init__(
+        self,
+        scenario: RepairScenario,
+        evaluator: RepairEvaluator,
+        *,
+        failed_rank_only: bool = False,
+        movable_rank_allowlist: set[tuple[int, int]] | None = None,
+    ):
         self.scenario = scenario
         self.evaluator = evaluator
         self.failover_mapping = copy_mapping(evaluator.failover_mapping)
         self.candidate_sets = build_candidate_server_sets(scenario)
+        self.failed_rank_only = bool(failed_rank_only)
+        self.movable_rank_allowlist = (
+            None
+            if movable_rank_allowlist is None
+            else {(int(tenant), int(rank)) for tenant, rank in movable_rank_allowlist}
+        )
 
-    def solve(self, *, time_limit: float | None = None, verbose: bool = False) -> RepairResult:
+    def solve(
+        self,
+        *,
+        time_limit: float | None = None,
+        verbose: bool = False,
+        initial_mapping: Mapping | None = None,
+    ) -> RepairResult:
         try:
             import gurobipy as gp
             from gurobipy import GRB
@@ -520,8 +549,17 @@ class CollapsedRepairMILPSolver:
         model.Params.Heuristics = 0.8
         if time_limit is not None:
             model.Params.TimeLimit = float(time_limit)
+            if float(time_limit) <= 30.0:
+                model.Params.Presolve = 0
+                model.Params.NoRelHeurTime = min(2.0, max(0.0, float(time_limit) * 0.25))
 
         tenants = sorted(self.scenario.pre_failure_mapping)
+        warm_mapping = (
+            copy_mapping(initial_mapping)
+            if initial_mapping is not None
+            else copy_mapping(self.failover_mapping)
+        )
+        check_repair_feasible(self.scenario, warm_mapping, self.failover_mapping)
         participants = set(participating_tenants(self.scenario))
         failed_rank = self.scenario.failure.failed_rank
         if failed_rank is None:
@@ -552,6 +590,28 @@ class CollapsedRepairMILPSolver:
         u = {}
         switch_terms = []
         protection = set(int(server) for server in self.scenario.global_protection_pool)
+        rank_candidates = {}
+        for tenant in tenants:
+            tenant = int(tenant)
+            for rank in sorted(int(rank) for rank in self.scenario.pre_failure_mapping[tenant]):
+                original_server = int(self.scenario.pre_failure_mapping[tenant][rank])
+                failover_server = int(self.failover_mapping[tenant][rank])
+                if self.failed_rank_only and (
+                    tenant,
+                    rank,
+                ) != (int(self.scenario.failure.tenant), int(failed_rank)):
+                    candidates = {failover_server}
+                elif tenant not in participants:
+                    candidates = {failover_server}
+                elif (
+                    self.movable_rank_allowlist is not None
+                    and (tenant, rank) not in self.movable_rank_allowlist
+                    and (tenant, rank) != (int(self.scenario.failure.tenant), int(failed_rank))
+                ):
+                    candidates = {original_server}
+                else:
+                    candidates = {original_server, *protection}
+                rank_candidates[(tenant, rank)] = sorted(int(server) for server in candidates)
 
         for tenant in tenants:
             tenant = int(tenant)
@@ -563,7 +623,7 @@ class CollapsedRepairMILPSolver:
                     vtype=GRB.BINARY,
                     name=f"Y_SelectProtection_{tenant}_{rank}",
                 )
-                for server in self.candidate_sets[tenant]:
+                for server in rank_candidates[(tenant, rank)]:
                     server = int(server)
                     x[(tenant, rank, int(server))] = model.addVar(
                         vtype=GRB.BINARY,
@@ -584,12 +644,16 @@ class CollapsedRepairMILPSolver:
                             name=f"forbid_healthy_to_healthy_{tenant}_{rank}_{int(server)}",
                         )
                 model.addConstr(
-                    gp.quicksum(x[(tenant, rank, int(server))] for server in self.candidate_sets[tenant]) == 1,
+                    gp.quicksum(
+                        x[(tenant, rank, int(server))]
+                        for server in rank_candidates[(tenant, rank)]
+                    )
+                    == 1,
                     name=f"rank_one_{tenant}_{rank}",
                 )
                 protection_options = [
                     int(server)
-                    for server in self.candidate_sets[tenant]
+                    for server in rank_candidates[(tenant, rank)]
                     if int(server) in protection
                 ]
                 model.addConstr(
@@ -601,7 +665,7 @@ class CollapsedRepairMILPSolver:
                     fixed = int(self.failover_mapping[tenant][rank])
                     model.addConstr(x[(tenant, rank, fixed)] == 1, name=f"fixed_{tenant}_{rank}")
                     model.addConstr(y[(tenant, rank)] == 0, name=f"nonparticipant_not_selected_{tenant}_{rank}")
-                elif original_server in self.candidate_sets[tenant]:
+                elif original_server in rank_candidates[(tenant, rank)]:
                     model.addConstr(
                         x[(tenant, rank, original_server)] == 1 - y[(tenant, rank)],
                         name=f"stay_or_select_protection_{tenant}_{rank}",
@@ -616,9 +680,16 @@ class CollapsedRepairMILPSolver:
                     model.addConstr(mv == y[(tenant, rank)], name=f"move_def_{tenant}_{rank}")
                     switch_terms.append(mv)
 
-            for server in self.candidate_sets[tenant]:
+            for server in sorted(
+                {server for rank in ranks for server in rank_candidates[(tenant, rank)]}
+            ):
                 model.addConstr(
-                    gp.quicksum(x[(tenant, rank, int(server))] for rank in ranks) <= 1,
+                    gp.quicksum(
+                        x[(tenant, rank, int(server))]
+                        for rank in ranks
+                        if (tenant, rank, int(server)) in x
+                    )
+                    <= 1,
                     name=f"server_at_most_one_{tenant}_{int(server)}",
                 )
 
@@ -626,7 +697,7 @@ class CollapsedRepairMILPSolver:
         failed_rank = int(failed_rank)
         model.addConstr(y[(failed_tenant, failed_rank)] == 1, name="failed_rank_exactly_one_protection")
         all_candidate_servers = sorted(
-            {int(server) for tenant in tenants for server in self.candidate_sets[int(tenant)]}
+            {int(server) for candidates in rank_candidates.values() for server in candidates}
         )
         for server in sorted(protection):
             protection_occupants = [
@@ -645,7 +716,7 @@ class CollapsedRepairMILPSolver:
                 x[(int(tenant), int(rank), server)]
                 for tenant in tenants
                 for rank in sorted(self.scenario.pre_failure_mapping[int(tenant)])
-                if server in set(int(candidate) for candidate in self.candidate_sets[int(tenant)])
+                if server in rank_candidates[(int(tenant), int(rank))]
             ]
             if len(occupants) > 1:
                 model.addConstr(
@@ -661,8 +732,8 @@ class CollapsedRepairMILPSolver:
                     src_rank = int(src_rank)
                     dst_rank = int(dst_rank)
                     volume_bits = float(volume_bits)
-                    for src_server in self.candidate_sets[int(tenant)]:
-                        for dst_server in self.candidate_sets[int(tenant)]:
+                    for src_server in rank_candidates[(int(tenant), src_rank)]:
+                        for dst_server in rank_candidates[(int(tenant), dst_rank)]:
                             src_server = int(src_server)
                             dst_server = int(dst_server)
                             if src_server == dst_server:
@@ -747,14 +818,102 @@ class CollapsedRepairMILPSolver:
         model.setObjectiveN(avg_jct, index=0, priority=3, name="avg_jct")
         model.setObjectiveN(makespan, index=1, priority=2, name="makespan")
         model.setObjectiveN(switch_count, index=2, priority=1, name="switch_count")
+        for var in x.values():
+            var.Start = 0.0
+        for var in y.values():
+            var.Start = 0.0
+        for var in z.values():
+            var.Start = 0.0
+        for var in move.values():
+            var.Start = 0.0
+        for var in u.values():
+            var.Start = 0.0
+        warm_edge_load = {epoch: {} for epoch in range(max_epoch)}
+        warm_sender_load = {epoch: {} for epoch in range(max_epoch)}
+        warm_receiver_load = {epoch: {} for epoch in range(max_epoch)}
+        for tenant in tenants:
+            tenant = int(tenant)
+            for rank in sorted(self.scenario.pre_failure_mapping[tenant]):
+                rank = int(rank)
+                assigned_server = int(warm_mapping[tenant][rank])
+                for server in rank_candidates[(tenant, rank)]:
+                    x[(tenant, rank, int(server))].Start = (
+                        1.0 if int(server) == assigned_server else 0.0
+                    )
+                selected = 1.0 if assigned_server in protection else 0.0
+                y[(tenant, rank)].Start = selected
+                if (tenant, rank) in move:
+                    is_failed = (tenant, rank) == (
+                        int(self.scenario.failure.tenant),
+                        int(failed_rank),
+                    )
+                    move[(tenant, rank)].Start = 0.0 if is_failed else selected
+                if (tenant, rank, assigned_server) in z:
+                    z[(tenant, rank, assigned_server)].Start = 1.0
+        for record in flow_records:
+            src_assigned = int(
+                warm_mapping[int(record["tenant"])][
+                    int(stage_flows[int(record["tenant"])][int(record["epoch"])][int(record["flow_idx"])][0])
+                ]
+            )
+            dst_assigned = int(
+                warm_mapping[int(record["tenant"])][
+                    int(stage_flows[int(record["tenant"])][int(record["epoch"])][int(record["flow_idx"])][1])
+                ]
+            )
+            active_in_warm_start = (
+                int(record["src_server"]) == src_assigned
+                and int(record["dst_server"]) == dst_assigned
+            )
+            record["var"].Start = 1.0 if active_in_warm_start else 0.0
+            if not active_in_warm_start:
+                continue
+            epoch = int(record["epoch"])
+            volume_bits = float(record["volume_bits"])
+            for edge in record["path_edges"]:
+                warm_edge_load[epoch][edge] = (
+                    float(warm_edge_load[epoch].get(edge, 0.0))
+                    + volume_bits / float(capacities[edge])
+                )
+            src_server = int(record["src_server"])
+            dst_server = int(record["dst_server"])
+            warm_sender_load[epoch][src_server] = (
+                float(warm_sender_load[epoch].get(src_server, 0.0))
+                + volume_bits / float(server_send_capacity[src_server])
+            )
+            warm_receiver_load[epoch][dst_server] = (
+                float(warm_receiver_load[epoch].get(dst_server, 0.0))
+                + volume_bits / float(server_recv_capacity[dst_server])
+            )
+        warm_delta = {}
+        for epoch in range(max_epoch):
+            warm_delta[epoch] = max(
+                [
+                    0.0,
+                    *[float(value) for value in warm_edge_load[epoch].values()],
+                    *[float(value) for value in warm_sender_load[epoch].values()],
+                    *[float(value) for value in warm_receiver_load[epoch].values()],
+                ]
+            )
+        for epoch, var in delta.items():
+            var.Start = float(warm_delta.get(int(epoch), 0.0))
+        warm_tenant_finish = {}
+        for tenant, var in tenant_finish.items():
+            stage_count = len(stage_flows.get(int(tenant), []))
+            finish_value = float(
+                sum(warm_delta.get(epoch, 0.0) for epoch in range(stage_count))
+            )
+            warm_tenant_finish[int(tenant)] = finish_value
+            var.Start = finish_value
+        makespan.Start = max(warm_tenant_finish.values(), default=0.0)
         model.optimize()
 
-        mapping = copy_mapping(self.failover_mapping)
+        mapping = copy_mapping(warm_mapping)
         if model.SolCount > 0:
             for tenant in tenants:
                 tenant = int(tenant)
                 for rank in sorted(self.scenario.pre_failure_mapping[tenant]):
-                    for server in self.candidate_sets[tenant]:
+                    for server in rank_candidates[(tenant, int(rank))]:
                         if x[(tenant, int(rank), int(server))].X > 0.5:
                             mapping[tenant][int(rank)] = int(server)
                             break

@@ -1,0 +1,20 @@
+{
+  "experiment": "High_resource",
+  "failover_policy": "first",
+  "failure_selection": "structural_high_impact_failure_candidates",
+  "metric_source": "simulator",
+  "protection_pool_size_mode": "high_resource",
+  "summary_by_tenant": {},
+  "tenant_max": 8,
+  "tenant_min": 3,
+  "topology": {
+    "ecmp_path_count": 4032,
+    "num_leaf": 8,
+    "num_spine": 4,
+    "per_leaf_server": 8,
+    "server_count": 64
+  },
+  "trials_detail": [],
+  "trials_per_tenant": 10,
+  "working_allocation_mode": "balanced_remaining"
+}

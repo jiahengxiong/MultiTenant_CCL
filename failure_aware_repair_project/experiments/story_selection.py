@@ -29,7 +29,7 @@ def _case_identity(case: dict[str, Any]) -> tuple[int, int, int, int]:
     )
 
 
-def story_case_vector(case: dict[str, Any]) -> dict[str, float]:
+def story_case_vector(case: dict[str, Any]) -> dict[str, float] | None:
     validation = case.get("story_search_simulator_validation")
     if isinstance(validation, dict):
         metrics = validation.get("metrics")
@@ -50,25 +50,7 @@ def story_case_vector(case: dict[str, Any]) -> dict[str, float]:
                     "coordinate_gain_pct": coordinate_gain,
                     "coordinate_advantage_pct": coordinate_advantage,
                 }
-
-    candidate = case.get("candidate", {})
-    local_gain = _as_float(
-        candidate.get("preview_local_gain_pct"),
-        _as_float(candidate.get("estimated_local_gain_pct")),
-    )
-    coordinate_gain = _as_float(
-        candidate.get("preview_cooperative_gain_pct"),
-        _as_float(candidate.get("estimated_coordinate_gain_pct")),
-    )
-    coordinate_advantage = _as_float(
-        candidate.get("preview_coordinate_advantage_pct_vs_local_repair"),
-        coordinate_gain - local_gain,
-    )
-    return {
-        "local_gain_pct": local_gain,
-        "coordinate_gain_pct": coordinate_gain,
-        "coordinate_advantage_pct": coordinate_advantage,
-    }
+    return None
 
 
 def select_story_cases_milp(
@@ -78,6 +60,8 @@ def select_story_cases_milp(
     unique_cases: list[tuple[tuple[object, ...], dict[str, Any]]] = []
     seen: set[tuple[int, int, int, int]] = set()
     for score, case in sorted(scored_cases, key=lambda item: item[0]):
+        if story_case_vector(case) is None:
+            continue
         identity = _case_identity(case)
         if identity in seen:
             continue
@@ -155,6 +139,8 @@ def _select_indices_gurobi(
     n = len(cases)
     k = int(config.target_trials)
     vectors = [story_case_vector(case) for case in cases]
+    if any(vector is None for vector in vectors):
+        return None, "gurobi"
 
     model = gp.Model("select_failure_story_cases")
     model.Params.OutputFlag = 0
@@ -212,6 +198,8 @@ def _select_indices_scipy(
     n = len(cases)
     k = int(config.target_trials)
     vectors = [story_case_vector(case) for case in cases]
+    if any(vector is None for vector in vectors):
+        return None, "scipy"
     local = np.array([item["local_gain_pct"] for item in vectors], dtype=float)
     coord_adv = np.array(
         [item["coordinate_advantage_pct"] for item in vectors],
@@ -253,6 +241,9 @@ def _average_vectors(cases: list[dict[str, Any]]) -> dict[str, float]:
     if not cases:
         return {}
     vectors = [story_case_vector(case) for case in cases]
+    vectors = [vector for vector in vectors if vector is not None]
+    if not vectors:
+        return {}
     return {
         key: sum(float(item[key]) for item in vectors) / len(vectors)
         for key in (

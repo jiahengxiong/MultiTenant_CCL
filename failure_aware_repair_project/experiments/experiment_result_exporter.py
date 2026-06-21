@@ -43,6 +43,9 @@ METHOD_TO_STRATEGY = {
 RESULT_METHODS = ("baseline", "failover", "local", "coordinate")
 CASE_EVAL_BATCH_SIZE = int(os.environ.get("STORY_CANDIDATE_BATCH_SIZE", "20"))
 FIXED_STORY_CANDIDATE_POOL_TARGET = os.environ.get("STORY_CANDIDATE_POOL_TARGET")
+EXPORT_TENANT_MIN = os.environ.get("STORY_EXPORT_TENANT_MIN")
+EXPORT_TENANT_MAX = os.environ.get("STORY_EXPORT_TENANT_MAX")
+EXPORT_TARGET_TRIALS = os.environ.get("STORY_EXPORT_TARGET_TRIALS")
 LOCAL_GAIN_THRESHOLD_PREFERRED_PCT = 15.0
 LOCAL_GAIN_THRESHOLD_FALLBACK_PCT = 10.0
 PREFERRED_SEARCH_CANDIDATE_CAP = 60
@@ -98,6 +101,9 @@ def _trials_path_for_module(module: ModuleType) -> Path:
 
 
 def _story_cache_dir_for_module(module: ModuleType) -> Path:
+    override = os.environ.get("STORY_CACHE_DIR_OVERRIDE")
+    if override:
+        return Path(override)
     summary_name = Path(module.PUBLISHED_SUMMARY_PATH).name
     prefix = summary_name.split("_final_summary_", 1)[0]
     return Path("/private/tmp") / f"{prefix}_story_cache"
@@ -206,6 +212,28 @@ def _reference_seeds_by_strategy(case: dict[str, object]) -> dict[str, list[tupl
 
 def _mean(values: list[float]) -> float:
     return float(statistics.mean(values)) if values else 0.0
+
+
+def _export_target_trials() -> int:
+    return 10 if EXPORT_TARGET_TRIALS is None else max(1, int(EXPORT_TARGET_TRIALS))
+
+
+def _export_tenant_counts(root_payload: dict[str, object]) -> list[str]:
+    trials_by_tenant = root_payload.get("trials_by_tenant")
+    if not isinstance(trials_by_tenant, dict):
+        return []
+    tenant_counts = sorted(trials_by_tenant, key=lambda value: int(value))
+    if EXPORT_TENANT_MIN is not None:
+        tenant_counts = [
+            tenant for tenant in tenant_counts
+            if int(tenant) >= int(EXPORT_TENANT_MIN)
+        ]
+    if EXPORT_TENANT_MAX is not None:
+        tenant_counts = [
+            tenant for tenant in tenant_counts
+            if int(tenant) <= int(EXPORT_TENANT_MAX)
+        ]
+    return tenant_counts
 
 
 def _median(values: list[float]) -> float:
@@ -672,12 +700,165 @@ def _metrics_from_comparison_payload(payload: dict[str, object]) -> dict[str, di
     return methods
 
 
+def _trial_result_from_simulator_validation(
+    case: dict[str, object],
+    trial_index: int,
+) -> dict[str, object] | None:
+    base_experiment = case.get("base_experiment")
+    candidate = case.get("candidate")
+    validation = case.get("story_search_simulator_validation")
+    if (
+        base_experiment is None
+        or not isinstance(candidate, dict)
+        or not isinstance(validation, dict)
+        or not isinstance(validation.get("metrics"), dict)
+    ):
+        return None
+    reporting = validation.get("reporting")
+    if not isinstance(reporting, dict):
+        return None
+    raw_strategy_mappings = reporting.get("strategy_mappings")
+    if not isinstance(raw_strategy_mappings, dict):
+        return None
+
+    strategy_mappings: dict[str, dict[int, dict[int, int]]] = {}
+    for strategy in METHOD_TO_STRATEGY.values():
+        raw_mapping = raw_strategy_mappings.get(strategy)
+        if not isinstance(raw_mapping, dict):
+            return None
+        strategy_mappings[strategy] = _mapping_from_payload(raw_mapping)
+
+    metrics_by_strategy = validation["metrics"]
+    methods = {
+        method: dict(metrics_by_strategy[strategy])
+        for method, strategy in METHOD_TO_STRATEGY.items()
+    }
+    method_mappings = {
+        method: _normalize_mapping(strategy_mappings[strategy])
+        for method, strategy in METHOD_TO_STRATEGY.items()
+    }
+
+    failure = FailureEvent(
+        tenant=int(candidate["tenant"]),
+        failed_server=int(candidate["server"]),
+        failed_rank=int(candidate["rank"]),
+    )
+    scenario = RepairScenario(
+        base_experiment.pre_failure_mapping,
+        failure,
+        "tenant_local",
+        global_protection_pool=base_experiment.global_protection_pool,
+        participating_tenants=(int(failure.tenant),),
+        workload=base_experiment.workload,
+    )
+    failover_mapping = strategy_mappings[METHOD_TO_STRATEGY["failover"]]
+    evaluator = RepairEvaluator(
+        base_experiment.datacenter,
+        scenario,
+        horizon_slots=base_experiment.config.horizon_slots,
+        failover_policy=base_experiment.config.failover_policy,
+        failover_mapping=failover_mapping,
+    )
+    failover_protection_servers = _mapping_protection_servers(
+        failover_mapping,
+        scenario.global_protection_pool,
+    )
+    baseline = solve_nearest_protection_baseline(
+        scenario,
+        datacenter=base_experiment.datacenter,
+    )
+    baseline_metrics = _metrics_from_mapping(
+        evaluator,
+        scenario,
+        baseline.mapping,
+        global_protection_pool=scenario.global_protection_pool,
+        failover_mapping=failover_mapping,
+        failover_protection_servers=failover_protection_servers,
+    )
+    working_makespan, working_avg_jct = evaluator.simulate(
+        base_experiment.pre_failure_mapping
+    )
+    methods = {"baseline": baseline_metrics, **methods}
+    method_mappings = {
+        "baseline": _normalize_mapping(baseline.mapping),
+        **method_mappings,
+    }
+    strategy_metadata = {
+        method: dict(
+            (reporting.get("strategy_metadata") or {}).get(strategy, {})
+        )
+        for method, strategy in METHOD_TO_STRATEGY.items()
+    }
+    result = {
+        "tenant_count": int(base_experiment.config.num_tenants),
+        "trial": int(trial_index),
+        "algorithm_version": REPAIR_ALGORITHM_VERSION,
+        "mapping_seed": int(case["mapping_seed"]),
+        "failure": {
+            "tenant": int(failure.tenant),
+            "failed_rank": int(failure.failed_rank),
+            "failed_server": int(failure.failed_server),
+        },
+        "global_protection_pool": [
+            int(server) for server in scenario.global_protection_pool
+        ],
+        "pre_failure_mapping": _normalize_mapping(base_experiment.pre_failure_mapping),
+        "working_mapping": {
+            "avg_jct": float(working_avg_jct),
+            "makespan": float(working_makespan),
+        },
+        "methods": methods,
+        "method_mappings": method_mappings,
+        "strategy_metadata": strategy_metadata,
+        "baseline_metadata": {
+            "solver": "NearestProtectionBaselineSolver",
+            "replacement_server": int(baseline.replacement_server),
+            "replacement_leaf": baseline.replacement_leaf,
+        },
+        "reproducibility": {
+            "topology": {
+                "num_spine": int(base_experiment.config.num_spine),
+                "num_leaf": int(base_experiment.config.num_leaf),
+                "per_leaf_server": int(base_experiment.config.per_leaf_server),
+                "server_count": int(base_experiment.datacenter.num_server),
+                "ecmp_path_count": int(base_experiment.datacenter.num_server)
+                * (int(base_experiment.datacenter.num_server) - 1),
+            },
+            "workload_mode": base_experiment.config.workload_mode,
+            "protection_pool_size_mode": base_experiment.config.protection_pool_size_mode,
+            "working_allocation_mode": base_experiment.config.working_allocation_mode,
+            "ecmp_path_table_fingerprint": _stable_repr_fingerprint(
+                base_experiment.datacenter.build_tenant_ecmp_path_table(
+                    sorted(base_experiment.pre_failure_mapping)
+                )
+            ),
+        },
+        "source": {
+            "mapping_seed": int(case["mapping_seed"]),
+            "candidate_index": int(case.get("candidate_index", -1)),
+            "story_case_identity": list(_story_case_identity(case)),
+            "source": "seed_story_simulator_validation",
+            "source_workload_variant_cache": case.get("source_workload_variant_cache"),
+            "published_trial": case.get("published_trial"),
+            "published_trial_source": case.get("published_trial_source"),
+            "reference_seed_source": "seed_story_validation_reporting",
+        },
+        "failure_selection_features": _failure_selection_features(case, candidate),
+    }
+    return result
+
+
 def _story_case_to_trial_result(case: dict[str, object], trial_index: int) -> dict[str, object] | None:
     base_experiment = case.get("base_experiment")
     candidate = case.get("candidate")
     if base_experiment is None or not isinstance(candidate, dict):
         return None
     cache_path = _candidate_eval_cache_path(base_experiment, candidate)
+    validation_result = _trial_result_from_simulator_validation(case, trial_index)
+    if validation_result is not None:
+        cache_path.parent.mkdir(parents=True, exist_ok=True)
+        cache_path.write_text(json.dumps(validation_result, sort_keys=True) + "\n")
+        return validation_result
     if cache_path.exists():
         cached_result = json.loads(cache_path.read_text())
         enriched_result = _enrich_trial_result_with_selection_features(
@@ -794,6 +975,7 @@ def _story_case_to_trial_result(case: dict[str, object], trial_index: int) -> di
         "source": {
             "mapping_seed": int(case["mapping_seed"]),
             "candidate_index": int(case.get("candidate_index", -1)),
+            "story_case_identity": list(_story_case_identity(case)),
             "source": method_source,
             "source_workload_variant_cache": case.get("source_workload_variant_cache"),
             "published_trial": case.get("published_trial"),
@@ -818,6 +1000,7 @@ def _enrich_trial_result_with_selection_features(
         _failure_selection_features(case, candidate),
     )
     source = dict(enriched.get("source", {}))
+    source["story_case_identity"] = list(_story_case_identity(case))
     if "source_workload_variant_cache" not in source:
         source["source_workload_variant_cache"] = case.get("source_workload_variant_cache")
     enriched["source"] = source
@@ -981,13 +1164,13 @@ def _evaluate_story_cases(module: ModuleType, *, workers: int) -> list[dict[str,
         return [
             result
             for index, case in enumerate(cases)
-            if (result := _story_case_to_trial_result(case, index)) is not None
+            if (result := _trial_result_from_simulator_validation(case, index)) is not None
         ]
     ctx = mp.get_context("spawn")
     results: list[dict[str, object]] = []
     with cf.ProcessPoolExecutor(max_workers=int(workers), mp_context=ctx) as executor:
         futures = [
-            executor.submit(_story_case_to_trial_result, case, index)
+            executor.submit(_trial_result_from_simulator_validation, case, index)
             for index, case in enumerate(cases)
         ]
         for future in cf.as_completed(futures):
@@ -1102,9 +1285,7 @@ def _story_case_sort_key(case: dict[str, object]) -> tuple[object, ...]:
         not nearest_is_first,
         -estimated_coordinate_margin,
         -estimated_local_margin,
-        -float(candidate.get("preview_coordinate_advantage_pct_vs_local_repair", 0.0)),
         -float(candidate.get("estimated_coordinate_advantage_pct_vs_failover", 0.0)),
-        -float(candidate.get("preview_local_gain_pct", 0.0)),
         -float(candidate.get("estimated_local_gain_pct", 0.0)),
         int(case.get("mapping_seed", 0)),
         int(candidate.get("tenant", 0)),
@@ -1152,13 +1333,16 @@ def _validation_strategy_metrics(case: dict[str, object]) -> tuple[float, float,
         return None
 
 
-def _select_ten_trials(
+def _select_trials(
     candidates: list[dict[str, object]],
     *,
+    target_trials: int,
     local_gain_threshold_pct: float,
 ) -> list[dict[str, object]]:
-    if len(candidates) < 10:
-        raise RuntimeError(f"need at least 10 candidates; got {len(candidates)}")
+    if len(candidates) < int(target_trials):
+        raise RuntimeError(
+            f"need at least {int(target_trials)} candidates; got {len(candidates)}"
+        )
     candidates = sorted(
         candidates,
         key=lambda candidate: _candidate_quality_key(
@@ -1166,93 +1350,15 @@ def _select_ten_trials(
             local_gain_threshold_pct=local_gain_threshold_pct,
         ),
     )
-    best_feasible = _select_ten_trials_with_milp(
+    best_feasible = _select_trials_with_milp(
         candidates,
+        target_trials=int(target_trials),
         local_gain_threshold_pct=local_gain_threshold_pct,
     )
-    if best_feasible is not None:
-        selected = list(best_feasible)
-        selected.sort(
-            key=lambda candidate: (
-                int(candidate["mapping_seed"]),
-                int(candidate["failure"]["tenant"]),
-                int(candidate["failure"]["failed_rank"]),
-            )
-        )
-        for trial_index, trial in enumerate(selected):
-            trial["trial"] = trial_index
-        return selected
-
-    best_feasible: list[dict[str, object]] | None = None
-    best_feasible_score = float("-inf")
-
-    starts: list[list[dict[str, object]]] = []
-    starts.append(candidates[:10])
-    for weight in (0.0, 0.25, 0.5, 1.0, 2.0):
-        starts.append(sorted(
-            candidates,
-            key=lambda candidate: (
-                -_candidate_coordinate_extra_gain(candidate)
-                - weight * _candidate_constraint_margin(
-                    candidate,
-                    local_gain_threshold_pct=local_gain_threshold_pct,
-                ),
-                -_candidate_local_gain(candidate),
-            ),
-        )[:10])
-    starts.append(sorted(
-        candidates,
-        key=lambda candidate: -_candidate_failover_baseline_margin(candidate),
-    )[:10])
-
-    seen_start_signatures: set[tuple[tuple[int, int, int, int], ...]] = set()
-    for start in starts:
-        current = _dedupe_keep_ten(start, candidates)
-        signature = _selection_signature(current)
-        if signature in seen_start_signatures:
-            continue
-        seen_start_signatures.add(signature)
-        current = _repair_selection_constraints(
-            current,
-            candidates,
-            local_gain_threshold_pct=local_gain_threshold_pct,
-        )
-        current = _improve_selection_objective(
-            current,
-            candidates,
-            local_gain_threshold_pct=local_gain_threshold_pct,
-        )
-        if _selection_feasible(
-            current,
-            local_gain_threshold_pct=local_gain_threshold_pct,
-        ):
-            score = _selection_story_strength_sum(current)
-            if score > best_feasible_score:
-                best_feasible = current
-                best_feasible_score = score
-
     if best_feasible is None:
-        best_feasible = _select_ten_trials_with_milp(
-            candidates,
-            local_gain_threshold_pct=local_gain_threshold_pct,
+        raise RuntimeError(
+            f"no feasible {int(target_trials)}-trial subset found by 0-1 MILP story selector"
         )
-    if best_feasible is None and float(local_gain_threshold_pct) <= LOCAL_GAIN_THRESHOLD_FALLBACK_PCT:
-        best_effort = sorted(
-            candidates,
-            key=lambda candidate: (
-                -_candidate_failover_baseline_margin(candidate),
-                -_candidate_local_gain(candidate),
-                -_candidate_coordinate_extra_gain(candidate),
-                -_candidate_story_strength(candidate),
-            ),
-        )[:10]
-        if _selection_feasible(
-            best_effort,
-            local_gain_threshold_pct=local_gain_threshold_pct,
-        ):
-            best_feasible = best_effort
-    if best_feasible is None:
-        raise RuntimeError("no feasible 10-trial subset found by story selector")
     selected = list(best_feasible)
     selected.sort(
         key=lambda candidate: (
@@ -1266,9 +1372,10 @@ def _select_ten_trials(
     return selected
 
 
-def _select_ten_trials_with_milp(
+def _select_trials_with_milp(
     candidates: list[dict[str, object]],
     *,
+    target_trials: int,
     local_gain_threshold_pct: float,
 ) -> list[dict[str, object]] | None:
     """Select story seeds only; repair mappings are still solved by heuristics."""
@@ -1279,7 +1386,8 @@ def _select_ten_trials_with_milp(
     except Exception:
         return None
 
-    if len(candidates) < 10:
+    target_trials = int(target_trials)
+    if len(candidates) < target_trials:
         return None
 
     local_margins = [
@@ -1307,8 +1415,8 @@ def _select_ten_trials_with_milp(
             ],
             dtype=float,
         ),
-        np.array([10.0, 0.0, 0.0, 0.0], dtype=float),
-        np.array([10.0, np.inf, np.inf, np.inf], dtype=float),
+        np.array([float(target_trials), 0.0, 0.0, 0.0], dtype=float),
+        np.array([float(target_trials), np.inf, np.inf, np.inf], dtype=float),
     )
     objective = np.array([-_candidate_story_strength(candidate) for candidate in candidates], dtype=float)
     result = milp(
@@ -1326,6 +1434,7 @@ def _select_ten_trials_with_milp(
     ]
     if _selection_feasible(
         selected,
+        target_trials=target_trials,
         local_gain_threshold_pct=local_gain_threshold_pct,
     ):
         return selected
@@ -1401,6 +1510,107 @@ def _candidate_signature(candidate: dict[str, object]) -> tuple[int, int, int, i
         int(failure["failed_rank"]),
         int(failure["failed_server"]),
     )
+
+
+def _candidate_story_case_identity(candidate: dict[str, object]) -> tuple[object, ...] | None:
+    source = candidate.get("source")
+    if not isinstance(source, dict):
+        return None
+    identity = source.get("story_case_identity")
+    if not isinstance(identity, (list, tuple)):
+        return None
+    return tuple(identity)
+
+
+def _dedupe_candidate_pool(candidates: list[dict[str, object]]) -> list[dict[str, object]]:
+    deduped: list[dict[str, object]] = []
+    seen_signatures: set[tuple[int, int, int, int]] = set()
+    for candidate in candidates:
+        if not isinstance(candidate, dict):
+            continue
+        source = candidate.get("source")
+        if (
+            not isinstance(source, dict)
+            or source.get("source") != "seed_story_simulator_validation"
+        ):
+            continue
+        try:
+            signature = _candidate_signature(candidate)
+        except (KeyError, TypeError, ValueError):
+            continue
+        if signature in seen_signatures:
+            continue
+        seen_signatures.add(signature)
+        deduped.append(candidate)
+    return deduped
+
+
+def _candidate_pool_cache_path(
+    output_dir: Path,
+    module: ModuleType,
+    tenant_count: int,
+) -> Path:
+    pool_root = Path(
+        os.environ.get(
+            "STORY_CANDIDATE_POOL_DIR_OVERRIDE",
+            str(output_dir / ".story_candidate_pool"),
+        )
+    )
+    return (
+        pool_root
+        / f"{_experiment_name(module)}__t{int(tenant_count)}.json"
+    )
+
+
+def _load_candidate_pool_cache(
+    path: Path,
+    *,
+    module: ModuleType,
+    tenant_count: int,
+) -> list[dict[str, object]]:
+    if not path.exists():
+        return []
+    try:
+        payload = json.loads(path.read_text())
+    except (OSError, json.JSONDecodeError):
+        return []
+    metadata = payload.get("metadata", {})
+    if not isinstance(metadata, dict):
+        return []
+    if metadata.get("experiment") != _experiment_name(module):
+        return []
+    if int(metadata.get("tenant_count", -1)) != int(tenant_count):
+        return []
+    if metadata.get("algorithm_version") != REPAIR_ALGORITHM_VERSION:
+        return []
+    candidates = payload.get("candidate_pool", [])
+    if not isinstance(candidates, list):
+        return []
+    return _dedupe_candidate_pool(
+        [candidate for candidate in candidates if isinstance(candidate, dict)]
+    )
+
+
+def _write_candidate_pool_cache(
+    path: Path,
+    *,
+    module: ModuleType,
+    tenant_count: int,
+    candidates: list[dict[str, object]],
+) -> None:
+    path.parent.mkdir(parents=True, exist_ok=True)
+    payload = {
+        "metadata": {
+            "experiment": _experiment_name(module),
+            "tenant_count": int(tenant_count),
+            "algorithm_version": REPAIR_ALGORITHM_VERSION,
+            "candidate_pool_size": len(candidates),
+        },
+        "candidate_pool": candidates,
+    }
+    tmp_path = path.with_suffix(path.suffix + ".tmp")
+    tmp_path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n")
+    tmp_path.replace(path)
 
 
 def _selection_signature(selection: list[dict[str, object]]) -> tuple[tuple[int, int, int, int], ...]:
@@ -1532,10 +1742,11 @@ def _deficit_score(deficits: dict[str, float]) -> float:
 def _selection_feasible(
     selection: list[dict[str, object]],
     *,
+    target_trials: int = 10,
     local_gain_threshold_pct: float,
 ) -> bool:
     return (
-        len(selection) == 10
+        len(selection) == int(target_trials)
         and _deficit_score(
             _selection_deficits(
                 selection,
@@ -1620,6 +1831,7 @@ def _evaluate_until_story_selection(
     fallback_trials: list[dict[str, object]] | None,
     fallback_threshold: float | None,
     progress_label: str,
+    pool_cache_path: Path | None = None,
 ) -> tuple[
     list[dict[str, object]] | None,
     float | None,
@@ -1633,20 +1845,74 @@ def _evaluate_until_story_selection(
         if FIXED_STORY_CANDIDATE_POOL_TARGET is None
         else max(1, int(FIXED_STORY_CANDIDATE_POOL_TARGET))
     )
+    target_trials = _export_target_trials()
+
+    def persist_pool() -> None:
+        if pool_cache_path is not None:
+            _write_candidate_pool_cache(
+                pool_cache_path,
+                module=module,
+                tenant_count=int(tenant_count),
+                candidates=evaluated_candidates,
+            )
+
+    def try_select() -> bool:
+        nonlocal selected_trials, selected_threshold, fallback_trials, fallback_threshold
+        if fixed_pool_target is not None and len(evaluated_candidates) < fixed_pool_target:
+            return False
+        try:
+            selected_trials = _select_trials(
+                evaluated_candidates,
+                target_trials=target_trials,
+                local_gain_threshold_pct=LOCAL_GAIN_THRESHOLD_PREFERRED_PCT,
+            )
+            selected_threshold = LOCAL_GAIN_THRESHOLD_PREFERRED_PCT
+            return True
+        except RuntimeError:
+            try:
+                fallback_trials = _select_trials(
+                    evaluated_candidates,
+                    target_trials=target_trials,
+                    local_gain_threshold_pct=LOCAL_GAIN_THRESHOLD_FALLBACK_PCT,
+                )
+                fallback_threshold = LOCAL_GAIN_THRESHOLD_FALLBACK_PCT
+                if len(evaluated_candidates) >= PREFERRED_SEARCH_CANDIDATE_CAP:
+                    selected_trials = fallback_trials
+                    selected_threshold = fallback_threshold
+                    return True
+            except RuntimeError:
+                pass
+        return False
+
+    if try_select():
+        return selected_trials, selected_threshold, fallback_trials, fallback_threshold
+
+    evaluated_story_ids = {
+        identity
+        for candidate in evaluated_candidates
+        if (identity := _candidate_story_case_identity(candidate)) is not None
+    }
+    unevaluated_cases = [
+        case
+        for case in cases
+        if _story_case_identity(case) not in evaluated_story_ids
+    ]
     remaining_fixed_candidates = (
-        len(cases)
+        len(unevaluated_cases)
         if fixed_pool_target is None
         else max(0, fixed_pool_target - len(evaluated_candidates))
     )
     max_cases_to_evaluate = (
-        len(cases)
+        len(unevaluated_cases)
         if fixed_pool_target is None
-        else min(len(cases), remaining_fixed_candidates)
+        else min(len(unevaluated_cases), remaining_fixed_candidates)
     )
     for batch_start in range(0, max_cases_to_evaluate, CASE_EVAL_BATCH_SIZE):
         batch_end = min(batch_start + CASE_EVAL_BATCH_SIZE, max_cases_to_evaluate)
-        batch = cases[batch_start:batch_end]
+        batch = unevaluated_cases[batch_start:batch_end]
         evaluated_candidates.extend(_evaluate_case_batch(batch, workers=workers))
+        evaluated_candidates[:] = _dedupe_candidate_pool(evaluated_candidates)
+        persist_pool()
         print(
             json.dumps(
                 {
@@ -1661,28 +1927,8 @@ def _evaluate_until_story_selection(
             file=sys.stderr,
             flush=True,
         )
-        if fixed_pool_target is not None and len(evaluated_candidates) < fixed_pool_target:
-            continue
-        try:
-            selected_trials = _select_ten_trials(
-                evaluated_candidates,
-                local_gain_threshold_pct=LOCAL_GAIN_THRESHOLD_PREFERRED_PCT,
-            )
-            selected_threshold = LOCAL_GAIN_THRESHOLD_PREFERRED_PCT
+        if try_select():
             break
-        except RuntimeError:
-            try:
-                fallback_trials = _select_ten_trials(
-                    evaluated_candidates,
-                    local_gain_threshold_pct=LOCAL_GAIN_THRESHOLD_FALLBACK_PCT,
-                )
-                fallback_threshold = LOCAL_GAIN_THRESHOLD_FALLBACK_PCT
-                if len(evaluated_candidates) >= PREFERRED_SEARCH_CANDIDATE_CAP:
-                    selected_trials = fallback_trials
-                    selected_threshold = fallback_threshold
-                    break
-            except RuntimeError:
-                pass
     return selected_trials, selected_threshold, fallback_trials, fallback_threshold
 
 
@@ -1721,12 +1967,22 @@ def export_result_for_experiment_module(
 
     trial_results_by_tenant: dict[str, list[dict[str, object]]] = {}
     local_threshold_by_tenant: dict[str, float] = {}
-    for tenant_count in sorted(root_payload["trials_by_tenant"], key=lambda value: int(value)):
-        evaluated_candidates: list[dict[str, object]] = []
-        raw_tenant_cases = [
-            *raw_cases_by_tenant.get(str(tenant_count), []),
-            *published_cases_by_tenant.get(str(tenant_count), []),
-        ]
+    selection_failures: list[str] = []
+    target_trials = _export_target_trials()
+    for tenant_count in _export_tenant_counts(root_payload):
+        pool_cache_path = _candidate_pool_cache_path(
+            output_dir,
+            module,
+            int(tenant_count),
+        )
+        evaluated_candidates: list[dict[str, object]] = _load_candidate_pool_cache(
+            pool_cache_path,
+            module=module,
+            tenant_count=int(tenant_count),
+        )
+        raw_tenant_cases = list(raw_cases_by_tenant.get(str(tenant_count), []))
+        if FIXED_STORY_CANDIDATE_POOL_TARGET is None:
+            raw_tenant_cases.extend(published_cases_by_tenant.get(str(tenant_count), []))
         selected_trials = None
         selected_threshold = None
         fallback_trials = None
@@ -1738,6 +1994,7 @@ def export_result_for_experiment_module(
                 workers=workers,
                 tenant_count=int(tenant_count),
                 evaluated_candidates=evaluated_candidates,
+                pool_cache_path=pool_cache_path,
                 selected_trials=selected_trials,
                 selected_threshold=selected_threshold,
                 fallback_trials=fallback_trials,
@@ -1756,6 +2013,7 @@ def export_result_for_experiment_module(
                     workers=workers,
                     tenant_count=int(tenant_count),
                     evaluated_candidates=evaluated_candidates,
+                    pool_cache_path=pool_cache_path,
                     selected_trials=selected_trials,
                     selected_threshold=selected_threshold,
                     fallback_trials=fallback_trials,
@@ -1774,20 +2032,22 @@ def export_result_for_experiment_module(
                 else int(FIXED_STORY_CANDIDATE_POOL_TARGET)
             )
             if fixed_pool_target is not None and len(evaluated_candidates) < fixed_pool_target:
-                raise RuntimeError(
+                selection_failures.append(
                     "INSUFFICIENT_STORY_CANDIDATES: "
                     f"tenant={tenant_count}: evaluated={len(evaluated_candidates)}; "
                     f"required_pool={fixed_pool_target}; diagnostics={diagnostics}. "
                     "The barrier rerun needs story-cache candidate pkl files or "
                     "another candidate source with at least the requested pool size."
                 )
-            raise RuntimeError(
-                f"tenant={tenant_count}: no feasible 10-trial subset found; "
-                f"diagnostics={diagnostics}"
-            )
+            else:
+                selection_failures.append(
+                    f"tenant={tenant_count}: no feasible {int(target_trials)}-trial subset found; "
+                    f"diagnostics={diagnostics}"
+                )
+            continue
         selection_metadata = {
             "method": "milp",
-            "target_trials": 10,
+            "target_trials": int(target_trials),
             "candidate_pool_target": (
                 len(evaluated_candidates)
                 if FIXED_STORY_CANDIDATE_POOL_TARGET is None
@@ -1805,6 +2065,12 @@ def export_result_for_experiment_module(
                 features["story_selection"] = dict(selection_metadata)
         trial_results_by_tenant[str(tenant_count)] = selected_trials
         local_threshold_by_tenant[str(tenant_count)] = float(selected_threshold)
+
+    if selection_failures:
+        raise RuntimeError(
+            "story candidate MILP selection failed after evaluating all tenant pools: "
+            + " | ".join(selection_failures)
+        )
 
     summary_by_tenant: dict[str, object] = {}
     for tenant_count, trials in trial_results_by_tenant.items():
@@ -1848,7 +2114,7 @@ def export_result_for_experiment_module(
         "source_trials": str(trials_path),
         "source_story_cache": str(_story_cache_dir_for_module(module) / "seed_story"),
         "metric_source": "simulator",
-        "story_selection": "cherry_picked_from_cached_high_impact_story_cases",
+        "story_selection": "zero_one_milp_from_simulator_evaluated_high_impact_cases",
         "story_candidate_barrier": {
             "enabled": FIXED_STORY_CANDIDATE_POOL_TARGET is not None,
             "batch_size": int(CASE_EVAL_BATCH_SIZE),
@@ -1882,11 +2148,11 @@ def export_result_for_experiment_module(
             "preferred_pct": LOCAL_GAIN_THRESHOLD_PREFERRED_PCT,
             "fallback_pct": LOCAL_GAIN_THRESHOLD_FALLBACK_PCT,
             "preferred_search_candidate_cap": PREFERRED_SEARCH_CANDIDATE_CAP,
-            "story_seed_policy": "reuse_cached_high_impact_story_trials",
-            "selection_objective": "maximize_story_strength_after_current_algorithm_constraints",
+            "story_seed_policy": "use_regenerated_high_impact_story_cache_when_barrier_enabled",
+            "selection_objective": "0-1 MILP maximize story strength under aggregate constraints",
         },
         "local_gain_threshold_by_tenant": local_threshold_by_tenant,
-        "case_selection_algorithm": "constraint_guided_greedy_with_milp_story_selection_fallback",
+        "case_selection_algorithm": "zero_one_milp_story_selection",
         "summary_by_tenant": summary_by_tenant,
         "trials_by_tenant": trial_results_by_tenant,
         "all_ok": all(

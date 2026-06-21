@@ -176,13 +176,18 @@ HIGH_RESOURCE_SUMMARY_PATH = Path(__file__).resolve().with_name(
 DEFAULT_WORKLOAD_MODE = "low_contention_homo_gpt"
 DEFAULT_PROTECTION_POOL_SIZE_MODE = "high_resource"
 WORKING_MAPPING_SOURCE_WORKLOAD_MODE = "low_contention_dominant"
-WORKING_MAPPING_SOURCE_CACHE_DIR = Path("/private/tmp/high_resource_story_cache")
+WORKING_MAPPING_SOURCE_CACHE_DIR = Path(
+    os.environ.get(
+        "WORKING_MAPPING_SOURCE_CACHE_DIR_OVERRIDE",
+        "/private/tmp/high_resource_story_cache",
+    )
+)
 HIGH_RESOURCE_REUSE_CANDIDATES_PER_SEED = 6
 
 BASE_EXPERIMENT_CACHE_SCHEMA = "high_resource_homo_base_experiment_v2_workload_only"
 PREVIEW_REPAIR_CACHE_SCHEMA = "high_resource_homo_preview_repair_v1"
-SIMULATOR_VALIDATION_CACHE_SCHEMA = "high_resource_homo_sim_validation_v2"
-SEED_STORY_CACHE_SCHEMA = "high_resource_homo_seed_story_v1"
+SIMULATOR_VALIDATION_CACHE_SCHEMA = "high_resource_homo_sim_validation_v3"
+SEED_STORY_CACHE_SCHEMA = "high_resource_homo_seed_story_v3"
 
 BASE_EXPERIMENT_CACHE_SOURCES = (
     Path("simcore_cpp.cpython-312-darwin.so"),
@@ -209,11 +214,13 @@ SEED_STORY_CACHE_SOURCES = (
     Path("failure_aware_repair_project/experiments/High_resource-homo.py"),
 ) + BASE_EXPERIMENT_CACHE_SOURCES + (
     Path("failure_aware_repair_project/failure_aware_repair/heuristic.py"),
+    Path("failure_aware_repair_project/failure_aware_repair/milp.py"),
     Path("failure_aware_repair_project/failure_aware_repair/strategy_solver.py"),
     Path("failure_aware_repair_project/failure_aware_repair/objectives.py"),
     Path("failure_aware_repair_project/failure_aware_repair/problem.py"),
     Path("failure_aware_repair_project/failure_aware_repair/strategies.py"),
     Path("failure_aware_repair_project/failure_aware_repair/models.py"),
+    Path("failure_aware_repair_project/experiments/story_selection.py"),
     Path("multitenant/simulator/worker.py"),
     Path("CCL_Simulator/simcore_cpp/bindings.cpp"),
     Path("CCL_Simulator/simcore_cpp/sim.hpp"),
@@ -465,8 +472,8 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--repair-time-limit",
         type=float,
-        default=None,
-        help="Optional repair heuristic time limit; omitted means no limit.",
+        default=10.0,
+        help="Repair MILP time limit per strategy; working mapping remains unlimited.",
     )
     parser.add_argument(
         "--failover-policy",
@@ -482,7 +489,7 @@ def parse_args() -> argparse.Namespace:
             "omitted means no limit."
         ),
     )
-    parser.add_argument("--failure-screen-candidates", type=int, default=12)
+    parser.add_argument("--failure-screen-candidates", type=int, default=20)
     parser.add_argument(
         "--story-candidate-pool-target",
         type=int,
@@ -499,21 +506,11 @@ def parse_args() -> argparse.Namespace:
         help="Select final story failures with a hard-constrained MILP by default.",
     )
     parser.add_argument(
-        "--failure-preview-candidates",
-        type=int,
-        default=12,
-        help=(
-            "Run full estimator-only repair heuristics for this many screened "
-            "failure candidates before selecting trial failures. Simulator is "
-            "still used only in final reporting."
-        ),
-    )
-    parser.add_argument(
         "--allow-non-story-fallback",
         action="store_true",
         help=(
             "Allow non-story screened failures to fill missing trials. The default "
-            "is to require estimator-preview story matches for paper-facing runs."
+            "is to let simulator-backed MILP selection decide the final cases."
         ),
     )
     parser.add_argument(
@@ -521,15 +518,14 @@ def parse_args() -> argparse.Namespace:
         action=argparse.BooleanOptionalAction,
         default=True,
         help=(
-            "Validate estimator-preview story candidates with the simulator during "
-            "scenario search. This is experiment scenario selection, not part of "
-            "the repair algorithm runtime."
+            "Validate every high-impact candidate with the simulator during "
+            "scenario search so the final MILP selects from simulator metrics."
         ),
     )
     parser.add_argument(
         "--failure-screen-mode",
-        choices=("critical_local_gain", "estimator_story"),
-        default="estimator_story",
+        choices=("structural", "critical_local_gain", "estimator_story"),
+        default="structural",
     )
     parser.add_argument("--min-estimated-local-gain-pct", type=float, default=15.0)
     parser.add_argument("--min-estimated-coordinate-gain-pct", type=float, default=0.0)
@@ -543,12 +539,6 @@ def parse_args() -> argparse.Namespace:
             "instead of requiring every selected case to individually exceed the "
             "coordinate-advantage threshold."
         ),
-    )
-    parser.add_argument(
-        "--aggregate-selection-min-preview-advantage-pct",
-        type=float,
-        default=5.0,
-        help="Minimum preview coordinate advantage for aggregate-story validation.",
     )
     parser.add_argument("--min-estimated-local-regret-pct", type=float, default=0.0)
     parser.add_argument("--same-effect-tolerance-pct", type=float, default=2.0)
@@ -577,6 +567,11 @@ def parse_args() -> argparse.Namespace:
         "--skip-result-export",
         action="store_true",
         help="Only print the published summary; do not write experiments/result JSON.",
+    )
+    parser.add_argument(
+        "--export-result-json-only",
+        action="store_true",
+        help=argparse.SUPPRESS,
     )
     return parser.parse_args()
 
@@ -1401,7 +1396,6 @@ def _estimator_screened_high_impact_pool(
     min_local_regret_pct: float,
     same_effect_tolerance_pct: float,
     min_switch_reduction_vs_local: int,
-    preview_candidates: int = 0,
     screen_mode: str = "critical_local_gain",
     cache_dir: Path | None = None,
 ) -> tuple[list[dict[str, object]], list[dict[str, object]]]:
@@ -1438,17 +1432,7 @@ def _estimator_screened_high_impact_pool(
             if float(item["estimated_local_gain_pct"]) >= float(min_local_gain_pct)
         ]
         if len(strict) >= int(min_size):
-            return _preview_screened_failures(
-                base_experiment,
-                strict,
-                preview_limit=preview_candidates,
-                cache_dir=cache_dir,
-                min_local_gain_pct=min_local_gain_pct,
-                min_coordinate_gain_pct=min_coordinate_gain_pct,
-                min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-                same_effect_tolerance_pct=same_effect_tolerance_pct,
-                min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-            ), scored
+            return strict, scored
         strict_keys = {
             (int(item["tenant"]), int(item["rank"]), int(item["server"]))
             for item in strict
@@ -1459,17 +1443,7 @@ def _estimator_screened_high_impact_pool(
             if (int(item["tenant"]), int(item["rank"]), int(item["server"])) not in strict_keys
             and float(item["estimated_local_gain_pct"]) >= float(min_local_gain_pct)
         ]
-        return _preview_screened_failures(
-            base_experiment,
-            [*strict, *fallback],
-            preview_limit=preview_candidates,
-            cache_dir=cache_dir,
-            min_local_gain_pct=min_local_gain_pct,
-            min_coordinate_gain_pct=min_coordinate_gain_pct,
-            min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-            same_effect_tolerance_pct=same_effect_tolerance_pct,
-            min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-        ), scored
+        return [*strict, *fallback], scored
 
     scored = [
             _estimate_repair_gain_for_failure(
@@ -1516,17 +1490,7 @@ def _estimator_screened_high_impact_pool(
             if (int(item["tenant"]), int(item["rank"]), int(item["server"]))
             not in candidate_keys
         )
-    return _preview_screened_failures(
-        base_experiment,
-        candidate_pool,
-        preview_limit=preview_candidates,
-        cache_dir=cache_dir,
-        min_local_gain_pct=min_local_gain_pct,
-        min_coordinate_gain_pct=min_coordinate_gain_pct,
-        min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-        same_effect_tolerance_pct=same_effect_tolerance_pct,
-        min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-    ), scored
+    return candidate_pool, scored
 
 
 def _screening_search_config(search_config: RepairSearchConfig) -> RepairSearchConfig:
@@ -1547,53 +1511,23 @@ def _screened_pool_score(
     min_switch_reduction_vs_local: int,
     screen_mode: str = "critical_local_gain",
 ) -> tuple[bool, bool, float, float, float]:
-    preview_items = [
-        item
-        for item in scored_pool
-        if "preview_coordinate_advantage_pct_vs_local_repair" in item
-    ]
-    if preview_items:
-        preview_story_count = sum(
-            1
-            for item in preview_items
-            if _preview_story_match(
-                item,
-                min_local_gain_pct=min_local_gain_pct,
-                min_coordinate_gain_pct=min_coordinate_gain_pct,
-                min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-                same_effect_tolerance_pct=same_effect_tolerance_pct,
-                min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-            )
-        )
-        preview_local_count = sum(
-            1
-            for item in preview_items
-            if float(item.get("preview_local_gain_pct", float("-inf")))
-            >= float(min_local_gain_pct)
-        )
-        max_preview_advantage = max(
-            (
-                float(item["preview_coordinate_advantage_pct_vs_local_repair"])
-                for item in preview_items
-            ),
-            default=float("-inf"),
-        )
-        max_preview_local = max(
-            (float(item["preview_local_gain_pct"]) for item in preview_items),
-            default=float("-inf"),
-        )
-        max_preview_failover = max(
-            (float(item["preview_failover_avg_jct"]) for item in preview_items),
-            default=float("-inf"),
-        )
+    if str(screen_mode) == "structural":
         return (
-            preview_story_count >= int(trials),
-            preview_local_count >= int(trials),
-            float(preview_story_count),
-            max_preview_advantage,
-            max_preview_local
-            if max_preview_local != float("-inf")
-            else max_preview_failover,
+            len(scored_pool) >= int(trials),
+            len(scored_pool) >= int(trials),
+            float(len(scored_pool)),
+            float(
+                max(
+                    (int(item.get("cross_leaf_incident_edges", 0)) for item in scored_pool),
+                    default=0,
+                )
+            ),
+            float(
+                max(
+                    (float(item.get("prefilter_failover_avg_jct", 0.0)) for item in scored_pool),
+                    default=0.0,
+                )
+            ),
         )
 
     if str(screen_mode) == "critical_local_gain":
@@ -2416,18 +2350,11 @@ def _seed_story_cache_signature(
         "aggregate_story_selection": bool(
             task.get("aggregate_story_selection", False)
         ),
-        "aggregate_selection_min_preview_advantage_pct": float(
-            task.get("aggregate_selection_min_preview_advantage_pct", 5.0)
-        ),
         "min_local_regret_pct": float(task["min_local_regret_pct"]),
         "same_effect_tolerance_pct": float(task["same_effect_tolerance_pct"]),
         "story_validation_margin_pct": float(task["story_validation_margin_pct"]),
         "min_switch_reduction_vs_local": int(task["min_switch_reduction_vs_local"]),
-        "preview_candidates": int(task["preview_candidates"]),
         "screen_mode": str(task["screen_mode"]),
-        "candidate_source_mode": str(
-            task.get("candidate_source_mode", "high_resource_plus_estimator")
-        ),
         "story_search_simulator_validation": bool(
             task["story_search_simulator_validation"]
         ),
@@ -2518,21 +2445,13 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
     min_coordinate_gain_pct = float(task["min_coordinate_gain_pct"])
     min_coordinate_advantage_pct = float(task["min_coordinate_advantage_pct"])
     aggregate_story_selection = bool(task.get("aggregate_story_selection", False))
-    aggregate_selection_min_preview_advantage_pct = float(
-        task.get("aggregate_selection_min_preview_advantage_pct", 5.0)
-    )
     min_local_regret_pct = float(task["min_local_regret_pct"])
     same_effect_tolerance_pct = float(task["same_effect_tolerance_pct"])
-    story_validation_margin_pct = float(task["story_validation_margin_pct"])
     min_switch_reduction_vs_local = int(task["min_switch_reduction_vs_local"])
-    preview_candidates = int(task["preview_candidates"])
     screen_mode = str(task["screen_mode"])
     story_search_simulator_validation = bool(task["story_search_simulator_validation"])
     cache_dir = task.get("story_cache_dir")
     cache_path = Path(str(cache_dir)) if cache_dir else None
-    candidate_source_mode = str(
-        task.get("candidate_source_mode", "high_resource_plus_estimator")
-    )
 
     config = replace(base_config, seed=mapping_seed, num_tenants=num_tenants)
     seed_story_signature = _seed_story_cache_signature(task, config)
@@ -2564,50 +2483,17 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
         failure_candidates,
         min_size=trials,
     )
-    high_resource_story_candidates = _high_resource_story_failure_candidates(
-        mapping_seed=mapping_seed,
-        num_tenants=num_tenants,
-    )
-    high_resource_preview_pool: list[dict[str, object]] = []
-    if high_resource_story_candidates:
-        candidate_by_key = {
-            (
-                int(candidate["tenant"]),
-                int(candidate["rank"]),
-                int(candidate["server"]),
-            ): candidate
-            for candidate in failure_candidates
-        }
-        for candidate in high_resource_story_candidates:
-            key = (
-                int(candidate["tenant"]),
-                int(candidate["rank"]),
-                int(candidate["server"]),
-            )
-            if key not in candidate_by_key:
-                continue
-            merged_candidate = {
-                **candidate_by_key.get(key, {}),
-                **candidate,
-                "failure_source": "high_resource_story_case",
-            }
-            preview = _preview_repair_gain_for_failure(
-                base_experiment,
-                merged_candidate,
-                cache_dir=cache_path,
-            )
-            preview["preview_story_match"] = _preview_story_match(
-                preview,
-                min_local_gain_pct=min_local_gain_pct,
-                min_coordinate_gain_pct=min_coordinate_gain_pct,
-                min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-                same_effect_tolerance_pct=same_effect_tolerance_pct,
-                min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-            )
-            high_resource_preview_pool.append(preview)
     estimator_scored_pool: list[dict[str, object]] = []
-    if candidate_source_mode == "high_resource_story_only":
-        high_impact_pool = list(high_resource_preview_pool)
+    if screen_mode == "structural":
+        high_impact_pool = _prefilter_failure_candidates(
+            base_experiment,
+            _strong_high_impact_pool(
+                failure_candidates,
+                min_size=max(1, failure_screen_candidates),
+            ),
+            limit=max(1, failure_screen_candidates),
+        )
+        estimator_scored_pool = list(high_impact_pool)
     else:
         high_impact_pool, estimator_scored_pool = _estimator_screened_high_impact_pool(
             base_experiment,
@@ -2621,32 +2507,9 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
             min_local_regret_pct=min_local_regret_pct,
             same_effect_tolerance_pct=same_effect_tolerance_pct,
             min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-            preview_candidates=preview_candidates,
             screen_mode=screen_mode,
             cache_dir=cache_path,
         )
-    if high_resource_preview_pool:
-        seen_preview_keys = {
-            (
-                int(candidate["tenant"]),
-                int(candidate["rank"]),
-                int(candidate["server"]),
-            )
-            for candidate in high_resource_preview_pool
-        }
-        high_impact_pool = [
-            *high_resource_preview_pool,
-            *(
-                candidate
-                for candidate in high_impact_pool
-                if (
-                    int(candidate["tenant"]),
-                    int(candidate["rank"]),
-                    int(candidate["server"]),
-                )
-                not in seen_preview_keys
-            ),
-        ]
     screening_seconds = time.time() - screening_start
     seed_score = _screened_pool_score(
         high_impact_pool,
@@ -2666,33 +2529,21 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
         "candidate_count": len(failure_candidates),
         "seed_story_cache_hit": False,
         "working_mapping_cache_hit": bool(cache_hit),
-        "high_resource_story_candidate_count": len(high_resource_story_candidates),
         "failure_candidate_source": (
-            candidate_source_mode
-            if high_resource_story_candidates
+            "structural_high_impact"
+            if screen_mode == "structural"
             else "estimator_screening"
         ),
         "high_impact_pool_count": usable_pool_count,
-        "preview_story_count": sum(
-            1
-            for candidate in high_impact_pool
-            if bool(candidate.get("preview_story_match", False))
-        ),
-        "previewed_count": sum(
-            1
-            for candidate in high_impact_pool
-            if "preview_coordinate_advantage_pct_vs_local_repair" in candidate
-        ),
         "simulator_story_count": 0,
         "simulator_aggregate_candidate_count": 0,
         "simulator_aggregate_selected_count": 0,
         "simulator_validated_near_story_count": 0,
-        "simulator_rejected_preview_story_count": 0,
         "simulator_rejected_near_story_count": 0,
         "simulator_rejected_aggregate_count": 0,
         "timing_seconds": {
             "working_mapping": float(generate_seconds),
-            "screening_preview": float(screening_seconds),
+            "candidate_screening": float(screening_seconds),
             "simulator_validation": 0.0,
             "simulator_validation_repair_solve": 0.0,
             "simulator_validation_payload_simulation": 0.0,
@@ -2727,127 +2578,45 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
             int(seed_attempt),
             int(candidate_index),
         )
-        preview_story_match = bool(candidate.get("preview_story_match", False))
-        preview_near_story_match = _preview_validation_candidate_match(
-            candidate,
-            min_local_gain_pct=min_local_gain_pct,
-            min_coordinate_gain_pct=min_coordinate_gain_pct,
-            min_coordinate_advantage_pct=min_coordinate_advantage_pct,
-            same_effect_tolerance_pct=same_effect_tolerance_pct,
-            min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-            validation_margin_pct=story_validation_margin_pct,
-        )
-        preview_aggregate_candidate = (
-            aggregate_story_selection
-            and (
-                candidate_source_mode == "high_resource_story_only"
-                or (
-                    float(candidate.get("preview_local_gain_pct", float("-inf")))
-                    >= 10.0
-                    and float(
-                        candidate.get(
-                            "preview_coordinate_advantage_pct_vs_local_repair",
-                            float("-inf"),
-                        )
-                    )
-                    >= float(aggregate_selection_min_preview_advantage_pct)
-                )
+        if story_search_simulator_validation:
+            validation_start = time.time()
+            validation = _simulator_story_validation(
+                base_experiment,
+                candidate,
+                cache_dir=cache_path,
+                min_local_gain_pct=(
+                    10.0 if aggregate_story_selection else min_local_gain_pct
+                ),
+                min_coordinate_advantage_pct=(
+                    0.0
+                    if aggregate_story_selection
+                    else min_coordinate_advantage_pct
+                ),
+                same_effect_tolerance_pct=same_effect_tolerance_pct,
+                min_switch_reduction_vs_local=min_switch_reduction_vs_local,
             )
-        )
-        should_validate_candidate = preview_story_match or (
-            story_search_simulator_validation and preview_near_story_match
-        ) or (
-            story_search_simulator_validation and preview_aggregate_candidate
-        )
-        if should_validate_candidate:
-            if story_search_simulator_validation:
-                if preview_aggregate_candidate:
-                    attempt_record["simulator_aggregate_candidate_count"] = (
-                        int(attempt_record["simulator_aggregate_candidate_count"]) + 1
-                    )
-                if preview_near_story_match and not preview_story_match:
-                    attempt_record["simulator_validated_near_story_count"] = (
-                        int(attempt_record["simulator_validated_near_story_count"]) + 1
-                    )
-                validation_start = time.time()
-                validation = _simulator_story_validation(
-                    base_experiment,
-                    candidate,
-                    cache_dir=cache_path,
-                    min_local_gain_pct=(
-                        10.0 if aggregate_story_selection else min_local_gain_pct
-                    ),
-                    min_coordinate_advantage_pct=(
-                        0.0
-                        if aggregate_story_selection
-                        else min_coordinate_advantage_pct
-                    ),
-                    same_effect_tolerance_pct=same_effect_tolerance_pct,
-                    min_switch_reduction_vs_local=min_switch_reduction_vs_local,
-                )
-                validation_seconds += time.time() - validation_start
-                case["story_search_simulator_validation"] = validation
-                validation_timing = validation.get("timing_seconds", {})
+            validation_seconds += time.time() - validation_start
+            case["story_search_simulator_validation"] = validation
+            validation_timing = validation.get("timing_seconds", {})
+            attempt_record["timing_seconds"][
+                "simulator_validation_repair_solve"
+            ] = float(
                 attempt_record["timing_seconds"][
                     "simulator_validation_repair_solve"
-                ] = float(
-                    attempt_record["timing_seconds"][
-                        "simulator_validation_repair_solve"
-                    ]
-                ) + float(validation_timing.get("repair_solve", 0.0))
+                ]
+            ) + float(validation_timing.get("repair_solve", 0.0))
+            attempt_record["timing_seconds"][
+                "simulator_validation_payload_simulation"
+            ] = float(
                 attempt_record["timing_seconds"][
                     "simulator_validation_payload_simulation"
-                ] = float(
-                    attempt_record["timing_seconds"][
-                        "simulator_validation_payload_simulation"
-                    ]
-                ) + float(validation_timing.get("payload_simulation", 0.0))
-                if bool(validation["success"]):
-                    attempt_record["simulator_story_count"] = (
-                        int(attempt_record["simulator_story_count"]) + 1
-                    )
-                    if aggregate_story_selection:
-                        metrics = validation["metrics"]
-                        aggregate_case_score = (
-                            -float(
-                                metrics["cooperative_repair"][
-                                    "coordinate_advantage_pct_vs_local_repair"
-                                ]
-                            ),
-                            -float(
-                                metrics["tenant_local_repair"][
-                                    "improvement_pct_vs_failover"
-                                ]
-                            ),
-                            int(
-                                metrics["cooperative_repair"][
-                                    "extra_switch_servers_vs_failover"
-                                ]
-                            ),
-                            int(seed_attempt),
-                            int(candidate_index),
-                        )
-                        attempt_record["simulator_aggregate_selected_count"] = (
-                            int(attempt_record["simulator_aggregate_selected_count"]) + 1
-                        )
-                        selected_failure_cases.append((aggregate_case_score, case))
-                    else:
-                        selected_failure_cases.append((case_score, case))
-                else:
-                    reject_key = (
-                        "simulator_rejected_preview_story_count"
-                        if preview_story_match
-                        else (
-                            "simulator_rejected_aggregate_count"
-                            if preview_aggregate_candidate
-                            else "simulator_rejected_near_story_count"
-                        )
-                    )
-                    attempt_record[reject_key] = int(attempt_record[reject_key]) + 1
-            else:
-                selected_failure_cases.append((case_score, case))
-        else:
-            fallback_failure_cases.append((case_score, case))
+                ]
+            ) + float(validation_timing.get("payload_simulation", 0.0))
+            if bool(validation["success"]):
+                attempt_record["simulator_story_count"] = (
+                    int(attempt_record["simulator_story_count"]) + 1
+                )
+        selected_failure_cases.append((case_score, case))
 
     attempt_record["timing_seconds"]["simulator_validation"] = float(
         validation_seconds
@@ -2870,6 +2639,10 @@ def _search_seed_story_cases(task: dict[str, object]) -> dict[str, object]:
 
 def main() -> None:
     args = parse_args()
+    if bool(args.export_result_json_only):
+        _maybe_export_result_json(args)
+        return
+
     if not bool(args.rerun):
         _emit_published_summary(args)
         return
@@ -2881,7 +2654,7 @@ def main() -> None:
     )
     search = RepairSearchConfig(
         max_participating_tenants=args.tenant_max,
-        use_collapsed_milp_candidate=False,
+        use_collapsed_milp_candidate=True,
     )
 
     base_config = RandomRepairExperimentConfig(
@@ -2904,6 +2677,7 @@ def main() -> None:
     )
 
     trials: list[dict[str, object]] = []
+    story_search_failures: list[str] = []
     for num_tenants in range(int(args.tenant_min), int(args.tenant_max) + 1):
         selection_pool_target = max(
             int(args.trials),
@@ -2921,8 +2695,6 @@ def main() -> None:
         def build_seed_task(
             mapping_seed: int,
             seed_attempt: int,
-            *,
-            candidate_source_mode: str,
         ) -> dict[str, object]:
             return {
                 "base_config": base_config,
@@ -2941,9 +2713,6 @@ def main() -> None:
                     args.min_estimated_coordinate_advantage_pct
                 ),
                 "aggregate_story_selection": bool(args.aggregate_story_selection),
-                "aggregate_selection_min_preview_advantage_pct": float(
-                    args.aggregate_selection_min_preview_advantage_pct
-                ),
                 "min_local_regret_pct": float(args.min_estimated_local_regret_pct),
                 "same_effect_tolerance_pct": float(args.same_effect_tolerance_pct),
                 "story_validation_margin_pct": float(
@@ -2952,9 +2721,7 @@ def main() -> None:
                 "min_switch_reduction_vs_local": int(
                     args.min_switch_reduction_vs_local
                 ),
-                "preview_candidates": int(args.failure_preview_candidates),
                 "screen_mode": str(args.failure_screen_mode),
-                "candidate_source_mode": candidate_source_mode,
                 "story_search_simulator_validation": bool(
                     args.story_search_simulator_validation
                 ),
@@ -2974,9 +2741,6 @@ def main() -> None:
                         "story_search": {
                             "num_tenants": num_tenants,
                             "mapping_seed": seed_result["mapping_seed"],
-                            "preview_story_count": attempt_record[
-                                "preview_story_count"
-                            ],
                             "simulator_story_count": attempt_record[
                                 "simulator_story_count"
                             ],
@@ -2985,9 +2749,6 @@ def main() -> None:
                             ],
                             "simulator_aggregate_selected_count": attempt_record[
                                 "simulator_aggregate_selected_count"
-                            ],
-                            "simulator_rejected_preview_story_count": attempt_record[
-                                "simulator_rejected_preview_story_count"
                             ],
                             "simulator_rejected_aggregate_count": attempt_record[
                                 "simulator_rejected_aggregate_count"
@@ -3020,6 +2781,8 @@ def main() -> None:
             )
 
         def selected_cases_meet_aggregate_story() -> bool:
+            if str(args.failure_screen_mode) == "structural":
+                return len(selected_failure_cases) >= selection_pool_target
             if len(selected_failure_cases) < selection_pool_target:
                 return False
             sorted_cases = sorted(selected_failure_cases, key=lambda item: item[0])
@@ -3111,29 +2874,14 @@ def main() -> None:
                 else:
                     executor.shutdown(wait=True, cancel_futures=True)
 
-        high_resource_seed_tasks = [
-            build_seed_task(
-                mapping_seed,
-                seed_attempt,
-                candidate_source_mode="high_resource_story_only",
-            )
+        full_seed_tasks = [
+            build_seed_task(mapping_seed, seed_attempt)
             for mapping_seed, seed_attempt in seed_pairs
-            if _high_resource_story_failure_candidates(
-                mapping_seed=mapping_seed,
-                num_tenants=num_tenants,
-            )
         ]
-        run_seed_tasks(high_resource_seed_tasks)
-        if not selected_cases_meet_aggregate_story():
-            full_seed_tasks = [
-                build_seed_task(
-                    mapping_seed,
-                    seed_attempt,
-                    candidate_source_mode="high_resource_plus_estimator",
-                )
-                for mapping_seed, seed_attempt in seed_pairs
-            ]
-            run_seed_tasks(full_seed_tasks)
+        run_seed_tasks(full_seed_tasks)
+
+        if bool(args.skip_result_export):
+            continue
 
         selected_failure_cases.sort(key=lambda item: item[0])
         fallback_failure_cases.sort(key=lambda item: item[0])
@@ -3180,13 +2928,17 @@ def main() -> None:
                     break
 
         if len(selected_cases) < int(args.trials):
-            raise RuntimeError(
-                "story search did not find enough estimator-preview story failures "
+            failure_message = (
+                "story search did not generate enough simulator-evaluated failure cases "
                 f"for num_tenants={num_tenants}; selected={len(selected_cases)}; "
                 f"required={int(args.trials)}; "
                 f"story_selection={story_selection_metadata}; attempts={seed_attempts}. "
                 "Increase --mapping-seed-attempts or --story-candidate-pool-target."
             )
+            if bool(args.skip_result_export):
+                story_search_failures.append(failure_message)
+                continue
+            raise RuntimeError(failure_message)
 
         for trial_index, selected_case in enumerate(selected_cases):
             mapping_seed = int(selected_case["mapping_seed"])
@@ -3208,7 +2960,7 @@ def main() -> None:
                 base_experiment,
                 failure=failure,
                 failure_selection_metadata={
-                    "mode": "random_from_estimator_screened_cross_leaf_high_impact_candidates",
+                    "mode": "structural_high_impact_failure_candidates",
                     "cross_leaf_next_edge_count": len(cross_leaf_edges),
                     "candidate_count": len(failure_candidates),
                     "structural_high_impact_pool_count": len(structural_high_impact_pool),
@@ -3223,7 +2975,6 @@ def main() -> None:
                     "mapping_seed_attempts": seed_attempts,
                     "selected_mapping_seed_score": list(selected_seed_score),
                     "failure_estimator_time_limit": failure_estimator_time_limit,
-                    "failure_preview_candidates": int(args.failure_preview_candidates),
                     "allow_non_story_fallback": bool(args.allow_non_story_fallback),
                     "story_search_required": not bool(args.allow_non_story_fallback),
                     "story_search_simulator_validation_enabled": bool(
@@ -3235,37 +2986,24 @@ def main() -> None:
                     "selected_story_case_count": len(selected_failure_cases),
                     "story_candidate_pool_target": selection_pool_target,
                     "story_selection": selected_case.get("story_selection"),
-                    "failure_previewed_count": sum(
-                        1
-                        for candidate in high_impact_pool
-                        if "preview_coordinate_advantage_pct_vs_local_repair"
-                        in candidate
-                    ),
                     "min_estimated_local_gain_pct": float(args.min_estimated_local_gain_pct),
                     "min_estimated_coordinate_gain_pct": float(args.min_estimated_coordinate_gain_pct),
                     "min_estimated_coordinate_advantage_pct": float(args.min_estimated_coordinate_advantage_pct),
                     "aggregate_story_selection": bool(args.aggregate_story_selection),
-                    "aggregate_selection_min_preview_advantage_pct": float(
-                        args.aggregate_selection_min_preview_advantage_pct
-                    ),
                     "min_estimated_local_regret_pct": float(args.min_estimated_local_regret_pct),
                     "same_effect_tolerance_pct": float(args.same_effect_tolerance_pct),
                     "min_switch_reduction_vs_local": int(args.min_switch_reduction_vs_local),
                     "high_impact_pool_screen": (
                         "cross_leaf_high_impact_estimator_local_gain"
                         if str(args.failure_screen_mode) == "critical_local_gain"
-                        else "estimator_advantage_or_same_effect_fewer_switches"
+                        else "structural_high_impact"
                     ),
                     "sample_seed": failure_sample_seed,
                     "sampled_without_replacement": int(args.trials) <= len(high_impact_pool),
                     "sample_order": (
-                        "ranked_by_estimator_preview_then_local_gain"
-                        if int(args.failure_preview_candidates) > 0
-                        else (
-                            "ranked_by_estimated_local_gain_pct"
-                            if str(args.failure_screen_mode) == "critical_local_gain"
-                            else "ranked_by_estimated_story"
-                        )
+                        "ranked_by_estimated_local_gain_pct"
+                        if str(args.failure_screen_mode) == "critical_local_gain"
+                        else "ranked_by_structural_high_impact"
                     ),
                     "candidate": sampled_failure,
                     "working_mapping_source_workload_mode": WORKING_MAPPING_SOURCE_WORKLOAD_MODE,
@@ -3431,6 +3169,12 @@ def main() -> None:
             trials.append(trial)
             print(json.dumps({"case": trial}, sort_keys=True), flush=True)
 
+    if story_search_failures:
+        raise RuntimeError(
+            "story search did not find MILP-feasible cases for every tenant: "
+            + " | ".join(story_search_failures)
+        )
+
     summary_by_tenant = _summarize_trials(trials)
     summary = {
         "experiment": "High_resource_homo",
@@ -3451,11 +3195,8 @@ def main() -> None:
         "workload_mode": str(args.workload_mode),
         "workload_definition": "all tenants use GPT13B dominant trace-derived collective",
         "aggregate_story_selection": bool(args.aggregate_story_selection),
-        "aggregate_selection_min_preview_advantage_pct": float(
-            args.aggregate_selection_min_preview_advantage_pct
-        ),
         "failover_policy": args.failover_policy,
-        "failure_selection": "random_from_estimator_screened_cross_leaf_high_impact_candidates",
+        "failure_selection": "structural_high_impact_failure_candidates",
         "summary_by_tenant": summary_by_tenant,
         "trials_detail": trials,
     }

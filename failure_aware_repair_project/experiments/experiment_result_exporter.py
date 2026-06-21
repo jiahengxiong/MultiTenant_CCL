@@ -1768,6 +1768,19 @@ def export_result_for_experiment_module(
             selected_threshold = fallback_threshold
         if selected_trials is None or selected_threshold is None:
             diagnostics = _candidate_pool_diagnostics(evaluated_candidates)
+            fixed_pool_target = (
+                None
+                if FIXED_STORY_CANDIDATE_POOL_TARGET is None
+                else int(FIXED_STORY_CANDIDATE_POOL_TARGET)
+            )
+            if fixed_pool_target is not None and len(evaluated_candidates) < fixed_pool_target:
+                raise RuntimeError(
+                    "INSUFFICIENT_STORY_CANDIDATES: "
+                    f"tenant={tenant_count}: evaluated={len(evaluated_candidates)}; "
+                    f"required_pool={fixed_pool_target}; diagnostics={diagnostics}. "
+                    "The barrier rerun needs story-cache candidate pkl files or "
+                    "another candidate source with at least the requested pool size."
+                )
             raise RuntimeError(
                 f"tenant={tenant_count}: no feasible 10-trial subset found; "
                 f"diagnostics={diagnostics}"

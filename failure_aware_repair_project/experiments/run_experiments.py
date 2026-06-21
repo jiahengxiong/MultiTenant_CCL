@@ -440,6 +440,13 @@ def _run_barrier_rerun(args: argparse.Namespace, experiments_dir: Path, result_d
             log_path = staging_dir / f"{experiment_name}.log"
             log_path.write_text(completed.stdout or "")
             if completed.returncode != 0:
+                if "INSUFFICIENT_STORY_CANDIDATES" in (completed.stdout or ""):
+                    raise RuntimeError(
+                        f"{experiment_name}: insufficient story candidates for "
+                        f"candidate_pool_target={pool_target}; log={log_path}. "
+                        "Barrier rerun cannot make progress without story-cache "
+                        "candidate files or a larger candidate source."
+                    )
                 failures.append(
                     f"{experiment_name}: script failed with exit={completed.returncode}; "
                     f"log={log_path}"

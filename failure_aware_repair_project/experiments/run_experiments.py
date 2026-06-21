@@ -195,7 +195,40 @@ def _run_script_checked(
     story_selection_method: str,
     overwrite_high_resource: bool,
 ) -> subprocess.CompletedProcess[str]:
-    cmd = [
+    env = _env()
+    env["STORY_CANDIDATE_BATCH_SIZE"] = str(max(1, int(story_candidate_batch_size)))
+    env["STORY_CANDIDATE_POOL_TARGET"] = str(
+        max(1, int(story_candidate_pool_target))
+    )
+
+    generate_cmd = [
+        python,
+        str(script),
+        "--result-json",
+        str(result_json),
+        "--result-workers",
+        str(max(1, int(result_workers))),
+        "--rerun",
+        "--output-json",
+        str(result_json.with_suffix(".summary.json")),
+        "--story-candidate-pool-target",
+        str(max(1, int(story_candidate_pool_target))),
+        "--story-selection-method",
+        str(story_selection_method),
+    ]
+    generate = subprocess.run(
+        generate_cmd,
+        cwd=script.parent,
+        env=env,
+        text=True,
+        stdout=subprocess.PIPE,
+        stderr=subprocess.STDOUT,
+        check=False,
+    )
+    if generate.returncode != 0:
+        return generate
+
+    export_cmd = [
         python,
         str(script),
         "--result-json",
@@ -204,20 +237,25 @@ def _run_script_checked(
         str(max(1, int(result_workers))),
     ]
     if script.name == "High_resource.py" and overwrite_high_resource:
-        cmd.append("--overwrite-result-json")
-    env = _env()
-    env["STORY_CANDIDATE_BATCH_SIZE"] = str(max(1, int(story_candidate_batch_size)))
-    env["STORY_CANDIDATE_POOL_TARGET"] = str(
-        max(1, int(story_candidate_pool_target))
-    )
-    return subprocess.run(
-        cmd,
+        export_cmd.append("--overwrite-result-json")
+    export = subprocess.run(
+        export_cmd,
         cwd=script.parent,
         env=env,
         text=True,
         stdout=subprocess.PIPE,
         stderr=subprocess.STDOUT,
         check=False,
+    )
+    return subprocess.CompletedProcess(
+        args=export.args,
+        returncode=export.returncode,
+        stdout=(
+            "===== generate candidates =====\n"
+            + (generate.stdout or "")
+            + "\n===== export result =====\n"
+            + (export.stdout or "")
+        ),
     )
 
 
@@ -440,13 +478,6 @@ def _run_barrier_rerun(args: argparse.Namespace, experiments_dir: Path, result_d
             log_path = staging_dir / f"{experiment_name}.log"
             log_path.write_text(completed.stdout or "")
             if completed.returncode != 0:
-                if "INSUFFICIENT_STORY_CANDIDATES" in (completed.stdout or ""):
-                    raise RuntimeError(
-                        f"{experiment_name}: insufficient story candidates for "
-                        f"candidate_pool_target={pool_target}; log={log_path}. "
-                        "Barrier rerun cannot make progress without story-cache "
-                        "candidate files or a larger candidate source."
-                    )
                 failures.append(
                     f"{experiment_name}: script failed with exit={completed.returncode}; "
                     f"log={log_path}"

@@ -1,0 +1,11 @@
+{
+  "complete": true,
+  "cases": 1400,
+  "methods": 8,
+  "total_method_results": 11200,
+  "trials_per_group": 50,
+  "all_inputs_match_plan": true,
+  "all_means_verified": true,
+  "plotting_min_tenant_count": 3,
+  "case_plan_sha256": "d871c38e80e46cb3dd3c4949944364acddbdf2fe226881f8b4608dd8a62aa9f2"
+}

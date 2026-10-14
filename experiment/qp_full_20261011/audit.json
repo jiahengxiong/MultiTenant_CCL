@@ -1,0 +1,84 @@
+{
+  "total_trials": 280,
+  "new_method_results": 560,
+  "failures": 0,
+  "old_result_fields_unchanged": true,
+  "averages_verified": true,
+  "all_qp_harmonics_avg_jct_no_worse_than_qp": true,
+  "pilot_qp_cross_platform_cases": 12,
+  "pilot_qp_maximum_relative_error": 0,
+  "qp_harmonics_cross_platform_reference_verified": true,
+  "runtime_seconds": 3084.9135982990265,
+  "workers": 44,
+  "aggregation": "equal weight across tenant counts 2-8; ratio of 10-trial means per tenant count",
+  "summary": [
+    {
+      "scenario": "Low_contension",
+      "trials": 70,
+      "tenant_counts": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "qp_avg_jct_reduction_vs_default_pct": 24.87262562260435,
+      "qp_makespan_reduction_vs_default_pct": 27.508940142645212,
+      "qp_plus_harmonics_avg_jct_reduction_vs_default_pct": 31.935367269282334,
+      "qp_plus_harmonics_makespan_reduction_vs_default_pct": 15.092109183191106
+    },
+    {
+      "scenario": "High_contension",
+      "trials": 70,
+      "tenant_counts": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "qp_avg_jct_reduction_vs_default_pct": 26.21751934109212,
+      "qp_makespan_reduction_vs_default_pct": 26.98572231135179,
+      "qp_plus_harmonics_avg_jct_reduction_vs_default_pct": 35.482823397911844,
+      "qp_plus_harmonics_makespan_reduction_vs_default_pct": 19.678360580124554
+    },
+    {
+      "scenario": "Low_contension_homo",
+      "trials": 70,
+      "tenant_counts": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "qp_avg_jct_reduction_vs_default_pct": 22.834916019356555,
+      "qp_makespan_reduction_vs_default_pct": 26.66223436520153,
+      "qp_plus_harmonics_avg_jct_reduction_vs_default_pct": 27.688529263168082,
+      "qp_plus_harmonics_makespan_reduction_vs_default_pct": 18.921193581587648
+    },
+    {
+      "scenario": "High_contension_homo",
+      "trials": 70,
+      "tenant_counts": [
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8
+      ],
+      "qp_avg_jct_reduction_vs_default_pct": 24.7634862944796,
+      "qp_makespan_reduction_vs_default_pct": 28.678566461514553,
+      "qp_plus_harmonics_avg_jct_reduction_vs_default_pct": 34.37913401814087,
+      "qp_plus_harmonics_makespan_reduction_vs_default_pct": 27.27397514754403
+    }
+  ]
+}

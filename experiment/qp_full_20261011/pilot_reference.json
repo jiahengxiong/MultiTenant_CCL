@@ -1,0 +1,86 @@
+[
+  {
+    "source_name": "Low_contension",
+    "tenant_count": 2,
+    "trial_index": 0,
+    "avg_jct": 197.23666115333975,
+    "makespan": 243.84168512519457
+  },
+  {
+    "source_name": "Low_contension",
+    "tenant_count": 4,
+    "trial_index": 0,
+    "avg_jct": 85.25928341506143,
+    "makespan": 148.82092005892164
+  },
+  {
+    "source_name": "Low_contension",
+    "tenant_count": 8,
+    "trial_index": 0,
+    "avg_jct": 109.22270949059687,
+    "makespan": 165.32423901437835
+  },
+  {
+    "source_name": "High_contension",
+    "tenant_count": 2,
+    "trial_index": 0,
+    "avg_jct": 26.03459097184789,
+    "makespan": 38.66390388609189
+  },
+  {
+    "source_name": "High_contension",
+    "tenant_count": 4,
+    "trial_index": 0,
+    "avg_jct": 65.22624638931288,
+    "makespan": 84.68128800859047
+  },
+  {
+    "source_name": "High_contension",
+    "tenant_count": 8,
+    "trial_index": 0,
+    "avg_jct": 92.57386109870534,
+    "makespan": 119.46617490679955
+  },
+  {
+    "source_name": "Low_contension_homo",
+    "tenant_count": 2,
+    "trial_index": 0,
+    "avg_jct": 65.50861371529345,
+    "makespan": 66.55379074248225
+  },
+  {
+    "source_name": "Low_contension_homo",
+    "tenant_count": 4,
+    "trial_index": 0,
+    "avg_jct": 47.72663057242935,
+    "makespan": 52.309862076841156
+  },
+  {
+    "source_name": "Low_contension_homo",
+    "tenant_count": 8,
+    "trial_index": 0,
+    "avg_jct": 43.422737009201036,
+    "makespan": 51.16049294719995
+  },
+  {
+    "source_name": "High_contension_homo",
+    "tenant_count": 2,
+    "trial_index": 0,
+    "avg_jct": 15.044503596422988,
+    "makespan": 15.074553810342668
+  },
+  {
+    "source_name": "High_contension_homo",
+    "tenant_count": 4,
+    "trial_index": 0,
+    "avg_jct": 16.742300806576953,
+    "makespan": 17.088183046098337
+  },
+  {
+    "source_name": "High_contension_homo",
+    "tenant_count": 8,
+    "trial_index": 0,
+    "avg_jct": 23.40089499841312,
+    "makespan": 26.119115003219584
+  }
+]

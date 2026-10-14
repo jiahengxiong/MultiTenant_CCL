@@ -55,6 +55,26 @@
         "source_comm_group": "CommGroup.dp_group",
         "source_comm_type": "CommType.reduce_scatter"
       }
+    },
+    "qp_baseline": {
+      "description": "Meta-inspired QP message round robin and QP-aware ECMP; original default mapping",
+      "qp_count": 4,
+      "hash_seed": 0,
+      "harmonics": "existing HarmonicsBaselineHeuristic offset search with QP-aware metadata and simulation callbacks",
+      "server": "node0.backup1.rdmaopt-pg0.utah.cloudlab.us",
+      "python": "3.12.7 (main, Oct 16 2024, 04:37:19) [Clang 18.1.8 ]",
+      "backend": "simcore_cpp",
+      "workers": 44,
+      "code_sha256": {
+        "scripts/augment_qp_results.py": "61fb1cad2e40b88157d1c795d22bed947f933475548aeba89081fd4c2d3444d0",
+        "scripts/run_qp_scaling_baseline.py": "be99a215b47ec87e9a048aa9fae5d7243f94cbe048e1ef89e1789e0845fa8c23",
+        "multitenant/baselines/qp_harmonics.py": "62b5f9e14a65c2dcf0a37d6f07669e9f798fc3763ffc4a55d2ab8058d9d6c0ab",
+        "multitenant/baselines/harmonics.py": "ef9eef74b1fd59cfe312e9722f012ce7c26119e58ea37d53c9ac9b5a90a36131",
+        "multitenant/simulator/adapter.py": "b8aa57aff3c4900703b42b2fbb80b4b83b7e50f5bcb13c4b8dcb6a46cce442b9",
+        "multitenant/simulator/worker.py": "3452260ed746ba64c519be3c6889526577d562ef6b15ab14a2a93b681f78050e",
+        "CCL_Simulator/simcore_cpp/sim.hpp": "95386f1967539562bdaa87042e2785e606e589269f9a5882868dd78115f08057"
+      },
+      "full_run": true
     }
   },
   "results": [
@@ -556,7 +576,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 24.8882315158844
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 180.85878157615662,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -1052,7 +1119,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 22.68639588356018
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 170.84893918037415,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -1548,7 +1662,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 23.936528205871582
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 182.78670573234558,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -2044,7 +2205,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 23.39221215248108
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 170.75903129577637,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -2540,7 +2748,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 24.833237409591675
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 180.25746488571167,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -3036,7 +3291,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 23.099340677261353
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 166.09299206733704,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -3532,7 +3834,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 24.98954749107361
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 181.39538598060608,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -4028,7 +4377,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 24.909867763519287
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 166.59620094299316,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -4524,7 +4920,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 24.798646926879883
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 174.9830310344696,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         },
         {
@@ -5020,7 +5463,54 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "runtime_seconds": 25.066026210784912
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 26.03459097184789,
+              "makespan": 38.66390388609189,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {}
+              },
+              "runtime_seconds": 180.35107707977295,
+              "simulation_count": 8,
+              "simulation_cache_hits": 3
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 8064,
+            "total_bytes": 9455550676992,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 63,
+            "messages_per_connection_max": 63,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "db3df50ddcaa260e0fb15b18ee440001a5b5683bd01cba584b124bc808e33cb4"
           }
         }
       ],
@@ -5048,6 +5538,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 23.653225770566806,
           "makespan": 38.52710974657153
+        },
+        "qp": {
+          "avg_jct": 26.034590971847887,
+          "makespan": 38.66390388609189
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 26.034590971847887,
+          "makespan": 38.66390388609189
         }
       }
     },
@@ -5579,7 +6077,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 65.59329907524408,
+              "makespan": 69.93226259907168,
+              "runtime_seconds": 22.83200168609619
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 65.01870838666561,
+              "makespan": 85.94409351996038,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 32.207674573237
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 412.2518427371979,
+              "simulation_count": 22,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.375,
+            "input_sha256": "afccb8a1b4027ff137419f15ebbcade7e37e0680fc2b6c3434cc2181be0c7535"
           }
         },
         {
@@ -6105,7 +6657,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 61.95402722513148,
+              "makespan": 69.3832182963671,
+              "runtime_seconds": 23.005677700042725
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 61.95402722513148,
+              "makespan": 69.3832182963671,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 272.2183094024658,
+              "simulation_count": 15,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8333333333333335,
+            "input_sha256": "1d68e555fad9e5135a7f4233148d712d39d28d3d4508a41082a81b5841137f39"
           }
         },
         {
@@ -6631,7 +7237,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 72.02683849424791,
+              "makespan": 78.33971630999636,
+              "runtime_seconds": 22.847330808639526
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 66.6721346862843,
+              "makespan": 90.6320258158991,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 38.13465770496
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 425.0112073421478,
+              "simulation_count": 22,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.875,
+            "input_sha256": "b37fd143bcfc676ba52783de3824b0d0cef5cb731e52d5d3a085c0dc71bec44d"
           }
         },
         {
@@ -7157,7 +7817,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 63.52823645639825,
+              "makespan": 68.5945870016784,
+              "runtime_seconds": 22.73905062675476
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 63.52823645639825,
+              "makespan": 68.5945870016784,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 266.5925397872925,
+              "simulation_count": 15,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.75,
+            "input_sha256": "0debe9a266464ff32184b2d034b8c83c0242706beb414292e69909f71bb7dc8f"
           }
         },
         {
@@ -7683,7 +8397,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 71.28189172209918,
+              "makespan": 78.06545458468602,
+              "runtime_seconds": 22.650049686431885
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 67.57949105997828,
+              "makespan": 94.5623922355125,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 39.246905816681
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 414.50015926361084,
+              "simulation_count": 22,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6666666666666665,
+            "input_sha256": "c795a97ece2971e50300d5258d4e2f518b691fc1c66c5a2555d2feb129e47435"
           }
         },
         {
@@ -8209,7 +8977,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 69.47049055392971,
+              "makespan": 74.00064712380077,
+              "runtime_seconds": 21.017202854156494
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.1890537234948,
+              "makespan": 92.38991622968027,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 44.804408263267
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 395.97893810272217,
+              "simulation_count": 22,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6666666666666665,
+            "input_sha256": "55934eecc584c30e4e56596b16b6256b7caddc853e1a9bcc39f2875c7936dc48"
           }
         },
         {
@@ -8735,7 +9557,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 62.561372477802514,
+              "makespan": 68.09109582499381,
+              "runtime_seconds": 20.397852420806885
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 62.561372477802514,
+              "makespan": 68.09109582499381,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 253.4542899131775,
+              "simulation_count": 15,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6666666666666665,
+            "input_sha256": "3e65d0318c763ed95380cee1bf32d53f77a6385046c1ee5b59cc89334cfa8b4e"
           }
         },
         {
@@ -9261,7 +10137,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 64.74954099785549,
+              "makespan": 71.30930525210916,
+              "runtime_seconds": 21.665197372436523
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.47573011922672,
+              "makespan": 90.2429570411959,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 39.310012978923
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 549.1374809741974,
+              "simulation_count": 28,
+              "simulation_cache_hits": 7
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.75,
+            "input_sha256": "7f89d361257fb43eb3eb1fdd3bc3997ec7907b503d21b42de65202d48c482553"
           }
         },
         {
@@ -9787,7 +10717,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 65.9988014274726,
+              "makespan": 71.18748218530858,
+              "runtime_seconds": 21.049732208251953
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 63.55865927858761,
+              "makespan": 74.04730924981591,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 9.499634636331
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 397.8163380622864,
+              "simulation_count": 21,
+              "simulation_cache_hits": 5
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7916666666666665,
+            "input_sha256": "c3a69ed84a1ceaa06fb02de1017b3cfa5d719f984ff5dbbc34dece9ff23e8354"
           }
         },
         {
@@ -10313,7 +11297,61 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 62.73808640233923,
+              "makespan": 71.28682971963288,
+              "runtime_seconds": 21.890909910202026
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 62.73808640233923,
+              "makespan": 71.28682971963288,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {}
+              },
+              "runtime_seconds": 272.02091360092163,
+              "simulation_count": 15,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 5334,
+            "total_bytes": 16947062905920,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 41,
+            "messages_per_connection_max": 42,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.5833333333333335,
+            "input_sha256": "cf1fe29191667c801f86d4964cc5c9437df3884f45910915fc7176e368fabd75"
           }
         }
       ],
@@ -10341,6 +11379,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 47.32771282042221,
           "makespan": 61.02613504077001
+        },
+        "qp": {
+          "avg_jct": 65.99025848325205,
+          "makespan": 72.01905988976448
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 64.22754998159088,
+          "makespan": 80.51744249347362
         }
       }
     },
@@ -10902,7 +11948,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 65.22624638931288,
+              "makespan": 84.68128800859047,
+              "runtime_seconds": 14.662296295166016
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 59.67823338707175,
+              "makespan": 102.75696817830801,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 50.45866293888
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 359.8738842010498,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.53125,
+            "input_sha256": "c077110439b4c467be60b84cb2f4ec5baaa5795775dab04c9c54fc566eae00c3"
           }
         },
         {
@@ -11458,7 +12565,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 64.33297558053448,
+              "makespan": 79.26334636126148,
+              "runtime_seconds": 15.658686637878418
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 60.20107608367192,
+              "makespan": 101.90125882677754,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 50.461841963489
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 380.39541149139404,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.625,
+            "input_sha256": "65274fe2251576c6f0aee468f007e520a4983be2d9da3d2091899d732a26cac9"
           }
         },
         {
@@ -12014,7 +13182,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 66.53877277929988,
+              "makespan": 86.09815105659641,
+              "runtime_seconds": 14.992719173431396
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 58.21499896733093,
+              "makespan": 92.34677107723547,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 28.848975802569
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 366.94222712516785,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.75,
+            "input_sha256": "96d9c64e73ab43977d9140341ebf0ed98ce640f10873eebb02d7be7ff56a7bf3"
           }
         },
         {
@@ -12570,7 +13799,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 76.93375981614567,
+              "makespan": 96.26026486057211,
+              "runtime_seconds": 15.536689758300781
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 61.653151145014846,
+              "makespan": 104.44257783045332,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 56.580021161236
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 2.356702449523
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 507.6428635120392,
+              "simulation_count": 41,
+              "simulation_cache_hits": 7
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.65625,
+            "input_sha256": "8845c394e09e6f74dbf4b18ba79d46d88772831d9b7459b43af44a732c8759e3"
           }
         },
         {
@@ -13126,7 +14416,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 65.18573041428701,
+              "makespan": 83.8895032065185,
+              "runtime_seconds": 15.654622793197632
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 59.29234854301332,
+              "makespan": 105.3561473267104,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 54.562087591157
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 382.3992278575897,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.65625,
+            "input_sha256": "fad78f82d52c780567c18b02195842e9ed8d49893a235dce9775e85e07de63f1"
           }
         },
         {
@@ -13682,7 +15033,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 57.541757186227244,
+              "makespan": 76.89586290482657,
+              "runtime_seconds": 15.443288803100586
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 56.707121741630985,
+              "makespan": 87.30869128356689,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 25.817068316862
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 367.67741346359253,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6875,
+            "input_sha256": "2e2344bd21fd252528fa34ce90dd07bf2dcc838fd505cbbb4168a5f2491758d1"
           }
         },
         {
@@ -14238,7 +15650,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 73.77167389595026,
+              "makespan": 92.64738997818286,
+              "runtime_seconds": 15.657270431518555
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 61.856740558947905,
+              "makespan": 100.53762190037259,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 50.45866293888
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 370.44217801094055,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.53125,
+            "input_sha256": "a76aa15c30c65a06c2bbf01e6ed837c7e147f3c8c3fe5a9dff86e452ceb094cc"
           }
         },
         {
@@ -14794,7 +16267,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 59.26332549508718,
+              "makespan": 77.7814618013243,
+              "runtime_seconds": 15.45163631439209
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 55.2256167731782,
+              "makespan": 96.68453704192649,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 44.789536396764
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 387.75438141822815,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8125,
+            "input_sha256": "d49327c43ef2b6425de91d634be3317dbd12c1f21a974593942b0218677c45a7"
           }
         },
         {
@@ -15350,7 +16884,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 68.59918554796405,
+              "makespan": 89.86351406170553,
+              "runtime_seconds": 15.704787015914917
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 61.16862954018974,
+              "makespan": 99.62176018830307,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 42.228771396448
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 388.70279836654663,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.65625,
+            "input_sha256": "ea8cc5e7a500bcaa2dbf0fa168c96f94920897535d37033df158243f0a91b3f6"
           }
         },
         {
@@ -15906,7 +17501,68 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 86.55131448485223,
+              "makespan": 109.41240096631223,
+              "runtime_seconds": 12.337610244750977
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 60.90893118596469,
+              "makespan": 109.41240096631225,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 50.45866293888
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {}
+              },
+              "runtime_seconds": 363.69247364997864,
+              "simulation_count": 32,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3968,
+            "total_bytes": 14744463873280,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 31,
+            "messages_per_connection_max": 31,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6875,
+            "input_sha256": "a68f4cbc77c993ba068d4bf337b294636700193ff8ed1caf97ae2002e703c878"
           }
         }
       ],
@@ -15934,6 +17590,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 38.175634604565836,
           "makespan": 52.42356902891917
+        },
+        "qp": {
+          "avg_jct": 68.39447415896609,
+          "makespan": 87.67931832058905
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 59.49068479260143,
+          "makespan": 100.0368734619966
         }
       }
     },
@@ -16525,7 +18189,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 36.13941117185666,
+              "makespan": 64.67952614283811,
+              "runtime_seconds": 5.96786904335022
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 36.13941117185666,
+              "makespan": 64.67952614283811,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 163.66974329948425,
+              "simulation_count": 30,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.875,
+            "input_sha256": "5421db16a9e2f9ed4f729462177529ca69e9b258cb4e939af88fc706ef32d874"
           }
         },
         {
@@ -17111,7 +18843,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 49.78846435740921,
+              "makespan": 81.69184247455632,
+              "runtime_seconds": 8.019075870513916
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 39.13303808746814,
+              "makespan": 92.68003795814974,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 37.56228010275
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 352.02534532546997,
+              "simulation_count": 55,
+              "simulation_cache_hits": 7
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.825,
+            "input_sha256": "a3d8ad030dc55ead798ab82c2361f7d6ff633137ac127bfc47a322470f1296a5"
           }
         },
         {
@@ -17697,7 +19497,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 38.3722948652344,
+              "makespan": 63.80483298969928,
+              "runtime_seconds": 8.05173659324646
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 35.158665621599845,
+              "makespan": 86.54141937891227,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 35.424078427712
+                },
+                "3": {
+                  "0": 8.211473816638
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 522.8486387729645,
+              "simulation_count": 79,
+              "simulation_cache_hits": 13
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.9,
+            "input_sha256": "a5d13f8c54584bc5f58b804e25cf5703c35fbe0ed88606a9e5ad547b370a21ce"
           }
         },
         {
@@ -18283,7 +20151,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 37.86316986232214,
+              "makespan": 64.5005845377198,
+              "runtime_seconds": 7.763332366943359
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 34.984653700735244,
+              "makespan": 85.86320614842933,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 37.712300845139
+                },
+                "3": {
+                  "0": 12.442261227278
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 329.71243476867676,
+              "simulation_count": 56,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.825,
+            "input_sha256": "bb91b563c4def94f0fc5de77aa7a4964c7152231f749ff53117d1cde41ae6c73"
           }
         },
         {
@@ -18869,7 +20805,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 46.55810902238004,
+              "makespan": 71.12173473885638,
+              "runtime_seconds": 8.043583393096924
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 38.30000312445144,
+              "makespan": 84.11788444783592,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 30.629586934686
+                },
+                "3": {
+                  "0": 13.406261979914
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 351.88952136039734,
+              "simulation_count": 55,
+              "simulation_cache_hits": 7
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7,
+            "input_sha256": "9ef2ad1f41bfbbaa211699f9d6969d1d1b053ee94cd38e205e08405d85805e85"
           }
         },
         {
@@ -19455,7 +21459,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 49.85420979231269,
+              "makespan": 84.12885105406895,
+              "runtime_seconds": 7.935093641281128
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 38.22042475658701,
+              "makespan": 90.54266326149083,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 37.56228010275
+                },
+                "3": {
+                  "0": 7.441220133601
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 506.08861899375916,
+              "simulation_count": 80,
+              "simulation_cache_hits": 12
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.575,
+            "input_sha256": "9783be798176d2a6035bfba97373edb221c085181ad41baa747cbf05b3d6f0e4"
           }
         },
         {
@@ -20041,7 +22113,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 37.59128589456789,
+              "makespan": 65.95034235448826,
+              "runtime_seconds": 8.099080085754395
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 37.59128589456789,
+              "makespan": 65.95034235448826,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 176.71343207359314,
+              "simulation_count": 30,
+              "simulation_cache_hits": 2
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.641025641025641,
+            "input_sha256": "d26551506e4827c119afff010f94e169370dd649217937ea6c794cfc4f5a3df2"
           }
         },
         {
@@ -20627,7 +22767,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 40.9874196645579,
+              "makespan": 68.44391826651643,
+              "runtime_seconds": 8.132040977478027
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 35.88434234205177,
+              "makespan": 82.11446213092039,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 36.210260314414
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 264.08294224739075,
+              "simulation_count": 43,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.725,
+            "input_sha256": "ab2cda073dcf55865fed06515a76ff99ce4fd276f1bef47592ffbd0727805f7e"
           }
         },
         {
@@ -21213,7 +23421,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 36.57057906734157,
+              "makespan": 59.30821043467363,
+              "runtime_seconds": 8.250580310821533
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 35.987391315090335,
+              "makespan": 63.416303023482875,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 18.7858245648
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 275.7679057121277,
+              "simulation_count": 43,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.85,
+            "input_sha256": "9acb4ff187ea2687081039ae70cb5f4a5e74434ed9c42601286e3b85024561ec"
           }
         },
         {
@@ -21799,7 +24075,75 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 42.99862177421885,
+              "makespan": 70.70339329066114,
+              "runtime_seconds": 7.9010725021362305
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 37.378510045318436,
+              "makespan": 67.62163098593952,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 15.710375574944
+                },
+                "4": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {}
+              },
+              "runtime_seconds": 267.6742944717407,
+              "simulation_count": 43,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 3150,
+            "total_bytes": 9060589587450,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 24,
+            "messages_per_connection_max": 25,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6923076923076925,
+            "input_sha256": "69b02584512dff1a390e584630f20ff288e305748b5d5b389cc977db95e3c42e"
           }
         }
       ],
@@ -21827,6 +24171,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 31.016365529772422,
           "makespan": 54.859006800915836
+        },
+        "qp": {
+          "avg_jct": 41.67235654722013,
+          "makespan": 69.43332362840783
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 36.87777260597268,
+          "makespan": 78.35274758324871
         }
       }
     },
@@ -22448,7 +24800,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 76.1433387550545,
+              "makespan": 100.28612566621031,
+              "runtime_seconds": 9.852603673934937
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.43040400382512,
+              "makespan": 111.46914970742048,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 57.538229458711
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 367.5997266769409,
+              "simulation_count": 55,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8043478260869565,
+            "input_sha256": "c848896634c8e36918c0265ae12fb3c8dd9012e1f53a24120db14c56f1956b5e"
           }
         },
         {
@@ -23064,7 +25491,82 @@
                   "0": 2.12212471424
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 67.70106571486558,
+              "makespan": 92.22549032963002,
+              "runtime_seconds": 10.10722041130066
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 62.136741196643754,
+              "makespan": 100.89720408826608,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 33.508917271351
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 378.79902625083923,
+              "simulation_count": 55,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.851063829787234,
+            "input_sha256": "bcf2f53a29d0dc5a49152420882c46e92d6ecc710b97af7ba15b684f36ecb189"
           }
         },
         {
@@ -23680,7 +26182,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 72.50468998729617,
+              "makespan": 92.3661245507605,
+              "runtime_seconds": 10.044782638549805
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 61.74384596407276,
+              "makespan": 99.28874665131666,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 37.28909988405
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 361.3673770427704,
+              "simulation_count": 55,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6595744680851063,
+            "input_sha256": "d93572b3df8dcd2e6f0fa487443ae70e9345440ab55d4139f65f7856c806ff44"
           }
         },
         {
@@ -24296,7 +26873,82 @@
                   "0": 49.6060588032
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 79.40711695854198,
+              "makespan": 108.12895182131027,
+              "runtime_seconds": 9.937742948532104
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 62.05098161911162,
+              "makespan": 119.96622416029395,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 66.028158859319
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 24.8030294016
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 522.590635061264,
+              "simulation_count": 71,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.595744680851064,
+            "input_sha256": "08fd7915d9f1c1b6bcca3b6d830c402b7ed30cfd4561bf2b3744005ba4f9a308"
           }
         },
         {
@@ -24912,7 +27564,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 73.30577910486454,
+              "makespan": 96.62854780996125,
+              "runtime_seconds": 9.91829538345337
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.52269934078991,
+              "makespan": 119.3967440383997,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 26.767410138878
+                },
+                "2": {
+                  "0": 65.488233631975
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 618.9196436405182,
+              "simulation_count": 86,
+              "simulation_cache_hits": 9
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.717391304347826,
+            "input_sha256": "469753460bc4494c34192eba8c3128b2717fb2263c5070f2ba3d7ce3f42393ab"
           }
         },
         {
@@ -25528,7 +28255,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 77.9770797035291,
+              "makespan": 100.2717579956604,
+              "runtime_seconds": 10.00696587562561
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.98365384142683,
+              "makespan": 110.30661128855519,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 51.365766295688
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 382.70023703575134,
+              "simulation_count": 55,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6595744680851063,
+            "input_sha256": "ebd1ac03cad94ba68f833c0f8d98162c2551322a097b6c587cea9fe4c07e26e1"
           }
         },
         {
@@ -26144,7 +28946,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 83.0698415759201,
+              "makespan": 108.36070632028304,
+              "runtime_seconds": 9.826526880264282
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 66.4670022585928,
+              "makespan": 116.62281259678939,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 49.7187998454
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 5.24418083172
+                },
+                "5": {
+                  "0": 37.686199194121
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 807.7475869655609,
+              "simulation_count": 102,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8125,
+            "input_sha256": "6a4a786c468365d94314a022bac7ff3570975177edfac649825210e17c914c10"
           }
         },
         {
@@ -26760,7 +29637,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 72.45790827689797,
+              "makespan": 94.70527148031492,
+              "runtime_seconds": 10.00254511833191
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 63.85015733728819,
+              "makespan": 108.6569278507199,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 43.330214503675
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 380.8362865447998,
+              "simulation_count": 55,
+              "simulation_cache_hits": 4
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7872340425531914,
+            "input_sha256": "fc7aa8ce6234c0454e2059fb2dbdc99fa0618df2e949fc1d7a04a3293c89e499"
           }
         },
         {
@@ -27376,7 +30328,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 69.55662732525393,
+              "makespan": 87.2156496865535,
+              "runtime_seconds": 9.340956926345825
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 59.658009053981175,
+              "makespan": 97.17867308864862,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 37.28909988405
+                },
+                "2": {
+                  "0": 31.893106749842
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 2.40791321228
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 762.2691564559937,
+              "simulation_count": 97,
+              "simulation_cache_hits": 16
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.74468085106383,
+            "input_sha256": "221349a78491c6d95bdd4481176627cbfd304783df786787658bd5c95a741816"
           }
         },
         {
@@ -27992,7 +31019,82 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 84.63760073635994,
+              "makespan": 107.18228603676516,
+              "runtime_seconds": 9.972457647323608
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 63.41369184895249,
+              "makespan": 112.30748966545585,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 53.081874364165
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 52.438953877748
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {}
+              },
+              "runtime_seconds": 793.2001781463623,
+              "simulation_count": 100,
+              "simulation_cache_hits": 13
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2604,
+            "total_bytes": 13514200600026,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 20,
+            "messages_per_connection_max": 21,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6666666666666665,
+            "input_sha256": "7c99523c9fb0894717b8e600359dbb5182e0b5fcab71a17918ea6220585baa67"
           }
         }
       ],
@@ -28020,6 +31122,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 58.69051980988735,
           "makespan": 100.60738311363431
+        },
+        "qp": {
+          "avg_jct": 75.67610481385837,
+          "makespan": 98.73709116974494
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 63.32571864646847,
+          "makespan": 109.60905831358659
         }
       }
     },
@@ -28671,7 +31781,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 57.1923698196142,
+              "makespan": 80.03483689054124,
+              "runtime_seconds": 7.0105509757995605
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 50.7492946000469,
+              "makespan": 100.39378066412972,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 27.72213694464
+                },
+                "3": {
+                  "0": 47.661169238893
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 769.6660733222961,
+              "simulation_count": 140,
+              "simulation_cache_hits": 16
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7777777777777777,
+            "input_sha256": "76f7b4b71e597ce385f86cfc829bc479c7b3f45eea3037687b59120ccc97bdd1"
           }
         },
         {
@@ -29317,7 +32509,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 71.84543923293472,
+              "makespan": 99.4084002576333,
+              "runtime_seconds": 4.789670705795288
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 50.85266106713494,
+              "makespan": 103.97974296399339,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 31.856251576318
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 49.19267497984
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 413.68466687202454,
+              "simulation_count": 87,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.740740740740741,
+            "input_sha256": "23f381753ca2be33323dc9c0c2774d955635b58d5affe883da5bfd54142be19b"
           }
         },
         {
@@ -29963,7 +33237,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 71.80475415169236,
+              "makespan": 102.55404036450103,
+              "runtime_seconds": 6.852723836898804
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 55.692580451969086,
+              "makespan": 109.8627471666295,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 11.717040609282
+                },
+                "2": {
+                  "0": 46.868162437127
+                },
+                "3": {
+                  "0": 49.19267497984
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 718.6432976722717,
+              "simulation_count": 141,
+              "simulation_cache_hits": 15
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7358490566037736,
+            "input_sha256": "4643b2c50520b21dcaaf5a28718062984b0bbf7bed56acaed5038c6d9e9368fe"
           }
         },
         {
@@ -30609,7 +33965,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 68.9430844429633,
+              "makespan": 85.63151725954559,
+              "runtime_seconds": 6.81333589553833
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 54.42829766027052,
+              "makespan": 100.77387289022296,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 40.75605374978
+                },
+                "2": {
+                  "0": 49.797289881611
+                },
+                "3": {
+                  "0": 7.318410070324
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 730.8999018669128,
+              "simulation_count": 142,
+              "simulation_cache_hits": 14
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7636363636363637,
+            "input_sha256": "887f3234e17d70a1beaae23bd8ece337f332eed6cc6dc083ac9d296b1b7379ce"
           }
         },
         {
@@ -31255,7 +34693,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 53.43880363648457,
+              "makespan": 71.72142251743894,
+              "runtime_seconds": 6.9448323249816895
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 51.09934883622476,
+              "makespan": 86.7062936418957,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 40.973291617938
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 32.175546639364
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 421.09118914604187,
+              "simulation_count": 87,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7884615384615383,
+            "input_sha256": "4d89388fcb797f9d29092f102d8d0ccd3efd9197fff7aa55c9440d164560f564"
           }
         },
         {
@@ -31901,7 +35421,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 62.236778570890685,
+              "makespan": 78.70270534112221,
+              "runtime_seconds": 6.904159069061279
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 52.68735484139673,
+              "makespan": 94.15947725694039,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 41.964398642412
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 33.493578078732
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 535.59690284729,
+              "simulation_count": 103,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.784313725490196,
+            "input_sha256": "107f131241094bf125525955f349ad1e361ff57592414045a4f57c8b8d1cce8d"
           }
         },
         {
@@ -32547,7 +36149,89 @@
                   "0": 49.203978178565
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 62.609859834939016,
+              "makespan": 80.72629981969534,
+              "runtime_seconds": 6.88539457321167
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 51.31461286430283,
+              "makespan": 90.36757880832828,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 18.48142462976
+                },
+                "3": {
+                  "0": 24.59633748992
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 430.1932017803192,
+              "simulation_count": 87,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.823529411764706,
+            "input_sha256": "ef6797a767e7f87f9f37931eed7c9c5759ab059e167e0f792ce8ba741b2ab571"
           }
         },
         {
@@ -33193,7 +36877,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 70.5852394063454,
+              "makespan": 93.06127236898573,
+              "runtime_seconds": 6.907462120056152
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 56.39173823911965,
+              "makespan": 104.11703930328625,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 36.96284925952
+                },
+                "3": {
+                  "0": 49.19267497984
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 533.2276585102081,
+              "simulation_count": 103,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.811320754716981,
+            "input_sha256": "554d7f01d5341f86e569898638174dc5c77822624c32dccb68009f2068825725"
           }
         },
         {
@@ -33839,7 +37605,89 @@
                   "0": 4.199520552962
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 59.87081271522859,
+              "makespan": 90.49986453667421,
+              "runtime_seconds": 6.851193904876709
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 52.94849242243165,
+              "makespan": 100.21146388769465,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 59.11853161219
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 18.48142462976
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 406.05193853378296,
+              "simulation_count": 87,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.611111111111111,
+            "input_sha256": "da77ecdc3894f1fbe9e6d399973734070a1c34cf2df38064858cb66953257424"
           }
         },
         {
@@ -34485,7 +38333,89 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 57.653233805603655,
+              "makespan": 76.727375608295,
+              "runtime_seconds": 7.041131258010864
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 51.43484514328036,
+              "makespan": 92.3249247696989,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 30.374435834895
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 39.802797035527
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {}
+              },
+              "runtime_seconds": 440.4975402355194,
+              "simulation_count": 87,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 2214,
+            "total_bytes": 10571669478594,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 17,
+            "messages_per_connection_max": 18,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7454545454545456,
+            "input_sha256": "6475376ab2c71795a56ca2507a3603a2122ee61cb002d80a18842be2e7f9d0a2"
           }
         }
       ],
@@ -34513,6 +38443,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 50.97880020236191,
           "makespan": 91.14707104725129
+        },
+        "qp": {
+          "avg_jct": 63.618037561669645,
+          "makespan": 85.90677349644326
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 52.75992261261774,
+          "makespan": 98.28969213528197
         }
       }
     },
@@ -35194,7 +39132,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 92.57386109870534,
+              "makespan": 119.46617490679955,
+              "runtime_seconds": 6.463017225265503
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 65.93211250424088,
+              "makespan": 122.66705721590104,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 47.436930492457
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 9.263239470722
+                },
+                "3": {
+                  "0": 52.491699028769
+                },
+                "4": {
+                  "0": 26.781072474247
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 888.194787979126,
+              "simulation_count": 169,
+              "simulation_cache_hits": 13
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7586206896551726,
+            "input_sha256": "6f91127c0dfeb9e1e040fa62599237b7692acd9efcfe31334de469b9ce970e77"
           }
         },
         {
@@ -35870,7 +39897,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 75.93987777644084,
+              "makespan": 100.64676723513765,
+              "runtime_seconds": 6.615421533584595
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 59.828756474566454,
+              "makespan": 112.18585073047915,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 54.531091071331
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 47.889481973774
+                },
+                "4": {
+                  "0": 2.4588250832
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 18.3455318016
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 728.2335913181305,
+              "simulation_count": 147,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8421052631578947,
+            "input_sha256": "33caaef6cb8272944d7169b70ba29b9993dd8d65725a04193b72a69557d6bcce"
           }
         },
         {
@@ -36546,7 +40662,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 87.95512250146977,
+              "makespan": 117.73257610040123,
+              "runtime_seconds": 6.200917959213257
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 62.55400687725131,
+              "makespan": 121.01557154007814,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 35.12882691073
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 23.419217940487
+                },
+                "4": {
+                  "0": 64.047725933721
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 704.9789552688599,
+              "simulation_count": 147,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.8181818181818183,
+            "input_sha256": "6f6dd9e5dba85a545c345f632e3a649804bf45768e3de3d2574522fcd56c55c4"
           }
         },
         {
@@ -37222,7 +41427,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 81.85792897371563,
+              "makespan": 105.62494142873285,
+              "runtime_seconds": 6.978761911392212
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 68.68708734304462,
+              "makespan": 111.69162396344082,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 55.782067031968
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 60.228037411167
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 498.91921949386597,
+              "simulation_count": 104,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.6885245901639343,
+            "input_sha256": "e547f4e8417cab1b8dd306e6534114664847ff6afff80b1a207f7d60265cc8a2"
           }
         },
         {
@@ -37898,7 +42192,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 89.06100979286872,
+              "makespan": 120.10394206871896,
+              "runtime_seconds": 6.859417676925659
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 65.47202207712473,
+              "makespan": 128.60384353334285,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 48.8309641344
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 54.488173078051
+                },
+                "5": {
+                  "0": 8.904331117442
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 873.8181447982788,
+              "simulation_count": 167,
+              "simulation_cache_hits": 15
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.783333333333333,
+            "input_sha256": "5c5df96bc7e0c779556d8eeacb9c41b587d56c025d3530b2321cd335e0bf9076"
           }
         },
         {
@@ -38574,7 +42957,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 90.14116981850768,
+              "makespan": 111.20888484440748,
+              "runtime_seconds": 5.641245365142822
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 65.24572120766541,
+              "makespan": 125.25320025082938,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 58.034458442848
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 2.5858770414
+                },
+                "4": {
+                  "0": 30.918670686729
+                },
+                "5": {
+                  "0": 2.1225749194
+                },
+                "6": {
+                  "0": 47.443288092455
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 851.5492396354675,
+              "simulation_count": 166,
+              "simulation_cache_hits": 16
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.783333333333333,
+            "input_sha256": "a7f9c109dd0ef664f78bb6e864a5ed7897598611eb3f95a1ce32a5d85a100437"
           }
         },
         {
@@ -39250,7 +43722,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 73.5094680822428,
+              "makespan": 97.55293314650062,
+              "runtime_seconds": 6.049688816070557
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 60.997832126663475,
+              "makespan": 112.57810477627321,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 0.0
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 49.122072391694
+                },
+                "4": {
+                  "0": 46.985498547813
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 591.5395185947418,
+              "simulation_count": 125,
+              "simulation_cache_hits": 9
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7017543859649122,
+            "input_sha256": "887cee926b338a6c9bd5a0585ac80c800aaf175cafdf0cdfbaf542bc23814a15"
           }
         },
         {
@@ -39926,7 +44487,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 81.63037131403586,
+              "makespan": 100.41191327833786,
+              "runtime_seconds": 6.856312036514282
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 60.971537345449256,
+              "makespan": 116.29235293911962,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 57.915242360607
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 25.062970423687
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 25.062970423687
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 755.2833247184753,
+              "simulation_count": 147,
+              "simulation_cache_hits": 11
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.807017543859649,
+            "input_sha256": "e97709ce08b9b5db186a957934583df0264ff053cd5ebb7ff6e49d0155968dae"
           }
         },
         {
@@ -40602,7 +45252,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 92.30066994918562,
+              "makespan": 118.00607951128099,
+              "runtime_seconds": 6.73609733581543
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 69.31342732624026,
+              "makespan": 126.25987832918076,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 68.606553597076
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 0.0
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 58.635308551645
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 459.16715002059937,
+              "simulation_count": 104,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.7241379310344827,
+            "input_sha256": "0114ed9e801ceea6bd350951a65e2d1a26ef7ca593228ebde99561271b4e2f7f"
           }
         },
         {
@@ -41278,7 +46017,96 @@
                   "0": 0.0
                 }
               }
+            },
+            "qp": {
+              "avg_jct": 90.88609824402697,
+              "makespan": 122.11954236695705,
+              "runtime_seconds": 6.071598052978516
+            },
+            "qp_plus_harmonics": {
+              "avg_jct": 64.92137562061065,
+              "makespan": 120.35514273239876,
+              "tenant_start_times": {
+                "0": 0.0,
+                "1": 0.0,
+                "2": 0.0,
+                "3": 0.0,
+                "4": 0.0,
+                "5": 0.0,
+                "6": 0.0,
+                "7": 0.0
+              },
+              "collective_start_times": {
+                "0": {
+                  "0": 54.917351663005
+                },
+                "1": {
+                  "0": 0.0
+                },
+                "2": {
+                  "0": 0.0
+                },
+                "3": {
+                  "0": 45.886522544653
+                },
+                "4": {
+                  "0": 0.0
+                },
+                "5": {
+                  "0": 0.0
+                },
+                "6": {
+                  "0": 0.0
+                },
+                "7": {
+                  "0": 0.0
+                }
+              },
+              "collective_rate_scales": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "collective_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "task_rate_schedule": {
+                "0": {},
+                "1": {},
+                "2": {},
+                "3": {},
+                "4": {},
+                "5": {},
+                "6": {},
+                "7": {}
+              },
+              "runtime_seconds": 494.0597641468048,
+              "simulation_count": 104,
+              "simulation_cache_hits": 6
             }
+          },
+          "qp_diagnostics": {
+            "message_count": 1920,
+            "total_bytes": 11637061182720,
+            "connection_count": 128,
+            "used_logical_qps": 512,
+            "messages_per_connection_min": 15,
+            "messages_per_connection_max": 15,
+            "max_source_queue_count": 8,
+            "mean_used_spines_per_cross_leaf_connection": 2.85,
+            "input_sha256": "c6b6e8570916f18c6582b759f181a7b2a1ce0ad8f1299784db20be0c412271c3"
           }
         }
       ],
@@ -41306,6 +46134,14 @@
         "mapping_plus_harmonics": {
           "avg_jct": 62.05062843492048,
           "makespan": 97.39813718442034
+        },
+        "qp": {
+          "avg_jct": 85.58555775511992,
+          "makespan": 111.28737548872743
+        },
+        "qp_plus_harmonics": {
+          "avg_jct": 64.3923878902857,
+          "makespan": 119.69026260110438
         }
       }
     }

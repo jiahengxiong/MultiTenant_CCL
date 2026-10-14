@@ -90,6 +90,58 @@ Experiment outputs are written as JSON files under `experiment/`, for example
 
 ## Generate Figures and Tables
 
+### Add QP Baselines to Saved Main Experiments
+
+`scripts/augment_qp_results.py` reads every saved trial in the four low/high
+contention JSONs and evaluates only `qp` and `qp_plus_harmonics`. It preserves
+the saved server allocation, default mapping, workload, and all old results.
+The QP baseline uses four QPs per connection by default, message round robin,
+deterministic QP-aware ECMP, and separate source queues across tenants.
+QP+Harmonics uses the existing offset-search algorithm with QP-aware inputs.
+The simulator and existing solvers are not modified.
+
+```bash
+python scripts/augment_qp_results.py --input-dir experiment/qp_full_20261011/originals \
+  --output-dir experiment/qp_full_output --workers 44 --qp-count 4 --hash-seed 0
+```
+
+The output directory contains resumable per-trial checkpoints, a progress
+manifest, and augmented copies of the four JSONs. Existing source files are
+never overwritten by this runner. Do not use an already augmented JSON as its
+input; use the original snapshots instead. The completed CloudLab run's
+original snapshots and audit artifacts are retained in
+`experiment/qp_full_20261011/`.
+
+### Fresh randomized main experiments
+
+Run all eight methods on 50 paired cases per scenario and tenant count:
+
+```bash
+python scripts/run_main_randomized.py --output-dir experiment/main50_output \
+  --workers 48 --trials 50 --seed 20261011
+python scripts/finalize_main_randomized.py --run-dir experiment/main50_output
+```
+
+This protocol generates 1,400 cases across the four main scenarios and tenant
+counts 2--8. Independent, recorded seeds control balanced server allocation,
+each tenant's rank permutation, and each heterogeneous trial's workload
+assignment. Heterogeneous assignments sample the three existing profiles with
+equal probability, conditioned on at least two distinct profiles; homogeneous
+trials remain GPT-only. Topology, bandwidth, occupancy strength, collective
+size rules, algorithm settings, and QP count remain fixed. Each of the eight
+methods receives the same case input. Input fingerprints are checked for
+duplicates before execution. This is a new protocol, not an extension of the
+legacy ten cases, which held workload assignments fixed and repeated the
+two-tenant high-contention input.
+
+The runner saves the complete case plan before execution and checkpoints each
+finished method. Its output contains the means and standard errors from every
+trial. The finalizer verifies the inputs and means, exports paired comparisons,
+generates figures in the run directory, and archives the completed run. On
+CloudLab, the current run directory is
+`/users/jxiong/main50_20261011/results/main50`; logs are in
+`/users/jxiong/main50_20261011/main50.log`. Existing ten-trial results are retained.
+
 After experiment JSON files are available, regenerate the main result figures:
 
 ```bash
